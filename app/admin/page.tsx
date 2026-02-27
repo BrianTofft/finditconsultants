@@ -66,7 +66,22 @@ type Contract = {
   suppliers: { company_name: string; email: string } | null;
 };
 
-type Tab = "requests" | "submissions" | "contracts" | "users";
+type SupplierApplication = {
+  id: string;
+  created_at: string;
+  company_name: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  company_type: string;
+  competencies: string[];
+  extra_competencies: string;
+  language: string;
+  status: string;
+};
+
+type Tab = "requests" | "submissions" | "contracts" | "applications" | "users";
 const STATUSES = ["Ny", "I gang", "Afsluttet"];
 
 function ContractCard({ contract: c, onUpdateScore }: { contract: Contract; onUpdateScore: (id: string, score: number, comment: string) => void }) {
@@ -129,6 +144,8 @@ export default function AdminPage() {
   const [showContractForm, setShowContractForm] = useState<string | null>(null);
   const [contractForm, setContractForm] = useState({ consultant_name: "", rate: "", duration: "", start_date: "", supplier_id: "" });
   const [savingContract, setSavingContract] = useState(false);
+  const [applications, setApplications] = useState<SupplierApplication[]>([]);
+  const [appProcessing, setAppProcessing] = useState<string | null>(null);
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [newUser, setNewUser] = useState({ email: "", password: "", role: "customer", company_name: "", contact_name: "", phone: "" });
   const [creatingUser, setCreatingUser] = useState(false);
@@ -143,13 +160,14 @@ export default function AdminPage() {
       const { data: adminData } = await supabase.from("admins").select("id").eq("id", user.id).single();
       if (!adminData) { router.push("/admin/login"); return; }
 
-      const [reqRes, subRes, userRes, supRes, rsRes, contractRes] = await Promise.all([
+      const [reqRes, subRes, userRes, supRes, rsRes, contractRes, appRes] = await Promise.all([
         supabase.from("requests").select("*").order("created_at", { ascending: false }),
         supabase.from("consultant_submissions").select("*, requests(description, email)").order("created_at", { ascending: false }),
         supabase.from("user_roles").select("*"),
         supabase.from("suppliers").select("id, email, company_name"),
         supabase.from("request_suppliers").select("request_id, supplier_id"),
         supabase.from("contracts").select("*, requests(description, email), suppliers(company_name, email)").order("created_at", { ascending: false }),
+supabase.from("supplier_applications").select("*").order("created_at", { ascending: false }),
       ]);
 
       setRequests(reqRes.data ?? []);
@@ -157,6 +175,7 @@ export default function AdminPage() {
       setUsers(userRes.data ?? []);
       setSuppliers(supRes.data ?? []);
       setContracts(contractRes.data ?? []);
+      setApplications(appRes.data ?? []);
 
       const nsMap: Record<string, string[]> = {};
       for (const rs of (rsRes.data ?? [])) {
@@ -248,6 +267,51 @@ export default function AdminPage() {
     setCreatingUser(false);
   };
 
+  const handleApplication = async (app: SupplierApplication, decision: "accepted" | "rejected") => {
+  setAppProcessing(app.id);
+
+  if (decision === "accepted") {
+    // Opret bruger
+    const res = await fetch("/api/create-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: app.email,
+        password: Math.random().toString(36).slice(-10),
+        role: "supplier",
+        company_name: app.company_name,
+        contact_name: `${app.first_name} ${app.last_name}`,
+        phone: app.phone,
+      }),
+    });
+    const data = await res.json();
+
+    if (data.userId) {
+      // Gem ekstra felter
+      await supabase.from("suppliers").update({
+        first_name: app.first_name,
+        last_name: app.last_name,
+        company_type: app.company_type,
+        competencies: app.competencies,
+        extra_competencies: app.extra_competencies,
+        language: app.language,
+      }).eq("id", data.userId);
+    }
+
+    // Send velkomst email
+    await fetch("/api/notify-supplier-approved", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: app.email, first_name: app.first_name, company_name: app.company_name }),
+    });
+  }
+
+  // Opdater status
+  await supabase.from("supplier_applications").update({ status: decision === "accepted" ? "Godkendt" : "Afvist" }).eq("id", app.id);
+  setApplications(prev => prev.map(a => a.id === app.id ? { ...a, status: decision === "accepted" ? "Godkendt" : "Afvist" } : a));
+  setAppProcessing(null);
+};
+
   const handleAdminResetPassword = async (email: string) => {
     await fetch("/api/reset-password", {
       method: "POST",
@@ -300,7 +364,7 @@ export default function AdminPage() {
           {(["requests", "submissions", "contracts", "users"] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-5 py-2.5 text-sm font-bold rounded-t-xl transition-all ${tab === t ? "bg-[#f8f6f3] text-charcoal" : "text-white/50 hover:text-white"}`}>
-              {t === "requests" ? "Forespørgsler" : t === "submissions" ? "Konsulenter" : t === "contracts" ? "Kontrakter" : "Brugere"}
+              {t === "requests" ? "Forespørgsler" : t === "submissions" ? "Konsulenter" : t === "contracts" ? "Kontrakter" : t === "applications" ? `Ansøgninger${applications.filter(a => a.status === "Afventer").length > 0 ? ` (${applications.filter(a => a.status === "Afventer").length})` : ""}` : "Brugere"}
             </button>
           ))}
         </div>
@@ -538,6 +602,61 @@ export default function AdminPage() {
                 </div>
               ) : contracts.map(c => (
                 <ContractCard key={c.id} contract={c} onUpdateScore={updateScore} />
+              ))}
+            </div>
+          </>
+        )}
+
+        {tab === "applications" && (
+          <>
+            <p className="text-charcoal/50 text-sm mb-4">{applications.length} ansøgninger i alt</p>
+            <div className="space-y-3">
+              {applications.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-[#ede9e3] p-8 text-center">
+                  <p className="text-charcoal/45 text-sm">Ingen ansøgninger endnu</p>
+                </div>
+              ) : applications.map(a => (
+                <div key={a.id} className="bg-white rounded-2xl border border-[#ede9e3] p-5">
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-bold text-sm text-charcoal">{a.company_name}</span>
+                        {a.company_type && <span className="text-xs text-charcoal/40 font-semibold">{a.company_type}</span>}
+                      </div>
+                      <p className="text-xs text-charcoal/60">👤 {a.first_name} {a.last_name}</p>
+                      <p className="text-xs text-charcoal/50 mt-0.5">✉️ {a.email}</p>
+                      {a.phone && <p className="text-xs text-charcoal/50 mt-0.5">📞 {a.phone}</p>}
+                      {a.language && <p className="text-xs text-charcoal/50 mt-0.5">🌐 {a.language}</p>}
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {a.competencies?.map(c => (
+                          <span key={c} className="bg-orange/10 text-orange text-xs font-bold px-2 py-0.5 rounded-full">{c}</span>
+                        ))}
+                      </div>
+                      {a.extra_competencies && <p className="text-xs text-charcoal/50 mt-1">+ {a.extra_competencies}</p>}
+                      <p className="text-xs text-charcoal/30 mt-2">{new Date(a.created_at).toLocaleDateString("da-DK")}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      {a.status === "Afventer" ? (
+                        <div className="flex gap-2">
+                          <button onClick={() => handleApplication(a, "accepted")}
+                            disabled={appProcessing === a.id}
+                            className="text-xs bg-green-500 text-white font-bold px-4 py-2 rounded-full hover:bg-green-600 transition-colors disabled:opacity-50">
+                            {appProcessing === a.id ? "…" : "Godkend"}
+                          </button>
+                          <button onClick={() => handleApplication(a, "rejected")}
+                            disabled={appProcessing === a.id}
+                            className="text-xs bg-red-500 text-white font-bold px-4 py-2 rounded-full hover:bg-red-600 transition-colors disabled:opacity-50">
+                            Afslå
+                          </button>
+                        </div>
+                      ) : (
+                        <span className={`text-xs font-bold px-3 py-1 rounded-full ${a.status === "Godkendt" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+                          {a.status}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           </>
