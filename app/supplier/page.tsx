@@ -26,12 +26,17 @@ type Submission = {
   interview_confirmed: boolean;
 };
 
-type Profile = {
-  company_name: string;
-  contact_name: string;
-  phone: string;
-  email: string;
-};
+const [profile, setProfile] = useState<Profile>({
+  company_name: "",
+  first_name: "",
+  last_name: "",
+  email: "",
+  phone: "",
+  company_type: "",
+  competencies: [],
+  extra_competencies: "",
+  language: "",
+});
 
 type Tab = "requests" | "submissions" | "profile";
 
@@ -105,9 +110,14 @@ export default function SupplierPage() {
 
       setProfile({
         company_name: supplierData.company_name ?? "",
-        contact_name: supplierData.contact_name ?? "",
-        phone: supplierData.phone ?? "",
+        first_name: supplierData.first_name ?? "",
+        last_name: supplierData.last_name ?? "",
         email: supplierData.email ?? user.email ?? "",
+        phone: supplierData.phone ?? "",
+        company_type: supplierData.company_type ?? "",
+        competencies: supplierData.competencies ?? [],
+        extra_competencies: supplierData.extra_competencies ?? "",
+        language: supplierData.language ?? "",
       });
 
       const { data: rsData } = await supabase
@@ -187,18 +197,24 @@ export default function SupplierPage() {
   };
 
   const handleSaveProfile = async () => {
-    setSaving(true);
-    await supabase.from("suppliers").upsert({
-      id: supplierId,
-      email: profile.email,
-      company_name: profile.company_name,
-      contact_name: profile.contact_name,
-      phone: profile.phone,
-    });
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-  };
+  setSaving(true);
+  await supabase.from("suppliers").upsert({
+    id: supplierId,
+    email: profile.email,
+    company_name: profile.company_name,
+    first_name: profile.first_name,
+    last_name: profile.last_name,
+    contact_name: `${profile.first_name} ${profile.last_name}`.trim(),
+    phone: profile.phone,
+    company_type: profile.company_type,
+    competencies: profile.competencies,
+    extra_competencies: profile.extra_competencies,
+    language: profile.language,
+  });
+  setSaving(false);
+  setSaved(true);
+  setTimeout(() => setSaved(false), 2000);
+};
 
   const confirmInterview = async (submissionId: string, newDatetime?: string) => {
     setConfirming(submissionId);
@@ -437,20 +453,68 @@ export default function SupplierPage() {
             <h2 className="font-bold text-lg text-charcoal mb-5">Min profil</h2>
             <div className="space-y-4">
               <div>
-                <label className={lbl}>Firmanavn</label>
-                <input className={inp} placeholder="Dit firma A/S" value={profile.company_name} onChange={e => setProfile(p => ({ ...p, company_name: e.target.value }))} />
+                <label className={lbl}>Virksomhed</label>
+                <input className={inp} placeholder="Firma A/S" value={profile.company_name} onChange={e => setProfile(p => ({ ...p, company_name: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={lbl}>Fornavn</label>
+                  <input className={inp} placeholder="Fornavn" value={profile.first_name} onChange={e => setProfile(p => ({ ...p, first_name: e.target.value }))} />
+                </div>
+                <div>
+                  <label className={lbl}>Efternavn</label>
+                  <input className={inp} placeholder="Efternavn" value={profile.last_name} onChange={e => setProfile(p => ({ ...p, last_name: e.target.value }))} />
+                </div>
               </div>
               <div>
-                <label className={lbl}>Kontaktperson</label>
-                <input className={inp} placeholder="Navn Efternavn" value={profile.contact_name} onChange={e => setProfile(p => ({ ...p, contact_name: e.target.value }))} />
+                <label className={lbl}>Email</label>
+                <input className={inp} disabled value={profile.email} />
               </div>
               <div>
                 <label className={lbl}>Telefon</label>
                 <input className={inp} placeholder="+45 12 34 56 78" value={profile.phone} onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} />
               </div>
               <div>
-                <label className={lbl}>Email</label>
-                <input className={inp} disabled value={profile.email} />
+                <label className={lbl}>Virksomhedstype</label>
+                <select className={inp} value={profile.company_type} onChange={e => setProfile(p => ({ ...p, company_type: e.target.value }))}>
+                  <option value="">Vælg…</option>
+                  <option>Konsulenthus (egne konsulenter)</option>
+                  <option>Konsulentformidler (freelancers)</option>
+                  <option>Selvstændig (freelancer)</option>
+                </select>
+              </div>
+              <div>
+                <label className={lbl}>Kompetencer</label>
+                <div className="flex flex-wrap gap-2">
+                  {COMPETENCIES.map(c => {
+                    const selected = profile.competencies.includes(c);
+                    return (
+                      <button type="button" key={c}
+                        onClick={() => {
+                          const updated = selected
+                            ? profile.competencies.filter(x => x !== c)
+                            : [...profile.competencies, c];
+                          setProfile(p => ({ ...p, competencies: updated }));
+                        }}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${selected ? "bg-orange text-white border-orange" : "bg-white text-charcoal border-[#e8e5e0] hover:border-orange/50"}`}>
+                        {c}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div>
+                <label className={lbl}>Yderligere kompetencer</label>
+                <input className={inp} placeholder="F.eks. specifikke teknologier eller brancher…" value={profile.extra_competencies} onChange={e => setProfile(p => ({ ...p, extra_competencies: e.target.value }))} />
+              </div>
+              <div>
+                <label className={lbl}>Sprog</label>
+                <select className={inp} value={profile.language} onChange={e => setProfile(p => ({ ...p, language: e.target.value }))}>
+                  <option value="">Vælg…</option>
+                  <option>Dansk</option>
+                  <option>Engelsk</option>
+                  <option>Dansk og engelsk</option>
+                </select>
               </div>
               <button onClick={handleSaveProfile} disabled={saving}
                 className="w-full bg-orange text-white font-bold rounded-full px-8 py-3 text-sm hover:bg-orange-dark transition-all disabled:opacity-50">
