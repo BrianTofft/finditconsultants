@@ -25,7 +25,6 @@ export default function ChatWindow({ requestId, userId, userType, userName, titl
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const supabase = createClient();
 
   useEffect(() => {
     const fetchMessages = async () => {
