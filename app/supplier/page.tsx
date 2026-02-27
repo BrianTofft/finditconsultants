@@ -26,7 +26,19 @@ type Submission = {
   interview_confirmed: boolean;
 };
 
-const [profile, setProfile] = useState<Profile>({
+type Profile = {
+  company_name: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string;
+  company_type: string;
+  competencies: string[];
+  extra_competencies: string;
+  language: string;
+};
+
+type Tab = "requests" | "submissions" | "profile";
   company_name: "",
   first_name: "",
   last_name: "",
@@ -36,9 +48,6 @@ const [profile, setProfile] = useState<Profile>({
   competencies: [],
   extra_competencies: "",
   language: "",
-});
-
-type Tab = "requests" | "submissions" | "profile";
 
 function ChangePassword() {
   const [password, setPassword] = useState("");
