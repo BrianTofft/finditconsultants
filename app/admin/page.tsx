@@ -347,6 +347,16 @@ supabase.from("supplier_applications").select("*").order("created_at", { ascendi
     alert(`Reset email sendt til ${email}`);
   };
 
+  const handleDeleteUser = async (id: string, email: string) => {
+    if (!confirm(`Er du sikker på at du vil slette ${email}?`)) return;
+    await fetch("/api/delete-user", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    setUsers(prev => prev.filter(u => u.id !== id));
+  };
+
   const loadChat = async (senderId: string) => {
     const { data } = await supabase
       .from("chat_messages")
@@ -801,6 +811,10 @@ supabase.from("supplier_applications").select("*").order("created_at", { ascendi
                       <button onClick={() => handleAdminResetPassword(u.email)}
                         className="text-xs bg-blue-50 text-blue-600 font-bold px-3 py-1 rounded-full hover:bg-blue-100 transition-colors">
                         Reset password
+                      </button>
+                      <button onClick={() => handleDeleteUser(u.id, u.email)}
+                        className="text-xs bg-red-50 text-red-600 font-bold px-3 py-1 rounded-full hover:bg-red-100 transition-colors">
+                        Slet bruger
                       </button>
                     </div>
                   </div>
