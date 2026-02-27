@@ -259,6 +259,7 @@ export default function SupplierPage() {
             <button key={t} onClick={() => setTab(t)}
               className={`px-5 py-2.5 text-sm font-bold rounded-t-xl transition-all ${tab === t ? "bg-[#f8f6f3] text-charcoal" : "text-white/50 hover:text-white"}`}>
               {t === "requests" ? "Forespørgsler" : t === "submissions" ? "Mine profiler" : t === "messages" ? "Beskeder" : "Min profil"}
+            </button>
           ))}
         </div>
       </div>
