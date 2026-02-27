@@ -351,7 +351,7 @@ supabase.from("supplier_applications").select("*").order("created_at", { ascendi
     const { data } = await supabase
       .from("chat_messages")
       .select("*")
-      .eq("sender_id", senderId)
+      .or(`sender_id.eq.${senderId},and(sender_type.eq.admin,request_id.is.null)`)
       .order("created_at", { ascending: true });
     setChatMessages(data ?? []);
     await supabase.from("chat_messages").update({ read_by_admin: true }).eq("sender_id", senderId);
