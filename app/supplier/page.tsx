@@ -39,15 +39,6 @@ type Profile = {
 };
 
 type Tab = "requests" | "submissions" | "profile";
-  company_name: "",
-  first_name: "",
-  last_name: "",
-  email: "",
-  phone: "",
-  company_type: "",
-  competencies: [],
-  extra_competencies: "",
-  language: "",
 
 function ChangePassword() {
   const [password, setPassword] = useState("");
