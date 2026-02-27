@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import { useRef } from "react";
 
 type Request = {
   id: string;
@@ -81,7 +82,7 @@ type SupplierApplication = {
   status: string;
 };
 
-type Tab = "requests" | "submissions" | "contracts" | "applications" | "users";
+type Tab = "requests" | "submissions" | "contracts" | "applications" | "users" | "messages";
 const STATUSES = ["Ny", "I gang", "Afsluttet"];
 
 function ContractCard({ contract: c, onUpdateScore }: { contract: Contract; onUpdateScore: (id: string, score: number, comment: string) => void }) {
@@ -149,6 +150,12 @@ export default function AdminPage() {
   const [showCreateUser, setShowCreateUser] = useState(false);
   const [newUser, setNewUser] = useState({ email: "", password: "", role: "customer", company_name: "", contact_name: "", phone: "" });
   const [creatingUser, setCreatingUser] = useState(false);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatUsers, setChatUsers] = useState<any[]>([]);
+  const [selectedChatUser, setSelectedChatUser] = useState<any | null>(null);
+  const [chatInput, setChatInput] = useState("");
+  const [adminId, setAdminId] = useState("");
+  const chatBottomRef = useRef<HTMLDivElement>(null);
   const [createUserError, setCreateUserError] = useState("");
   const [createUserSuccess, setCreateUserSuccess] = useState(false);
   
@@ -182,7 +189,26 @@ supabase.from("supplier_applications").select("*").order("created_at", { ascendi
         if (!nsMap[rs.request_id]) nsMap[rs.request_id] = [];
         nsMap[rs.request_id].push(rs.supplier_id);
       }
+
       setNotifiedSuppliers(nsMap);
+
+      const { data: { user: adminUser } } = await supabase.auth.getUser();
+      if (adminUser) setAdminId(adminUser.id);
+
+      const { data: allChats } = await supabase
+        .from("chat_messages")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      const byUser: Record<string, any> = {};
+      for (const msg of allChats ?? []) {
+        if (msg.sender_type === "admin") continue;
+        const uid = msg.sender_id;
+        if (!byUser[uid]) byUser[uid] = { sender_id: uid, sender_name: msg.sender_name, sender_type: msg.sender_type, latest: msg.created_at, unread: 0 };
+        if (!msg.read_by_admin) byUser[uid].unread++;
+      }
+      setChatUsers(Object.values(byUser));
+
       setLoading(false);
     };
     init();
@@ -321,6 +347,33 @@ supabase.from("supplier_applications").select("*").order("created_at", { ascendi
     alert(`Reset email sendt til ${email}`);
   };
 
+  const loadChat = async (senderId: string) => {
+    const { data } = await supabase
+      .from("chat_messages")
+      .select("*")
+      .eq("sender_id", senderId)
+      .order("created_at", { ascending: true });
+    setChatMessages(data ?? []);
+    await supabase.from("chat_messages").update({ read_by_admin: true }).eq("sender_id", senderId);
+    setChatUsers(prev => prev.map(u => u.sender_id === senderId ? { ...u, unread: 0 } : u));
+    setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+  };
+
+  const sendAdminMessage = async () => {
+    if (!chatInput.trim() || !selectedChatUser) return;
+    const content = chatInput.trim();
+    setChatInput("");
+    await supabase.from("chat_messages").insert({
+      sender_type: "admin",
+      sender_id: adminId,
+      sender_name: "FindIT-teamet",
+      content,
+      read_by_admin: true,
+      read_by_user: false,
+    });
+    loadChat(selectedChatUser.sender_id);
+  };
+
   const statusColor: Record<string, string> = {
     "Ny": "bg-blue-100 text-blue-700",
     "I gang": "bg-orange-100 text-orange-700",
@@ -361,10 +414,10 @@ supabase.from("supplier_applications").select("*").order("created_at", { ascendi
             className="text-white/50 hover:text-white text-sm font-semibold transition-colors">Log ud →</button>
         </div>
         <div className="max-w-6xl mx-auto px-6 flex gap-1 pb-0">
-          {(["requests", "submissions", "contracts", "users"] as Tab[]).map(t => (
+          {(["requests", "submissions", "contracts", "applications", "users", "messages"] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-5 py-2.5 text-sm font-bold rounded-t-xl transition-all ${tab === t ? "bg-[#f8f6f3] text-charcoal" : "text-white/50 hover:text-white"}`}>
-              {t === "requests" ? "Forespørgsler" : t === "submissions" ? "Konsulenter" : t === "contracts" ? "Kontrakter" : t === "applications" ? `Ansøgninger${applications.filter(a => a.status === "Afventer").length > 0 ? ` (${applications.filter(a => a.status === "Afventer").length})` : ""}` : "Brugere"}
+              {t === "requests" ? "Forespørgsler" : t === "submissions" ? "Konsulenter" : t === "contracts" ? "Kontrakter" : t === "applications" ? `Ansøgninger${applications.filter(a => a.status === "Afventer").length > 0 ? ` (${applications.filter(a => a.status === "Afventer").length})` : ""}` : t === "messages" ? "Beskeder" : "Brugere"}
             </button>
           ))}
         </div>
@@ -755,6 +808,92 @@ supabase.from("supplier_applications").select("*").order("created_at", { ascendi
               ))}
             </div>
           </>
+        )}
+
+        {tab === "messages" && (
+          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6" style={{ height: "calc(100vh - 220px)" }}>
+            {/* Bruger-liste */}
+            <div className="bg-white rounded-2xl border border-[#ede9e3] overflow-hidden flex flex-col">
+              <div className="px-4 py-3 border-b border-[#f0ede8] text-xs font-extrabold tracking-widest uppercase text-charcoal/40">Samtaler</div>
+              <div className="flex-1 overflow-y-auto">
+                {chatUsers.length === 0 && (
+                  <p className="text-charcoal/30 text-sm text-center py-8">Ingen beskeder endnu</p>
+                )}
+                {chatUsers.map(u => (
+                  <div key={u.sender_id}
+                    onClick={() => { setSelectedChatUser(u); loadChat(u.sender_id); }}
+                    className={`px-4 py-3.5 cursor-pointer border-b border-[#f8f6f3] transition-colors flex items-center gap-3 ${selectedChatUser?.sender_id === u.sender_id ? "bg-orange-light border-l-2 border-l-orange" : "hover:bg-[#fafaf8]"}`}>
+                    <div className="w-8 h-8 rounded-full bg-[#2d2c2c] flex items-center justify-center text-xs font-black text-white flex-shrink-0">
+                      {u.sender_name?.slice(0,2).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-sm text-charcoal truncate">{u.sender_name}</div>
+                      <div className="text-xs text-charcoal/40">{u.sender_type === "customer" ? "Kunde" : "Leverandør"}</div>
+                    </div>
+                    {u.unread > 0 && (
+                      <span className="w-5 h-5 rounded-full bg-orange text-white text-[10px] font-black flex items-center justify-center">{u.unread}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Chat vindue */}
+            {selectedChatUser ? (
+              <div className="bg-white rounded-2xl border border-[#ede9e3] flex flex-col overflow-hidden">
+                <div className="px-6 py-4 border-b border-[#f0ede8] flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-[#2d2c2c] flex items-center justify-center text-sm font-black text-white">
+                    {selectedChatUser.sender_name?.slice(0,2).toUpperCase()}
+                  </div>
+                  <div>
+                    <div className="font-bold text-charcoal text-sm">{selectedChatUser.sender_name}</div>
+                    <div className="text-xs text-charcoal/40">{selectedChatUser.sender_type === "customer" ? "Kunde" : "Leverandør"}</div>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                  {chatMessages.map(msg => {
+                    const isAdmin = msg.sender_type === "admin";
+                    return (
+                      <div key={msg.id} className={`flex gap-3 ${isAdmin ? "flex-row-reverse" : ""}`}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 ${isAdmin ? "bg-orange text-white" : "bg-[#2d2c2c] text-white"}`}>
+                          {isAdmin ? "FI" : msg.sender_name?.slice(0,2).toUpperCase()}
+                        </div>
+                        <div className={`max-w-[70%] flex flex-col gap-1 ${isAdmin ? "items-end" : "items-start"}`}>
+                          <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${isAdmin ? "bg-orange text-white rounded-tr-sm" : "bg-[#f8f6f3] text-charcoal rounded-tl-sm"}`}>
+                            {msg.content}
+                          </div>
+                          <span className="text-[10px] text-charcoal/35 px-1">
+                            {new Date(msg.created_at).toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div ref={chatBottomRef} />
+                </div>
+                <div className="px-4 py-4 border-t border-[#f0ede8] flex gap-3">
+                  <input
+                    value={chatInput}
+                    onChange={e => setChatInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAdminMessage(); }}}
+                    placeholder="Skriv svar til bruger…"
+                    className="flex-1 border border-[#e8e5e0] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange transition-all bg-[#f8f6f3]"
+                  />
+                  <button onClick={sendAdminMessage} disabled={!chatInput.trim()}
+                    className="bg-orange hover:bg-orange-dark text-white font-bold rounded-xl px-5 py-2.5 text-sm transition-colors disabled:opacity-40">
+                    Send
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-[#ede9e3] flex items-center justify-center">
+                <div className="text-center">
+                  <div className="text-4xl mb-3">💬</div>
+                  <p className="text-charcoal/40 text-sm font-semibold">Vælg en samtale til venstre</p>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
       </div>

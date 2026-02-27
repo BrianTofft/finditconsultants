@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
+import ChatWindow from "@/components/chat/ChatWindow";
 
 type Submission = {
   id: string;
@@ -34,7 +35,7 @@ type Profile = {
   email: string;
 };
 
-type Tab = "requests" | "profile";
+type Tab = "requests" | "profile" | "messages";
 
 function ChangePassword() {
   const [password, setPassword] = useState("");
@@ -205,10 +206,10 @@ export default function PortalPage() {
             className="text-white/50 hover:text-white text-sm font-semibold transition-colors">Log ud →</button>
         </div>
         <div className="max-w-4xl mx-auto px-6 flex gap-1 pb-0">
-          {(["requests", "profile"] as Tab[]).map(t => (
+          {(["requests", "messages", "profile"] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-5 py-2.5 text-sm font-bold rounded-t-xl transition-all ${tab === t ? "bg-[#f8f6f3] text-charcoal" : "text-white/50 hover:text-white"}`}>
-              {t === "requests" ? "Forespørgsler" : "Min profil"}
+              {t === "requests" ? "Forespørgsler" : t === "messages" ? "Beskeder" : "Min profil"}
             </button>
           ))}
         </div>
@@ -324,6 +325,17 @@ export default function PortalPage() {
               </div>
             )}
           </>
+       )}
+
+        {tab === "messages" && (
+          <div>
+            <h2 className="font-bold text-lg text-charcoal mb-4">Beskeder</h2>
+            <ChatWindow
+              userId={userId}
+              userType="customer"
+              userName={profile.contact_name || profile.company_name || profile.email}
+            />
+          </div>
         )}
 
         {tab === "profile" && (

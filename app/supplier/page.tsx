@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { COMPETENCIES } from "@/app/data";
 import { useRouter } from "next/navigation";
+import ChatWindow from "@/components/chat/ChatWindow";
 
 type Request = {
   id: string;
@@ -38,7 +39,7 @@ type Profile = {
   language: string;
 };
 
-type Tab = "requests" | "submissions" | "profile";
+type Tab = "requests" | "submissions" | "messages" | "profile";
 
 function ChangePassword() {
   const [password, setPassword] = useState("");
@@ -254,11 +255,10 @@ export default function SupplierPage() {
           </button>
         </div>
         <div className="max-w-5xl mx-auto px-6 flex gap-1 pb-0">
-          {(["requests", "submissions", "profile"] as Tab[]).map(t => (
+          {(["requests", "submissions", "messages", "profile"] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-5 py-2.5 text-sm font-bold rounded-t-xl transition-all ${tab === t ? "bg-[#f8f6f3] text-charcoal" : "text-white/50 hover:text-white"}`}>
-              {t === "requests" ? "Forespørgsler" : t === "submissions" ? "Mine konsulenter" : "Min profil"}
-            </button>
+              {t === "requests" ? "Forespørgsler" : t === "submissions" ? "Mine profiler" : t === "messages" ? "Beskeder" : "Min profil"}
           ))}
         </div>
       </div>
@@ -447,7 +447,18 @@ export default function SupplierPage() {
             </div>
           </>
         )}
-                
+        
+         {tab === "messages" && (
+          <div>
+            <h2 className="font-bold text-lg text-charcoal mb-4">Beskeder</h2>
+            <ChatWindow
+              userId={supplierId}
+              userType="supplier"
+              userName={`${profile.first_name} ${profile.last_name}`.trim() || profile.company_name || profile.email}
+            />
+          </div>
+        )}
+
         {tab === "profile" && (
           <div className="bg-white rounded-2xl border border-[#ede9e3] p-6 max-w-lg">
             <h2 className="font-bold text-lg text-charcoal mb-5">Min profil</h2>
