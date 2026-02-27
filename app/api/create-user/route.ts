@@ -1,0 +1,35 @@
+import { createClient } from "@supabase/supabase-js";
+import { NextResponse } from "next/server";
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+export async function POST(req: Request) {
+  const { email, password, role, company_name, contact_name, phone } = await req.json();
+
+  // Opret bruger i Supabase Auth
+  const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+
+  if (authError || !authData.user) {
+    return NextResponse.json({ error: authError?.message ?? "Kunne ikke oprette bruger" }, { status: 400 });
+  }
+
+  const userId = authData.user.id;
+
+  // Tilføj til den rigtige tabel
+  if (role === "admin") {
+    await supabaseAdmin.from("admins").insert({ id: userId, email });
+  } else if (role === "supplier") {
+    await supabaseAdmin.from("suppliers").insert({ id: userId, email, company_name, contact_name, phone });
+  } else if (role === "customer") {
+    await supabaseAdmin.from("customers").insert({ id: userId, email, company_name, contact_name, phone });
+  }
+
+  return NextResponse.json({ success: true, userId });
+}
