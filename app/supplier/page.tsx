@@ -90,7 +90,7 @@ export default function SupplierPage() {
   const [confirming, setConfirming] = useState<string | null>(null);
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [tab, setTab] = useState<Tab>("requests");
-  const [profile, setProfile] = useState<Profile>({ company_name: "", contact_name: "", phone: "", email: "" });
+  const [profile, setProfile] = useState<Profile>({ company_name: "", first_name: "", last_name: "", email: "", phone: "", company_type: "", competencies: [], extra_competencies: "", language: "" });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
