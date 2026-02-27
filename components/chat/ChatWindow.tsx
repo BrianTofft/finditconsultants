@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 interface Message {
   id: string;
   created_at: string;
+  request_id: string | null;
   sender_type: string;
   sender_id: string;
   sender_name: string;
