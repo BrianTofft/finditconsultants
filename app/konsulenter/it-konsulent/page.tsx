@@ -1,9 +1,37 @@
 import ConsultantPage from "@/components/ConsultantPage";
 import type { Metadata } from "next";
+
 export const metadata: Metadata = {
   title: "IT konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
-  description: "Find den rette IT konsulent gratis via multi-sourcing. 70+ partnere, 4–9 kandidater inden for 3 arbejdsdage.",
+  description:
+    "Find den rette IT konsulent gratis via multi-sourcing. 70+ partnere præsenterer 4–9 screenede kandidater inden for 3 arbejdsdage. Alle IT-discipliner dækket.",
+  keywords: [
+    "IT konsulent",
+    "IT konsulent Danmark",
+    "freelance IT konsulent",
+    "IT rådgiver",
+    "find IT konsulent",
+    "IT konsulenthjælp",
+    "IT specialist",
+    "gratis IT konsulent",
+    "IT konsulent rekruttering",
+    "IT konsulent til leje",
+  ],
+  alternates: { canonical: "https://finditconsultants.com/konsulenter/it-konsulent" },
+  openGraph: {
+    title: "IT konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
+    description:
+      "Find den rette IT konsulent via 70+ leverandører. Alle IT-discipliner — gratis, uforpligtende og inden for 3 arbejdsdage.",
+    url: "https://finditconsultants.com/konsulenter/it-konsulent",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "IT konsulent — Gratis multi-sourcing",
+    description: "Find IT konsulenter via 70+ leverandører — gratis, uforpligtende, inden for 3 dage.",
+  },
 };
+
 export default function ITKonsulentPage() {
   return (
     <ConsultantPage
@@ -45,6 +73,18 @@ export default function ITKonsulentPage() {
             "Du interviewer hvem du vil — ingen forpligtelse",
             "Aftalen indgås direkte med den valgte leverandør",
           ],
+        },
+      ]}
+      resources={[
+        {
+          title: "PROSA — Forbund for IT-specialister",
+          href: "https://www.prosa.dk/",
+          desc: "Dansk fagforening for IT-professionelle med indsigt i lønniveauer og markedsvilkår.",
+        },
+        {
+          title: "DI Digital — IT i dansk erhvervsliv",
+          href: "https://www.danskindustri.dk/di-digital/",
+          desc: "Dansk Industris digitale videnscenter med rapporter og analyser om IT i erhvervslivet.",
         },
       ]}
       faq={[

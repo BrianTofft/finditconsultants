@@ -1,9 +1,37 @@
 import ConsultantPage from "@/components/ConsultantPage";
 import type { Metadata } from "next";
+
 export const metadata: Metadata = {
   title: "Power BI konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
-  description: "Find den rette Power BI konsulent gratis. Datavisualisering og BI-løsninger via 70+ leverandører.",
+  description:
+    "Find den rette Power BI konsulent gratis. Datavisualisering, BI-løsninger og DAX via 70+ leverandører. Screenede profiler inden for 3 arbejdsdage.",
+  keywords: [
+    "Power BI konsulent",
+    "Power BI specialist Danmark",
+    "Power BI rådgivning",
+    "BI konsulent",
+    "datavisualisering konsulent",
+    "DAX konsulent",
+    "Microsoft Power BI",
+    "business intelligence konsulent",
+    "Power BI dashboard",
+    "gratis Power BI konsulent",
+  ],
+  alternates: { canonical: "https://finditconsultants.com/konsulenter/power-bi" },
+  openGraph: {
+    title: "Power BI konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
+    description:
+      "Find kvalificerede Power BI konsulenter via 70+ leverandører. Dashboards, DAX og BI-arkitektur — gratis og uforpligtende.",
+    url: "https://finditconsultants.com/konsulenter/power-bi",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Power BI konsulent — Gratis multi-sourcing",
+    description: "Find Power BI konsulenter via 70+ leverandører — gratis, uforpligtende, inden for 3 dage.",
+  },
 };
+
 export default function PowerBIPage() {
   return (
     <ConsultantPage
@@ -34,6 +62,23 @@ export default function PowerBIPage() {
             "<strong>Implementering:</strong> Integration med eksisterende IT-systemer.",
             "<strong>Uddannelse:</strong> Oplære medarbejdere i brugen af Power BI.",
           ],
+        },
+      ]}
+      resources={[
+        {
+          title: "Microsoft Power BI — Officiel hjemmeside",
+          href: "https://powerbi.microsoft.com/da-dk/",
+          desc: "Officiel produktside med licenser, funktioner og kundecases for Microsoft Power BI.",
+        },
+        {
+          title: "Power BI Dokumentation",
+          href: "https://learn.microsoft.com/da-dk/power-bi/",
+          desc: "Komplet teknisk dokumentation og læringsressourcer fra Microsoft til Power BI.",
+        },
+        {
+          title: "Power BI Community",
+          href: "https://community.powerbi.com/",
+          desc: "Officielt Power BI-forum med over 400.000 medlemmer — tips, templates og eksperthjælp.",
         },
       ]}
       faq={[

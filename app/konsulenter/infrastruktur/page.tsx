@@ -3,7 +3,29 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Infrastruktur konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
-  description: "Find den rette infrastruktur konsulent gratis. Netværk, serverarkitektur, backup og driftsstabilitet via 70+ leverandører.",
+  description:
+    "Find den rette infrastruktur konsulent gratis. Netværk, serverarkitektur, virtualisering og backup via 70+ leverandører inden for 3 arbejdsdage.",
+  keywords: [
+    "infrastruktur konsulent",
+    "IT infrastruktur Danmark",
+    "netværk konsulent",
+    "server konsulent",
+    "VMware konsulent",
+    "Cisco netværk",
+    "cloud infrastruktur",
+    "datacenter konsulent",
+    "hybrid cloud infrastruktur",
+    "gratis infrastruktur konsulent",
+  ],
+  alternates: { canonical: "https://finditconsultants.com/konsulenter/infrastruktur" },
+  openGraph: {
+    title: "Infrastruktur konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
+    description:
+      "Find kvalificerede infrastruktur konsulenter via 70+ leverandører. Netværk, servere, cloud og datacenter — gratis og uforpligtende.",
+    url: "https://finditconsultants.com/konsulenter/infrastruktur",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image", title: "Infrastruktur konsulent — Gratis multi-sourcing", description: "Find infrastruktur konsulenter via 70+ leverandører — gratis, inden for 3 dage." },
 };
 
 export default function InfrastrukturPage() {
@@ -48,6 +70,23 @@ export default function InfrastrukturPage() {
             "<strong>Storage specialister:</strong> SAN, NAS og backup-løsninger fra NetApp, Dell EMC m.fl.",
             "<strong>Datacenter arkitekter:</strong> Design af skalerbare og robuste datacenter-layouts.",
           ],
+        },
+      ]}
+      resources={[
+        {
+          title: "Cisco — Netværksløsninger til virksomheder",
+          href: "https://www.cisco.com/c/en_dk/",
+          desc: "Verdens ledende leverandør af netværksudstyr og sikkerhedsløsninger til virksomheder.",
+        },
+        {
+          title: "VMware by Broadcom",
+          href: "https://www.vmware.com/",
+          desc: "Markedsleder inden for servervirtualisering, cloud-infrastruktur og datacenterplatforme.",
+        },
+        {
+          title: "Azure Hybrid & Infrastructure",
+          href: "https://azure.microsoft.com/da-dk/solutions/hybrid-cloud-and-infrastructure/",
+          desc: "Microsofts løsninger til hybrid cloud-infrastruktur og on-premise/cloud integration.",
         },
       ]}
       faq={[

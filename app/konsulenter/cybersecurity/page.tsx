@@ -3,7 +3,29 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Cybersecurity konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
-  description: "Find den rette cybersecurity konsulent gratis. GDPR, ISO 27001, penetrationstest og sikkerhedsarkitektur via 70+ leverandører.",
+  description:
+    "Find den rette cybersecurity konsulent gratis. GDPR, ISO 27001, NIS2, penetrationstest og sikkerhedsarkitektur via 70+ leverandører inden for 3 arbejdsdage.",
+  keywords: [
+    "cybersecurity konsulent",
+    "IT sikkerhed konsulent Danmark",
+    "GDPR rådgiver",
+    "ISO 27001 konsulent",
+    "NIS2 konsulent",
+    "penetrationstest",
+    "informationssikkerhed konsulent",
+    "CISO rådgiver",
+    "sikkerhedsarkitektur",
+    "gratis cybersecurity konsulent",
+  ],
+  alternates: { canonical: "https://finditconsultants.com/konsulenter/cybersecurity" },
+  openGraph: {
+    title: "Cybersecurity konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
+    description:
+      "Find kvalificerede cybersecurity konsulenter via 70+ leverandører. GDPR, ISO 27001, NIS2 og penetrationstest — gratis og uforpligtende.",
+    url: "https://finditconsultants.com/konsulenter/cybersecurity",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image", title: "Cybersecurity konsulent — Gratis multi-sourcing", description: "Find cybersecurity konsulenter via 70+ leverandører — gratis, inden for 3 dage." },
 };
 
 export default function CybersecurityPage() {
@@ -48,6 +70,23 @@ export default function CybersecurityPage() {
             "<strong>Compliance specialister:</strong> ISO 27001-implementering og GDPR Data Protection Officers.",
             "<strong>SOC analytikere:</strong> Overvågning, trusselsdetektion og incident response.",
           ],
+        },
+      ]}
+      resources={[
+        {
+          title: "Center for Cybersikkerhed (CFCS)",
+          href: "https://www.cfcs.dk/",
+          desc: "Den danske regerings cybersikkerhedsmyndighed med trusselsvurderinger, vejledninger og NIS2-information.",
+        },
+        {
+          title: "Datatilsynet — GDPR vejledning",
+          href: "https://www.datatilsynet.dk/",
+          desc: "Dansk tilsynsmyndighed for databeskyttelse og GDPR med vejledninger til virksomheder.",
+        },
+        {
+          title: "ISO/IEC 27001 — Informationssikkerhed",
+          href: "https://www.iso.org/isoiec-27001-information-security.html",
+          desc: "Internationalt anerkendt standard for styring af informationssikkerhed i organisationer.",
         },
       ]}
       faq={[

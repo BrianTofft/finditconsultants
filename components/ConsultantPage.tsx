@@ -11,6 +11,12 @@ interface Section {
   bullets?: string[];
 }
 
+interface Resource {
+  title: string;
+  href: string;
+  desc: string;
+}
+
 interface Props {
   title: string;
   eyebrow: string;
@@ -19,15 +25,38 @@ interface Props {
   price?: string;
   sections: Section[];
   faq?: { q: string; a: string }[];
+  resources?: Resource[];
   icon?: string;
   graphic?: "network" | "cloud" | "chart" | "gears" | "people" | "globe" | "database" | "shield";
 }
 
-// SVG Graphic components — each unique to the competence area
-export default function ConsultantPage({ title, eyebrow, hero, intro, price, sections, faq, graphic = "network" }: Props) {
+export default function ConsultantPage({ title, eyebrow, hero, intro, price, sections, faq, resources, graphic = "network" }: Props) {
+
+  const serviceSchema = {
+    "@context": "https://schema.org",
+    "@type": "Service",
+    name: title.charAt(0).toUpperCase() + title.slice(1),
+    description: intro,
+    provider: {
+      "@type": "Organization",
+      name: "FindITconsultants.com",
+      url: "https://finditconsultants.com",
+    },
+    areaServed: { "@type": "Country", name: "Denmark" },
+    offers: {
+      "@type": "Offer",
+      priceCurrency: "DKK",
+      ...(price ? { priceSpecification: { "@type": "PriceSpecification", priceCurrency: "DKK", description: price } } : {}),
+      availability: "https://schema.org/InStock",
+    },
+  };
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceSchema) }}
+      />
       <Nav />
       <main>
         {/* ── HERO ─────────────────────────────────────────── */}
@@ -148,6 +177,33 @@ export default function ConsultantPage({ title, eyebrow, hero, intro, price, sec
                 </div>
               </div>
             ))}
+
+            {/* Nyttige ressourcer */}
+            {resources && resources.length > 0 && (
+              <div className="pt-4">
+                <h2 className="font-bold text-2xl text-charcoal mb-5 flex items-center gap-3">
+                  <span className="w-8 h-8 rounded-xl bg-orange flex items-center justify-center text-white text-sm font-bold leading-none">↗</span>
+                  Nyttige ressourcer
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {resources.map((r, i) => (
+                    <a
+                      key={i}
+                      href={r.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-start gap-3 bg-white rounded-2xl border border-[#ede9e3] p-5 hover:border-orange/30 hover:shadow-sm transition-all group"
+                    >
+                      <span className="w-7 h-7 rounded-lg bg-orange-light flex items-center justify-center text-orange text-xs flex-shrink-0 mt-0.5 group-hover:bg-orange group-hover:text-white transition-colors font-bold">↗</span>
+                      <div>
+                        <div className="font-bold text-charcoal text-sm group-hover:text-orange transition-colors">{r.title}</div>
+                        <div className="text-charcoal/50 text-xs mt-1 leading-relaxed">{r.desc}</div>
+                      </div>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* FAQ */}
             {faq && faq.length > 0 && (

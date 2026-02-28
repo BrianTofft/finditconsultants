@@ -3,7 +3,29 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "ERP & CRM konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
-  description: "Find den rette ERP eller CRM konsulent gratis. SAP, Dynamics 365, Salesforce og systemintegration via 70+ leverandører.",
+  description:
+    "Find den rette ERP eller CRM konsulent gratis. SAP S/4HANA, Dynamics 365, Salesforce og systemintegration via 70+ leverandører inden for 3 arbejdsdage.",
+  keywords: [
+    "ERP konsulent",
+    "CRM konsulent Danmark",
+    "SAP konsulent",
+    "Dynamics 365 konsulent",
+    "Salesforce konsulent",
+    "ERP implementering",
+    "Navision konsulent",
+    "Business Central konsulent",
+    "ERP migration",
+    "gratis ERP konsulent",
+  ],
+  alternates: { canonical: "https://finditconsultants.com/konsulenter/erp-crm" },
+  openGraph: {
+    title: "ERP & CRM konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
+    description:
+      "Find kvalificerede ERP og CRM konsulenter via 70+ leverandører. SAP, Dynamics 365, Salesforce — gratis og uforpligtende.",
+    url: "https://finditconsultants.com/konsulenter/erp-crm",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image", title: "ERP & CRM konsulent — Gratis multi-sourcing", description: "Find ERP og CRM konsulenter via 70+ leverandører — gratis, inden for 3 dage." },
 };
 
 export default function ErpCrmPage() {
@@ -48,6 +70,23 @@ export default function ErpCrmPage() {
             "<strong>IFS & Infor:</strong> Specialister til manufacturing og service management.",
             "<strong>E-conomic & Uniconta:</strong> Mindre danske ERP-løsninger til SMV-segmentet.",
           ],
+        },
+      ]}
+      resources={[
+        {
+          title: "SAP Danmark",
+          href: "https://www.sap.com/denmark/index.html",
+          desc: "Verdens største ERP-leverandør med S/4HANA, SuccessFactors og branchespecifikke løsninger.",
+        },
+        {
+          title: "Microsoft Dynamics 365",
+          href: "https://dynamics.microsoft.com/da-dk/",
+          desc: "Microsofts ERP- og CRM-platform integreret med Azure, Microsoft 365 og Power Platform.",
+        },
+        {
+          title: "Salesforce Danmark",
+          href: "https://www.salesforce.com/dk/",
+          desc: "Verdens mest udbredte CRM-platform til salg, service, marketing og commerce.",
         },
       ]}
       faq={[

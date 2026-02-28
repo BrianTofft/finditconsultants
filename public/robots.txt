@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+
+# Portals and admin — ikke til offentlig indexering
+Disallow: /admin/
+Disallow: /portal/
+Disallow: /supplier/
+Disallow: /api/
+
+# Sitemap
+Sitemap: https://finditconsultants.com/sitemap.xml

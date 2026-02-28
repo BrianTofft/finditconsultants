@@ -1,9 +1,37 @@
 import ConsultantPage from "@/components/ConsultantPage";
 import type { Metadata } from "next";
+
 export const metadata: Metadata = {
   title: "Nearshore konsulenter — Gratis multi-sourcing | FindITkonsulenter.dk",
-  description: "Find nearshore IT konsulenter gratis. Specialister fra nærområdet til lavere priser via 70+ leverandører.",
+  description:
+    "Find nearshore IT konsulenter gratis. Specialister fra Polen, Rumænien, Tjekkiet og Serbien til 40–60% lavere priser via 70+ leverandører.",
+  keywords: [
+    "nearshore konsulenter",
+    "nearshore IT Danmark",
+    "offshore IT konsulenter",
+    "IT outsourcing",
+    "nearshore softwareudvikling",
+    "billige IT konsulenter",
+    "Polen IT konsulenter",
+    "Rumænien IT konsulenter",
+    "nearshore rekruttering",
+    "gratis nearshore konsulenter",
+  ],
+  alternates: { canonical: "https://finditconsultants.com/konsulenter/nearshore" },
+  openGraph: {
+    title: "Nearshore konsulenter — Gratis multi-sourcing | FindITkonsulenter.dk",
+    description:
+      "Find nearshore IT konsulenter fra Østeuropa via 70+ leverandører. 40–60% lavere priser — gratis og uforpligtende.",
+    url: "https://finditconsultants.com/konsulenter/nearshore",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Nearshore konsulenter — Gratis multi-sourcing",
+    description: "Find nearshore IT konsulenter via 70+ leverandører — gratis, uforpligtende, inden for 3 dage.",
+  },
 };
+
 export default function NearshoreKonsulenterPage() {
   return (
     <ConsultantPage
@@ -33,6 +61,18 @@ export default function NearshoreKonsulenterPage() {
             "<strong>Kulturel lighed:</strong> Kulturelle ligheder reducerer misforståelser.",
             "<strong>Nem adgang:</strong> Geografisk nærhed gør det nemmere at besøge og bygge relationer.",
           ],
+        },
+      ]}
+      resources={[
+        {
+          title: "Invest in Denmark",
+          href: "https://investindenmark.com/",
+          desc: "Officiel portal for internationale virksomheder og samarbejde med danske virksomheder.",
+        },
+        {
+          title: "DI Digital — IT-outsourcing",
+          href: "https://www.danskindustri.dk/di-digital/",
+          desc: "Dansk Industris vejledning og anbefalinger til IT-outsourcing og leverandørstyring.",
         },
       ]}
       faq={[

@@ -1,9 +1,37 @@
 import ConsultantPage from "@/components/ConsultantPage";
 import type { Metadata } from "next";
+
 export const metadata: Metadata = {
   title: "SharePoint konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
-  description: "Find den rette SharePoint konsulent gratis. Implementering og optimering via 70+ leverandører.",
+  description:
+    "Find den rette SharePoint konsulent gratis. Implementering, migration og Microsoft 365-integration via 70+ leverandører inden for 3 arbejdsdage.",
+  keywords: [
+    "SharePoint konsulent",
+    "SharePoint specialist Danmark",
+    "SharePoint Online konsulent",
+    "SharePoint implementering",
+    "SharePoint migration",
+    "Microsoft 365 konsulent",
+    "SharePoint intranet",
+    "Power Platform konsulent",
+    "SharePoint rådgivning",
+    "gratis SharePoint konsulent",
+  ],
+  alternates: { canonical: "https://finditconsultants.com/konsulenter/sharepoint" },
+  openGraph: {
+    title: "SharePoint konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
+    description:
+      "Find erfarne SharePoint konsulenter via 70+ leverandører. Implementering, migration og M365-integration — gratis og uforpligtende.",
+    url: "https://finditconsultants.com/konsulenter/sharepoint",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "SharePoint konsulent — Gratis multi-sourcing",
+    description: "Find SharePoint konsulenter via 70+ leverandører — gratis, uforpligtende, inden for 3 dage.",
+  },
 };
+
 export default function SharePointPage() {
   return (
     <ConsultantPage
@@ -35,6 +63,23 @@ export default function SharePointPage() {
             "Udvikling af tilpassede workflows og løsninger",
             "Governance og sikkerhedsopsætning",
           ],
+        },
+      ]}
+      resources={[
+        {
+          title: "Microsoft SharePoint — Officiel produktside",
+          href: "https://www.microsoft.com/da-dk/microsoft-365/sharepoint/collaboration",
+          desc: "Officiel produktside med funktioner og priser for SharePoint Online og Microsoft 365.",
+        },
+        {
+          title: "SharePoint Dokumentation",
+          href: "https://learn.microsoft.com/da-dk/sharepoint/",
+          desc: "Teknisk dokumentation og udviklingsguides til SharePoint fra Microsoft.",
+        },
+        {
+          title: "Microsoft 365 Adoption Hub",
+          href: "https://adoption.microsoft.com/da-dk/",
+          desc: "Ressourcer og guides til adoption af Microsoft 365 og SharePoint i organisationen.",
         },
       ]}
       faq={[

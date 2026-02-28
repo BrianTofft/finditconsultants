@@ -1,9 +1,37 @@
 import ConsultantPage from "@/components/ConsultantPage";
 import type { Metadata } from "next";
+
 export const metadata: Metadata = {
   title: "IT projektleder — Gratis multi-sourcing | FindITkonsulenter.dk",
-  description: "Find den rette IT projektleder gratis. Vi aktiverer 70+ leverandører og finder det rigtige match til dit projekt.",
+  description:
+    "Find den rette IT projektleder gratis. PMP, PRINCE2, Scrum Master og agile coaches via 70+ leverandører. Profiler inden for 3 arbejdsdage.",
+  keywords: [
+    "IT projektleder",
+    "IT projektleder Danmark",
+    "projekt manager IT",
+    "Scrum Master",
+    "agile coach",
+    "PRINCE2 konsulent",
+    "PMP projektleder",
+    "forandringsleder",
+    "PMO konsulent",
+    "gratis IT projektleder",
+  ],
+  alternates: { canonical: "https://finditconsultants.com/konsulenter/it-projektleder" },
+  openGraph: {
+    title: "IT projektleder — Gratis multi-sourcing | FindITkonsulenter.dk",
+    description:
+      "Find erfarne IT projektledere via 70+ leverandører. PMP, PRINCE2, Scrum Master og agile coaches — gratis og uforpligtende.",
+    url: "https://finditconsultants.com/konsulenter/it-projektleder",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "IT projektleder — Gratis multi-sourcing",
+    description: "Find IT projektledere via 70+ leverandører — gratis, uforpligtende, inden for 3 dage.",
+  },
 };
+
 export default function ITProjektlederPage() {
   return (
     <ConsultantPage
@@ -36,6 +64,23 @@ export default function ITProjektlederPage() {
             "<strong>Ekspertrådgivning:</strong> Vi hjælper dig med at definere den rette kompetenceprofil.",
             "<strong>Prissammenligning:</strong> Vi benchmarker priser på tværs af markedet.",
           ],
+        },
+      ]}
+      resources={[
+        {
+          title: "Project Management Institute (PMI)",
+          href: "https://www.pmi.org/",
+          desc: "Verdens største organisation for projektledelse — certificeringer, standarder og vidensbase.",
+        },
+        {
+          title: "PRINCE2 — Axelos",
+          href: "https://www.axelos.com/certifications/propath/prince2-project-management",
+          desc: "Internationalt anerkendt projektledelsesmetode og certificeringsprogram.",
+        },
+        {
+          title: "Scrum.org",
+          href: "https://www.scrum.org/",
+          desc: "Officiel ressource for Scrum-metoden, Professional Scrum certificeringer og agile guides.",
         },
       ]}
       faq={[

@@ -1,9 +1,37 @@
 import ConsultantPage from "@/components/ConsultantPage";
 import type { Metadata } from "next";
+
 export const metadata: Metadata = {
   title: "Azure konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
-  description: "Find den rette Azure konsulent gratis. Vi aktiverer 70+ leverandører og præsenterer relevante profiler inden for 3 arbejdsdage.",
+  description:
+    "Find den rette Azure konsulent gratis. Cloud-migration, Azure-arkitektur og DevOps via 70+ leverandører. Vi præsenterer screenede profiler inden for 3 arbejdsdage.",
+  keywords: [
+    "Azure konsulent",
+    "Azure konsulent Danmark",
+    "Microsoft Azure rådgivning",
+    "cloud konsulent",
+    "Azure specialist",
+    "cloud migration",
+    "Azure DevOps",
+    "Azure arkitektur",
+    "gratis Azure konsulent",
+    "cloud-løsninger Danmark",
+  ],
+  alternates: { canonical: "https://finditconsultants.com/konsulenter/azure" },
+  openGraph: {
+    title: "Azure konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
+    description:
+      "Find kvalificerede Azure konsulenter via 70+ leverandører. Cloud-migration, arkitektur, DevOps og kostoptimering — gratis og uforpligtende.",
+    url: "https://finditconsultants.com/konsulenter/azure",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Azure konsulent — Gratis multi-sourcing",
+    description: "Find Azure konsulenter via 70+ leverandører — gratis, uforpligtende, inden for 3 dage.",
+  },
 };
+
 export default function AzurePage() {
   return (
     <ConsultantPage
@@ -45,6 +73,23 @@ export default function AzurePage() {
             "Implementerer best practices for databeskyttelse og sikkerhed",
             "Sikrer compliance med lovgivningsmæssige krav og standarder",
           ],
+        },
+      ]}
+      resources={[
+        {
+          title: "Microsoft Azure — Officiel dokumentation",
+          href: "https://learn.microsoft.com/da-dk/azure/",
+          desc: "Komplet dokumentation og guides til alle Azure-tjenester og platformens over 200 produkter.",
+        },
+        {
+          title: "Azure Arkitekturcenter",
+          href: "https://learn.microsoft.com/da-dk/azure/architecture/",
+          desc: "Best practices, referencearkitekturer og design patterns til Azure-løsninger.",
+        },
+        {
+          title: "Microsoft Azure Pricing Calculator",
+          href: "https://azure.microsoft.com/da-dk/pricing/calculator/",
+          desc: "Officielt kalkulationsværktøj til estimering af Azure-omkostninger for dit projekt.",
         },
       ]}
       faq={[

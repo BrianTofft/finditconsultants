@@ -3,7 +3,29 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "IT Support & Service Desk konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
-  description: "Find den rette IT support eller service desk konsulent gratis. ITIL-processer, 1st/2nd/3rd line support og servicedesk-ledelse via 70+ leverandører.",
+  description:
+    "Find den rette IT support eller service desk konsulent gratis. ITIL, 1st/2nd/3rd line support og servicedesk-ledelse via 70+ leverandører inden for 3 arbejdsdage.",
+  keywords: [
+    "IT support konsulent",
+    "service desk konsulent",
+    "ITIL konsulent Danmark",
+    "helpdesk konsulent",
+    "IT supportdækning",
+    "servicedesk manager",
+    "ITSM konsulent",
+    "ServiceNow konsulent",
+    "TOPdesk konsulent",
+    "gratis IT support konsulent",
+  ],
+  alternates: { canonical: "https://finditconsultants.com/konsulenter/support" },
+  openGraph: {
+    title: "IT Support & Service Desk konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
+    description:
+      "Find kvalificerede IT support konsulenter via 70+ leverandører. ITIL, service desk ledelse og ITSM — gratis og uforpligtende.",
+    url: "https://finditconsultants.com/konsulenter/support",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image", title: "IT Support & Service Desk — Gratis multi-sourcing", description: "Find IT support konsulenter via 70+ leverandører — gratis, inden for 3 dage." },
 };
 
 export default function SupportPage() {
@@ -48,6 +70,23 @@ export default function SupportPage() {
             "<strong>Desktop engineers:</strong> Endpoint management, MDM og workplace-løsninger.",
             "<strong>Onsite support:</strong> Fysisk support til kontorer og produktionsmiljøer.",
           ],
+        },
+      ]}
+      resources={[
+        {
+          title: "itSMF Danmark",
+          href: "https://www.itsmf.dk/",
+          desc: "Dansk brancheorganisation for IT-servicemanagement og ITIL-praksis.",
+        },
+        {
+          title: "ITIL 4 Foundation — Axelos",
+          href: "https://www.axelos.com/certifications/itil-service-management/itil-4-foundation",
+          desc: "Globalt anerkendt certificering inden for IT-servicemanagement og service desk best practices.",
+        },
+        {
+          title: "ServiceNow",
+          href: "https://www.servicenow.com/",
+          desc: "Markedsledende ITSM-platform til servicedesk, procesautomatisering og workflow management.",
         },
       ]}
       faq={[

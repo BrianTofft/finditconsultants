@@ -5,9 +5,9 @@ import Button from "@/components/ui/Button";
 import { STATS } from "@/app/data";
 
 const PHOTOS = [
-  { src: "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=700&q=80&fit=crop", badge: "70+ aktive leverandører" },
-  { src: "https://images.unsplash.com/photo-1556761175-4b46a572b786?w=400&q=80&fit=crop", badge: null },
-  { src: "https://images.unsplash.com/photo-1553877522-43269d4ea984?w=400&q=80&fit=crop", badge: null },
+  { src: "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=700&q=80&fit=crop", badge: "70+ aktive leverandører", alt: "IT-team samarbejder om projekt på kontor" },
+  { src: "https://images.unsplash.com/photo-1556761175-4b46a572b786?w=400&q=80&fit=crop", badge: null, alt: "Professionelt forretningsmøde med IT-konsulenter" },
+  { src: "https://images.unsplash.com/photo-1553877522-43269d4ea984?w=400&q=80&fit=crop", badge: null, alt: "Strategisk IT-planlægning og dataanalyse" },
 ];
 
 const NOTIFICATIONS = [
@@ -111,7 +111,7 @@ export default function Hero() {
             {PHOTOS.map((p, i) => (
               <div key={i} className="relative overflow-hidden h-40 group">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.src} alt="" loading="lazy" className="w-full h-full object-cover brightness-90 group-hover:scale-105 group-hover:brightness-100 transition-all duration-500" />
+                <img src={p.src} alt={p.alt} loading="lazy" className="w-full h-full object-cover brightness-90 group-hover:scale-105 group-hover:brightness-100 transition-all duration-500" />
                 <div className="absolute inset-0 bg-gradient-to-t from-charcoal/20 to-transparent" />
                 {p.badge && (
                   <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur-sm rounded-lg px-2.5 py-1 flex items-center gap-1.5 shadow-sm">

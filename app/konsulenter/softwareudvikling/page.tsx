@@ -3,7 +3,29 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Softwareudvikler konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
-  description: "Find den rette softwareudvikler gratis. Frontend, backend, fullstack og DevOps engineering via 70+ leverandører.",
+  description:
+    "Find den rette softwareudvikler gratis. Frontend, backend, fullstack, React, .NET og DevOps engineering via 70+ leverandører inden for 3 arbejdsdage.",
+  keywords: [
+    "softwareudvikler",
+    "softwareudvikler konsulent Danmark",
+    "freelance softwareudvikler",
+    "React konsulent",
+    "fullstack developer",
+    "backend developer",
+    "DevOps konsulent",
+    ".NET udvikler",
+    "Node.js udvikler",
+    "gratis softwareudvikler",
+  ],
+  alternates: { canonical: "https://finditconsultants.com/konsulenter/softwareudvikling" },
+  openGraph: {
+    title: "Softwareudvikler konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
+    description:
+      "Find kvalificerede softwareudviklere via 70+ leverandører. Frontend, backend, fullstack og DevOps — gratis og uforpligtende.",
+    url: "https://finditconsultants.com/konsulenter/softwareudvikling",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image", title: "Softwareudvikler — Gratis multi-sourcing", description: "Find softwareudviklere via 70+ leverandører — gratis, inden for 3 dage." },
 };
 
 export default function SoftwareudviklingPage() {
@@ -48,6 +70,23 @@ export default function SoftwareudviklingPage() {
             "<strong>Python:</strong> Django, FastAPI, databehandling og scripting.",
             "<strong>Cloud-native:</strong> Docker, Kubernetes, Terraform og serverless arkitekturer.",
           ],
+        },
+      ]}
+      resources={[
+        {
+          title: "PROSA — Forbund for IT-specialister",
+          href: "https://www.prosa.dk/",
+          desc: "Dansk fagforbund for IT-professionelle med lønstatistik, markedsviden og brancheguides.",
+        },
+        {
+          title: "Stack Overflow Developer Survey",
+          href: "https://survey.stackoverflow.co/2024/",
+          desc: "Årets globale developer survey med indsigt i de mest brugte teknologier, løn og karrieretrends.",
+        },
+        {
+          title: "The Twelve-Factor App",
+          href: "https://12factor.net/",
+          desc: "Anerkendte best practices for modern, cloud-native og vedligeholdbar softwareudvikling.",
         },
       ]}
       faq={[

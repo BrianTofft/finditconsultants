@@ -3,7 +3,29 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "Digital strategi konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
-  description: "Find den rette digital strategi konsulent gratis. IT-strategi, digital transformation og teknologiledelse via 70+ leverandører.",
+  description:
+    "Find den rette digital strategi konsulent gratis. IT-strategi, digital transformation og teknologiledelse via 70+ leverandører inden for 3 arbejdsdage.",
+  keywords: [
+    "digital strategi konsulent",
+    "digital transformation konsulent",
+    "IT strategi rådgivning",
+    "CDO rådgiver Danmark",
+    "teknologiledelse",
+    "digitalisering konsulent",
+    "forandringsleder IT",
+    "innovationsrådgiver",
+    "enterprise arkitekt",
+    "gratis digital strategi konsulent",
+  ],
+  alternates: { canonical: "https://finditconsultants.com/konsulenter/digital-strategi" },
+  openGraph: {
+    title: "Digital strategi konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
+    description:
+      "Find erfarne digital strategi konsulenter via 70+ leverandører. IT-strategi, transformation og CDO-profiler — gratis og uforpligtende.",
+    url: "https://finditconsultants.com/konsulenter/digital-strategi",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image", title: "Digital strategi konsulent — Gratis multi-sourcing", description: "Find digital strategi konsulenter via 70+ leverandører — gratis, inden for 3 dage." },
 };
 
 export default function DigitalStrategiPage() {
@@ -48,6 +70,23 @@ export default function DigitalStrategiPage() {
             "<strong>Innovationsrådgivere:</strong> Eksperter i emerging technologies og disruptive forretningsmodeller.",
             "<strong>Change managers:</strong> Specialister i organisationsforandring og adoptionsledelse.",
           ],
+        },
+      ]}
+      resources={[
+        {
+          title: "Digitaliseringsstyrelsen",
+          href: "https://www.digst.dk/",
+          desc: "Statens center for digital transformation og IT-strategi i den offentlige og private sektor i Danmark.",
+        },
+        {
+          title: "McKinsey Digital Insights",
+          href: "https://www.mckinsey.com/capabilities/mckinsey-digital/our-insights",
+          desc: "Analyser og artikler om digital transformation, teknologitrends og forretningsstrategi.",
+        },
+        {
+          title: "Gartner IT Research",
+          href: "https://www.gartner.com/en/information-technology",
+          desc: "Internationalt anerkendt analytikerhus med forecast, anbefalinger og strategiske IT-analyser.",
         },
       ]}
       faq={[

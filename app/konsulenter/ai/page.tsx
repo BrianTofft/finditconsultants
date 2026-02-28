@@ -3,7 +3,33 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "AI konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
-  description: "Find den rette AI konsulent gratis via multi-sourcing. Vi aktiverer 70+ leverandører og præsenterer 4–9 relevante kandidater inden for 3 arbejdsdage.",
+  description:
+    "Find den rette AI konsulent gratis via multi-sourcing. Vi aktiverer 70+ leverandører og præsenterer 4–9 relevante kandidater inden for 3 arbejdsdage. Machine learning, RPA og AI-strategi.",
+  keywords: [
+    "AI konsulent",
+    "AI konsulent Danmark",
+    "machine learning konsulent",
+    "RPA konsulent",
+    "automation konsulent",
+    "AI rådgivning",
+    "kunstig intelligens konsulent",
+    "copilot implementering",
+    "AI specialist",
+    "gratis AI konsulent",
+  ],
+  alternates: { canonical: "https://finditconsultants.com/konsulenter/ai" },
+  openGraph: {
+    title: "AI konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
+    description:
+      "Find kvalificerede AI konsulenter via 70+ leverandører. Machine learning, RPA, copilot-implementering og AI-strategi — gratis og uforpligtende.",
+    url: "https://finditconsultants.com/konsulenter/ai",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AI konsulent — Gratis multi-sourcing",
+    description: "Find AI konsulenter via 70+ leverandører — gratis, uforpligtende, inden for 3 dage.",
+  },
 };
 
 export default function AIPage() {
@@ -47,6 +73,23 @@ export default function AIPage() {
             "Sikrer at AI-løsninger overholder gældende lovgivning og GDPR",
             "Accelererer time-to-value på AI-investeringer",
           ],
+        },
+      ]}
+      resources={[
+        {
+          title: "Digitaliseringsstyrelsen: AI i Danmark",
+          href: "https://www.digst.dk/teknologi/kunstig-intelligens/",
+          desc: "Regeringens strategi og vejledning om ansvarlig AI-anvendelse i den offentlige og private sektor.",
+        },
+        {
+          title: "Microsoft Copilot & AI-løsninger",
+          href: "https://www.microsoft.com/da-dk/ai",
+          desc: "Microsofts AI-platform, Copilot og Azure AI-tjenester til virksomheder.",
+        },
+        {
+          title: "OECD AI Policy Observatory",
+          href: "https://oecd.ai/",
+          desc: "International vidensbase om AI-regulering, standarder og best practices på tværs af lande.",
         },
       ]}
       faq={[

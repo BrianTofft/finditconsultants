@@ -1,9 +1,37 @@
 import ConsultantPage from "@/components/ConsultantPage";
 import type { Metadata } from "next";
+
 export const metadata: Metadata = {
   title: "Data Warehouse konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
-  description: "Find den rette data warehouse konsulent gratis. Specialister i DW, ETL og BI via 70+ leverandører.",
+  description:
+    "Find den rette data warehouse konsulent gratis. Specialister i DW, ETL, Azure Synapse og Snowflake via 70+ leverandører inden for 3 arbejdsdage.",
+  keywords: [
+    "data warehouse konsulent",
+    "DW konsulent Danmark",
+    "ETL konsulent",
+    "Azure Synapse konsulent",
+    "Snowflake konsulent",
+    "dataarkitektur",
+    "database konsulent",
+    "BI arkitektur",
+    "data platform",
+    "gratis data warehouse konsulent",
+  ],
+  alternates: { canonical: "https://finditconsultants.com/konsulenter/data-warehouse" },
+  openGraph: {
+    title: "Data Warehouse konsulent — Gratis multi-sourcing | FindITkonsulenter.dk",
+    description:
+      "Find kvalificerede data warehouse konsulenter via 70+ leverandører. DW-design, ETL, Azure Synapse og Snowflake — gratis og uforpligtende.",
+    url: "https://finditconsultants.com/konsulenter/data-warehouse",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Data Warehouse konsulent — Gratis multi-sourcing",
+    description: "Find DW-konsulenter via 70+ leverandører — gratis, uforpligtende, inden for 3 dage.",
+  },
 };
+
 export default function DataWarehousePage() {
   return (
     <ConsultantPage
@@ -35,6 +63,23 @@ export default function DataWarehousePage() {
             "Design af datamodeller og ETL-pipelines",
             "Konsolidering af data fra mange forskellige kildesystemer",
           ],
+        },
+      ]}
+      resources={[
+        {
+          title: "Azure Synapse Analytics — Dokumentation",
+          href: "https://learn.microsoft.com/da-dk/azure/synapse-analytics/",
+          desc: "Microsofts enterprise analytics platform — officiel dokumentation og arkitekturguides.",
+        },
+        {
+          title: "Snowflake Data Cloud",
+          href: "https://www.snowflake.com/",
+          desc: "Ledende cloud data platform til moderne data warehousing og analytics.",
+        },
+        {
+          title: "dbt — Data Build Tool",
+          href: "https://www.getdbt.com/",
+          desc: "Open-source framework der er industristandarden for datatransformation og datakvalitet.",
         },
       ]}
       faq={[
