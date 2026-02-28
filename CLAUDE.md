@@ -1,17 +1,17 @@
 # FindITconsultants — Projektdokumentation til Claude Code
 
 ## Hvad er projektet?
-FindITconsultants (finditconsultants.dk) er en dansk IT-konsulent multi-sourcing platform med tre portaler:
+FindITconsultants (finditconsultants.com) er en dansk IT-konsulent multi-sourcing platform med tre portaler:
 - **Kundportal** — kunder indsender opgaver og ser konsulenter
 - **Leverandørportal** — leverandører ser opgaver og indsender konsulentprofiler
-- **Admin panel** — FindIT-teamet godkender alt og styrer flowet
+- **Admin panel** — FindITconsultants.com Teamet godkender alt og styrer flowet
 
 ---
 
 ## Tech Stack
 - **Framework:** Next.js 14 (App Router)
 - **Database:** Supabase (PostgreSQL + Auth)
-- **Email:** Resend (`noreply@finditconsultants.dk`)
+- **Email:** Resend (`noreply@finditconsultants.com`)
 - **Styling:** Tailwind CSS
 - **Hosting:** Vercel
 - **Sprog:** Dansk i UI, TypeScript i kode
@@ -213,7 +213,7 @@ lib/
 ```typescript
 // Body: { email, password }
 // Sender velkomst email med login-info til ny kunde
-// Fra: FindIT <noreply@finditconsultants.dk>
+// Fra: FindIT <noreply@finditconsultants.com>
 ```
 
 ### `/api/notify-suppliers`
@@ -272,4 +272,4 @@ Brugerroller styres IKKE via Supabase Auth roles, men via separate tabeller:
 
 ## Git / Deployment
 - Repo på GitHub, auto-deploy til Vercel på push til main
-- Domæne: finditconsultants.dk (DNS via Vercel)
+- Domæne: finditconsultants.com (DNS via Vercel)

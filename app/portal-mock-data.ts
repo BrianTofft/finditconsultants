@@ -157,8 +157,8 @@ export const MOCK_MESSAGES = [
   {
     id: "msg_001",
     requestId: "req_001",
-    from: "FindIT",
-    fromInitials: "FI",
+    from: "FindITconsultants.com Teamet",
+    fromInitials: "LOGO",
     text: "Hej Lasse! Vi har nu modtaget 5 kandidater til din Azure-arkitekt søgning. Vi anbefaler særligt Anders Nielsen og Kasper Lund som stærke match. Vil du have et opkald for at gennemgå dem?",
     time: "I dag 09:14",
     isOwn: false,
@@ -175,8 +175,8 @@ export const MOCK_MESSAGES = [
   {
     id: "msg_003",
     requestId: "req_001",
-    from: "FindIT",
-    fromInitials: "FI",
+    from: "FindITconsultants.com Teamet",
+    fromInitials: "LOGO",
     text: "Selvfølgelig! Jeg sender kalenderinvitationer ud nu. Forventer at have begge interviews booket inden for 24 timer.",
     time: "I dag 10:45",
     isOwn: false,

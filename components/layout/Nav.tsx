@@ -23,7 +23,7 @@ export default function Nav() {
       <div className="bg-orange text-white text-xs font-bold py-2 text-center">
         <a href="tel:+4528340907" className="hover:underline">📞 +45 2834 0907</a>
         {" · "}
-        <a href="mailto:hej@finditkonsulenter.dk" className="hover:underline">hej@finditkonsulenter.dk</a>
+        <a href="mailto:hej@finditconsultants.com" className="hover:underline">hej@finditconsultants.com</a>
         {" · "} Man–Fre 08:00–16:00
       </div>
       <nav className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? "bg-[#2d2c2c]/95 backdrop-blur-md shadow-xl" : "bg-[#2d2c2c]"}`}>

@@ -26,7 +26,7 @@ export default function SubmitOffer() {
       <div className="max-w-lg mx-auto text-center py-20">
         <div className="text-6xl mb-4">✅</div>
         <h2 className="font-bold text-2xl text-charcoal mb-2">Tilbud indsendt!</h2>
-        <p className="text-charcoal/55 mb-8">Dit tilbud er modtaget af FindIT-teamet. Vi vender tilbage hurtigst muligt.</p>
+        <p className="text-charcoal/55 mb-8">Dit tilbud er modtaget af FindITconsultants.com Teamet. Vi vender tilbage hurtigst muligt.</p>
         <Link href="/supplier/offers" className="bg-orange text-white font-bold rounded-full px-6 py-3 hover:bg-orange-dark transition-colors">Se mine tilbud →</Link>
       </div>
     </PortalLayout>

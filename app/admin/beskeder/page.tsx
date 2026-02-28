@@ -58,7 +58,7 @@ export default function BeskederPage() {
     await supabase.from("chat_messages").insert({
       sender_type: "admin",
       sender_id: adminId,
-      sender_name: "FindIT-teamet",
+      sender_name: "FindITconsultants.com Teamet",
       content,
       read_by_admin: true,
       read_by_user: false,
@@ -145,10 +145,12 @@ export default function BeskederPage() {
                 const isAdmin = msg.sender_type === "admin";
                 return (
                   <div key={msg.id} className={`flex gap-3 ${isAdmin ? "flex-row-reverse" : ""}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 ${
-                      isAdmin ? "bg-orange text-white" : "bg-[#2d2c2c] text-white"
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 overflow-hidden ${
+                      isAdmin ? "bg-orange" : "bg-[#2d2c2c] text-white"
                     }`}>
-                      {isAdmin ? "FI" : msg.sender_name?.slice(0, 2).toUpperCase()}
+                      {isAdmin
+                        ? <img src="/logo-white.png" alt="FindITconsultants.com" className="w-full h-full object-contain p-1" />
+                        : msg.sender_name?.slice(0, 2).toUpperCase()}
                     </div>
                     <div className={`max-w-[70%] flex flex-col gap-1 ${isAdmin ? "items-end" : "items-start"}`}>
                       <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${

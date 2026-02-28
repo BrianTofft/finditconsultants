@@ -179,7 +179,7 @@ export default function LeadForm() {
           <input type="email" required placeholder="din@virksomhed.dk" className={inp} value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
         </div>
 
-        {error && <p className="text-red-500 text-xs text-center">Noget gik galt. Prøv igen eller skriv til hej@finditkonsulenter.dk</p>}
+        {error && <p className="text-red-500 text-xs text-center">Noget gik galt. Prøv igen eller skriv til hej@finditconsultants.com</p>}
 
         <Button type="submit" full size="lg" className="mt-1" disabled={loading}>
           {loading ? "Sender…" : "Få matchende IT-konsulenter →"}

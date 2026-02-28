@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   // Send også advisering til admin
   await resend.emails.send({
     from: "FindITconsultants <noreply@finditconsultants.com>",
-    to: "hej@finditkonsulenter.dk",
+    to: "hej@finditconsultants.com",
     subject: decision === "interview" ? `Interview ønsket: ${submission.name}` : `Kandidat afvist: ${submission.name}`,
     html: `
       <h2>Beslutning fra ${customer_name}</h2>

@@ -89,9 +89,11 @@ export default function ChatWindow({ requestId, userId, userType, userName, titl
     <div className="bg-white rounded-2xl border border-[#ede9e3] flex flex-col overflow-hidden" style={{ height: "calc(100vh - 220px)" }}>
       {/* Header */}
       <div className="px-6 py-4 border-b border-[#f0ede8] flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-[#2d2c2c] flex items-center justify-center text-sm font-black text-white">FI</div>
+        <div className="w-9 h-9 rounded-xl bg-[#2d2c2c] flex items-center justify-center overflow-hidden flex-shrink-0">
+            <img src="/logo-white.png" alt="FindITconsultants.com" className="w-full h-full object-contain p-1.5" />
+          </div>
         <div>
-          <div className="font-bold text-charcoal text-sm">{title || "FindIT-teamet"}</div>
+          <div className="font-bold text-charcoal text-sm">{title || "FindITconsultants.com Teamet"}</div>
           {subtitle && <div className="text-xs text-charcoal/40">{subtitle}</div>}
         </div>
         <div className="ml-auto flex items-center gap-1.5">
@@ -109,7 +111,7 @@ export default function ChatWindow({ requestId, userId, userType, userName, titl
           <div className="text-center py-12">
             <div className="text-4xl mb-3">💬</div>
             <div className="text-charcoal/40 text-sm font-semibold">Ingen beskeder endnu</div>
-            <div className="text-charcoal/30 text-xs mt-1">Skriv til FindIT-teamet herunder</div>
+            <div className="text-charcoal/30 text-xs mt-1">Skriv til FindITconsultants.com Teamet herunder</div>
           </div>
         )}
         {messages.map(msg => {
@@ -118,12 +120,12 @@ export default function ChatWindow({ requestId, userId, userType, userName, titl
           const time = new Date(msg.created_at).toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit" });
           return (
             <div key={msg.id} className={`flex gap-3 ${isOwn ? "flex-row-reverse" : ""}`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 ${
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black flex-shrink-0 overflow-hidden ${
                 isOwn
                   ? "bg-gradient-to-br from-orange to-orange-dark text-white"
-                  : "bg-[#2d2c2c] text-white"
+                  : "bg-[#2d2c2c]"
               }`}>
-                {isOwn ? initials : "FI"}
+                {isOwn ? initials : <img src="/logo-white.png" alt="FindITconsultants.com" className="w-full h-full object-contain p-1" />}
               </div>
               <div className={`max-w-[70%] flex flex-col gap-1 ${isOwn ? "items-end" : "items-start"}`}>
                 <div className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${

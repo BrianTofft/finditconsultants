@@ -1,4 +1,4 @@
-# FindITkonsulenter.dk — Next.js
+# FindITconsultants.com — Next.js
 
 ## Kom i gang
 
@@ -18,7 +18,7 @@ Vercel detekterer Next.js automatisk. Ingen konfiguration nødvendig.
 
 ## Skift DNS fra WordPress
 
-Tilføj domæne i Vercel: Settings → Domains → finditkonsulenter.dk
+Tilføj domæne i Vercel: Settings → Domains → finditconsultants.com
 
 Opdater DNS hos dit domæneregister:
 ```

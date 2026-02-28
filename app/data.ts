@@ -69,7 +69,7 @@ export const CLIENTS = [
 
 export const CONTACT = {
   phone:   "+45 2834 0907",
-  email:   "hej@finditkonsulenter.dk",
+  email:   "hej@finditconsultants.com",
   address: "Industrivej 21, 4000 Roskilde",
   hours:   "Man\u2013Fre 08:00\u201316:00",
 };

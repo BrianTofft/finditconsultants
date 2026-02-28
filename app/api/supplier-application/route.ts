@@ -26,7 +26,7 @@ export async function POST(req: Request) {
   // Advis admin
   await resend.emails.send({
     from: "FindITconsultants <noreply@finditconsultants.com>",
-    to: "hej@finditkonsulenter.dk",
+    to: "hej@finditconsultants.com",
     subject: `Ny leverandør ansøgning: ${body.company_name}`,
     html: `
       <h2>Ny leverandør ansøgning</h2>
