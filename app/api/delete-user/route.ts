@@ -10,6 +10,12 @@ export async function POST(req: NextRequest) {
   const { id } = await req.json();
   if (!id) return NextResponse.json({ error: "Mangler id" }, { status: 400 });
 
+  // Cascade-slet leverandørens relaterede data (FK-rækkefølge)
+  await supabase.from("contracts").delete().eq("supplier_id", id);
+  await supabase.from("consultant_submissions").delete().eq("supplier_id", id);
+  await supabase.from("request_suppliers").delete().eq("supplier_id", id);
+  await supabase.from("chat_messages").delete().eq("sender_id", id);
+
   // Slet fra alle profiltabeller (kun én vil matche — fejles lydløst hvis ikke fundet)
   await supabase.from("customers").delete().eq("id", id);
   await supabase.from("suppliers").delete().eq("id", id);
