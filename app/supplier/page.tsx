@@ -25,6 +25,7 @@ type Submission = {
   customer_decision: string | null;
   interview_datetime: string | null;
   interview_confirmed: boolean;
+  requests: { description: string } | null;
 };
 
 type Profile = {
@@ -134,8 +135,9 @@ export default function SupplierPage() {
 
       const { data: subData } = await supabase
         .from("consultant_submissions")
-        .select("*")
-        .eq("supplier_id", user.id);
+        .select("*, requests(description)")
+        .eq("supplier_id", user.id)
+        .order("created_at", { ascending: false });
 
       setRequests(reqData ?? []);
       setSubmissions(subData ?? []);
@@ -228,9 +230,34 @@ export default function SupplierPage() {
 
   const statusColor: Record<string, string> = {
     "Indsendt": "bg-blue-100 text-blue-700",
-    "Accepteret": "bg-green-100 text-green-700",
+    "Godkendt": "bg-green-100 text-green-700",
+    "Valgt": "bg-orange/15 text-orange",
     "Afvist": "bg-red-100 text-red-700",
   };
+
+  const statusLabel: Record<string, string> = {
+    "Indsendt": "Afventer",
+    "Godkendt": "Godkendt",
+    "Valgt": "Præsenteret for kunde",
+    "Afvist": "Afvist",
+  };
+
+  // Gruppér mine indsendte profiler per opgave
+  type SubGroup = { request_id: string; description: string; submissions: Submission[] };
+  const subGroups: SubGroup[] = [];
+  const subGroupMap: Record<string, SubGroup> = {};
+  for (const s of submissions) {
+    const rid = s.request_id ?? "none";
+    if (!subGroupMap[rid]) {
+      subGroupMap[rid] = {
+        request_id: rid,
+        description: s.requests?.description ?? "Ukendt opgave",
+        submissions: [],
+      };
+      subGroups.push(subGroupMap[rid]);
+    }
+    subGroupMap[rid].submissions.push(s);
+  }
 
   const inp = "w-full rounded-xl border border-[#e8e5e0] bg-[#f8f6f3] px-4 py-2.5 text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-orange/25 focus:border-orange transition-all";
   const lbl = "block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/45 mb-1.5";
@@ -395,57 +422,73 @@ export default function SupplierPage() {
         {tab === "submissions" && (
           <>
             <h2 className="font-bold text-lg text-charcoal mb-4">Mine indsendte profiler</h2>
-            <div className="space-y-3">
-              {submissions.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-[#ede9e3] p-8 text-center">
-                  <p className="text-charcoal/45 text-sm">Du har ikke indsendt nogen profiler endnu</p>
-                </div>
-              ) : submissions.map(s => (
-                <div key={s.id} className="bg-white rounded-2xl border border-[#ede9e3] p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1">
-                      <p className="font-bold text-sm text-charcoal">{s.name}</p>
-                      <p className="text-xs text-charcoal/50">{s.title}</p>
-                      {s.customer_decision === "interview" && (
-                        <div className="mt-3 border-t border-[#f0ede8] pt-3">
-                          <p className="text-xs font-extrabold tracking-widest uppercase text-green-600 mb-2">
-                            ✓ Kunde ønsker interview
-                            {s.interview_datetime && ` — ${new Date(s.interview_datetime).toLocaleString("da-DK")}`}
-                          </p>
-                          {s.interview_confirmed ? (
-                            <p className="text-xs text-green-600 font-bold">✓ Interview bekræftet</p>
-                          ) : (
-                            <div className="space-y-2">
-                              <div className="flex gap-2 items-end flex-wrap">
-                                <div>
-                                  <label className="block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mb-1">Bekræft eller foreslå nyt tidspunkt</label>
-                                  <input type="datetime-local"
-                                    className="rounded-xl border border-[#e8e5e0] bg-[#f8f6f3] px-3 py-2 text-sm text-charcoal focus:outline-none focus:border-orange transition-all"
-                                    value={interviewDates[s.id] ?? ""}
-                                    onChange={e => setInterviewDates(prev => ({ ...prev, [s.id]: e.target.value }))} />
-                                </div>
-                                <button
-                                  onClick={() => confirmInterview(s.id, interviewDates[s.id])}
-                                  disabled={confirming === s.id}
-                                  className="bg-green-500 text-white font-bold rounded-full px-4 py-2 text-xs hover:bg-green-600 transition-all disabled:opacity-50">
-                                  {confirming === s.id ? "Bekræfter…" : "Bekræft interview"}
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      {s.customer_decision === "afvist" && (
-                        <p className="mt-2 text-xs text-red-500 font-bold">✗ Afvist af kunde</p>
-                      )}
+            {subGroups.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-[#ede9e3] p-8 text-center">
+                <p className="text-charcoal/45 text-sm">Du har ikke indsendt nogen profiler endnu</p>
+              </div>
+            ) : (
+              <div className="space-y-8">
+                {subGroups.map(group => (
+                  <div key={group.request_id}>
+                    {/* Opgave-header */}
+                    <div className="mb-3 px-1">
+                      <p className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/35 mb-0.5">Opgave</p>
+                      <p className="font-bold text-sm text-charcoal line-clamp-2">{group.description}</p>
                     </div>
-                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${statusColor[s.status] ?? "bg-gray-100 text-gray-600"}`}>
-                      {s.status}
-                    </span>
+
+                    {/* Profiler under denne opgave */}
+                    <div className="space-y-2 border-l-2 border-orange/20 pl-3">
+                      {group.submissions.map(s => (
+                        <div key={s.id} className="bg-white rounded-2xl border border-[#ede9e3] p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1">
+                              <p className="font-bold text-sm text-charcoal">{s.name}</p>
+                              <p className="text-xs text-charcoal/50">{s.title}</p>
+                              {s.status === "Valgt" && (
+                                <p className="mt-1 text-xs text-orange font-bold">★ Din profil er præsenteret for kunden</p>
+                              )}
+                              {s.customer_decision === "interview" && (
+                                <div className="mt-3 border-t border-[#f0ede8] pt-3">
+                                  <p className="text-xs font-extrabold tracking-widest uppercase text-green-600 mb-2">
+                                    ✓ Kunde ønsker interview
+                                    {s.interview_datetime && ` — ${new Date(s.interview_datetime).toLocaleString("da-DK")}`}
+                                  </p>
+                                  {s.interview_confirmed ? (
+                                    <p className="text-xs text-green-600 font-bold">✓ Interview bekræftet</p>
+                                  ) : (
+                                    <div className="flex gap-2 items-end flex-wrap">
+                                      <div>
+                                        <label className="block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mb-1">Bekræft eller foreslå nyt tidspunkt</label>
+                                        <input type="datetime-local"
+                                          className="rounded-xl border border-[#e8e5e0] bg-[#f8f6f3] px-3 py-2 text-sm text-charcoal focus:outline-none focus:border-orange transition-all"
+                                          value={interviewDates[s.id] ?? ""}
+                                          onChange={e => setInterviewDates(prev => ({ ...prev, [s.id]: e.target.value }))} />
+                                      </div>
+                                      <button
+                                        onClick={() => confirmInterview(s.id, interviewDates[s.id])}
+                                        disabled={confirming === s.id}
+                                        className="bg-green-500 text-white font-bold rounded-full px-4 py-2 text-xs hover:bg-green-600 transition-all disabled:opacity-50">
+                                        {confirming === s.id ? "Bekræfter…" : "Bekræft interview"}
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                              {s.customer_decision === "afvist" && (
+                                <p className="mt-2 text-xs text-red-500 font-bold">✗ Afvist af kunde</p>
+                              )}
+                            </div>
+                            <span className={`text-xs font-bold px-3 py-1 rounded-full flex-shrink-0 ${statusColor[s.status] ?? "bg-gray-100 text-gray-600"}`}>
+                              {statusLabel[s.status] ?? s.status}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </>
         )}
         

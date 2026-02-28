@@ -115,7 +115,7 @@ export default function PortalPage() {
       const { data: subData } = await supabase
         .from("consultant_submissions")
         .select("*")
-        .eq("status", "Godkendt")
+        .eq("status", "Valgt")
         .in("request_id", (reqDataAll ?? []).map(r => r.id));
 
       const merged = (reqDataAll ?? []).map(r => ({
