@@ -6,7 +6,6 @@ const COUNTERS = [
   { end: 120, suffix: "+", label: "Opgaver løst", icon: "✅", desc: "succesfulde matchmakings" },
   { end: 580, suffix: "+", label: "Konsulenter præsenteret", icon: "👤", desc: "screenede kandidater leveret" },
   { end: 70, suffix: "+", label: "Aktive partnere", icon: "🤝", desc: "konsulenthuse og bureauer" },
-  { end: 3, suffix: "", label: "Dages svartid", icon: "⚡", desc: "fra behov til første overblik" },
 ];
 
 function AnimatedCount({ end, suffix, active }: { end: number; suffix: string; active: boolean }) {
@@ -61,7 +60,7 @@ export default function StatsCounter() {
           </div>
         </RevealOnScroll>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
           {COUNTERS.map((c, i) => (
             <RevealOnScroll key={c.label} delay={i * 100}>
               <div className="group relative bg-white/5 border border-white/10 rounded-2xl p-6 text-center hover:bg-white/8 hover:border-orange/30 transition-all duration-300">
