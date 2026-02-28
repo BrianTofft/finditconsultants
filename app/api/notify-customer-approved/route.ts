@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
           <p style="margin: 0;"><strong>Login:</strong> ${email}</p>
           <p style="margin: 8px 0 0;"><strong>Midlertidigt password:</strong> ${password}</p>
         </div>
-        <a href="https://finditconsultants.dk/portal/login" 
+        <a href="https://finditconsultants.com/portal/login" 
           style="display: inline-block; background: #e8632a; color: white; font-weight: bold; padding: 12px 24px; border-radius: 99px; text-decoration: none;">
           Log ind på kundeportalen →
         </a>
