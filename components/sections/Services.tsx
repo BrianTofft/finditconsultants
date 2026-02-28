@@ -4,13 +4,18 @@ import Link from "next/link";
 import { SERVICES } from "@/app/data";
 
 const SERVICE_LINKS: Record<string, string> = {
-  "AI & Automation":              "/konsulenter/ai",
-  "Microsoft-teknologi":          "/konsulenter/azure",
-  "Cloud-løsninger":              "/konsulenter/azure",
-  "Data & BI":                    "/konsulenter/power-bi",
-  "Projekt- & forandringsledelse":"/konsulenter/it-projektleder",
-  "Nearshore - Offshore":         "/konsulenter/nearshore",
-  "Integration":                  "/konsulenter/sharepoint",
+  "AI & Automation":               "/konsulenter/ai",
+  "Cybersecurity & Compliance":    "/konsulenter/cybersecurity",
+  "Microsoft-teknologi":           "/konsulenter/azure",
+  "Cloud-løsninger":               "/konsulenter/azure",
+  "Digital strategi":              "/konsulenter/digital-strategi",
+  "Projekt- & forandringsledelse": "/konsulenter/it-projektleder",
+  "Infrastruktur":                 "/konsulenter/infrastruktur",
+  "Data & BI":                     "/konsulenter/power-bi",
+  "ERP & CRM":                     "/konsulenter/erp-crm",
+  "Support & Service Desk":        "/konsulenter/support",
+  "Softwareudvikling":             "/konsulenter/softwareudvikling",
+  "Integration":                   "/konsulenter/sharepoint",
 };
 export default function Services() {
   return (
