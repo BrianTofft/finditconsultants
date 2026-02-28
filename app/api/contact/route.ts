@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   try {
     await resend.emails.send({
       from: "FindITconsultants <noreply@finditconsultants.com>",
-      to: "hej@finditconsultants.com",
+      to: "hej@finditkonsulenter.dk",
       subject: `Ny IT-konsulent forespørgsel fra ${email}`,
       html: `
         <h2>Ny forespørgsel via finditconsultants.com</h2>
