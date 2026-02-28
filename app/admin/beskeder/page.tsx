@@ -66,6 +66,14 @@ export default function BeskederPage() {
     loadChat(selectedUser.sender_id);
   };
 
+  const handleDeleteConversation = async (senderId: string, senderName: string) => {
+    if (!confirm(`Er du sikker på at du vil slette hele samtalen med ${senderName}?\n\nDenne handling kan ikke fortrydes.`)) return;
+    await supabase.from("chat_messages").delete().eq("sender_id", senderId);
+    setChatUsers(prev => prev.filter(u => u.sender_id !== senderId));
+    setSelectedUser(null);
+    setMessages([]);
+  };
+
   const totalUnread = chatUsers.reduce((sum, u) => sum + u.unread, 0);
 
   if (loading) return (
@@ -133,10 +141,16 @@ export default function BeskederPage() {
               <div className="w-9 h-9 rounded-xl bg-[#2d2c2c] flex items-center justify-center text-sm font-black text-white">
                 {selectedUser.sender_name?.slice(0, 2).toUpperCase()}
               </div>
-              <div>
+              <div className="flex-1">
                 <div className="font-bold text-charcoal">{selectedUser.sender_name}</div>
                 <div className="text-xs text-charcoal/40">{selectedUser.sender_type === "customer" ? "Kunde" : "Leverandør"}</div>
               </div>
+              <button
+                onClick={() => handleDeleteConversation(selectedUser.sender_id, selectedUser.sender_name)}
+                className="text-xs bg-red-50 text-red-400 font-bold px-3 py-1.5 rounded-full hover:bg-red-100 transition-colors flex-shrink-0"
+              >
+                Slet samtale
+              </button>
             </div>
 
             {/* Messages */}
