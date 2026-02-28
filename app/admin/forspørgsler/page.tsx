@@ -44,6 +44,17 @@ export default function ForspørgslerPage() {
     setRequests(prev => prev.map(r => r.id === id ? { ...r, status } : r));
   };
 
+  const handleDeleteRequest = async (id: string, email: string) => {
+    if (!confirm(`Er du sikker på at du vil slette opgaven fra ${email}?\n\nDette sletter også alle tilknyttede konsulentprofiler, kontrakter og leverandørlinks.`)) return;
+    // Slet relaterede rækker før selve opgaven (FK-rækkefølge)
+    await supabase.from("request_suppliers").delete().eq("request_id", id);
+    await supabase.from("consultant_submissions").delete().eq("request_id", id);
+    await supabase.from("contracts").delete().eq("request_id", id);
+    await supabase.from("requests").delete().eq("id", id);
+    setRequests(prev => prev.filter(r => r.id !== id));
+    if (expanded === id) setExpanded(null);
+  };
+
   const toggleSupplier = (requestId: string, supplierId: string) => {
     setSelectedSuppliers(prev => {
       const current = new Set(prev[requestId] ?? []);
@@ -154,6 +165,12 @@ export default function ForspørgslerPage() {
                       className="text-xs bg-purple-100 text-purple-700 font-bold px-3 py-1 rounded-full hover:bg-purple-200 transition-colors"
                     >
                       + Kontrakt
+                    </button>
+                    <button
+                      onClick={e => { e.stopPropagation(); handleDeleteRequest(r.id, r.email); }}
+                      className="text-xs bg-red-50 text-red-500 font-bold px-3 py-1 rounded-full hover:bg-red-100 transition-colors"
+                    >
+                      Slet opgave
                     </button>
                     {(notifiedSuppliers[r.id]?.length ?? 0) > 0
                       ? <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">✓ Sendt til {notifiedSuppliers[r.id].length} lev.</span>

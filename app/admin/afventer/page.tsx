@@ -21,6 +21,12 @@ export default function AfventerPage() {
     load();
   }, []);
 
+  const handleDelete = async (id: string, email: string) => {
+    if (!confirm(`Er du sikker på at du vil slette forespørgslen fra ${email} permanent?\n\nDenne handling kan ikke fortrydes.`)) return;
+    await supabase.from("requests").delete().eq("id", id);
+    setRequests(prev => prev.filter(r => r.id !== id));
+  };
+
   const handleDecision = async (requestId: string, email: string, decision: "accepted" | "rejected") => {
     setProcessing(requestId);
 
@@ -113,6 +119,13 @@ export default function AfventerPage() {
                     className="text-sm bg-red-100 text-red-600 font-bold px-5 py-2 rounded-full hover:bg-red-200 transition-colors disabled:opacity-50"
                   >
                     Afvis
+                  </button>
+                  <button
+                    onClick={() => handleDelete(r.id, r.email)}
+                    disabled={processing === r.id}
+                    className="text-xs bg-red-50 text-red-400 font-bold px-4 py-1.5 rounded-full hover:bg-red-100 transition-colors disabled:opacity-50"
+                  >
+                    Slet
                   </button>
                 </div>
               </div>

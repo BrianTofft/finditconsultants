@@ -25,6 +25,12 @@ export default function KonsulenterPage() {
     setSubmissions(prev => prev.map(s => s.id === id ? { ...s, status } : s));
   };
 
+  const handleDelete = async (id: string, name: string) => {
+    if (!confirm(`Er du sikker på at du vil slette konsulentprofilen for ${name}?\n\nDenne handling kan ikke fortrydes.`)) return;
+    await supabase.from("consultant_submissions").delete().eq("id", id);
+    setSubmissions(prev => prev.filter(s => s.id !== id));
+  };
+
   const statusColor: Record<string, string> = {
     "Indsendt": "bg-blue-100 text-blue-700",
     "Godkendt": "bg-green-100 text-green-700",
@@ -131,6 +137,12 @@ export default function KonsulenterPage() {
                       Afvis
                     </button>
                   </div>
+                  <button
+                    onClick={() => handleDelete(s.id, s.name)}
+                    className="text-xs bg-red-50 text-red-500 font-bold px-3 py-1 rounded-full hover:bg-red-100 transition-colors"
+                  >
+                    Slet profil
+                  </button>
                 </div>
               </div>
             </div>
