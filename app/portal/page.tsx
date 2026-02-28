@@ -218,6 +218,27 @@ export default function PortalPage() {
       <div className="max-w-4xl mx-auto px-6 py-8">
         {tab === "requests" && (
           <>
+            {/* Statistik */}
+            {requests.length > 0 && (() => {
+              const allSubs = requests.flatMap(r => r.submissions ?? []);
+              const stats = [
+                { label: "Forespørgsler", value: requests.length, icon: "📋" },
+                { label: "Modtagne kandidater", value: allSubs.length, icon: "👤" },
+                { label: "Interviews", value: allSubs.filter(s => s.customer_decision === "interview").length, icon: "🗓️" },
+                { label: "Igangværende", value: requests.filter(r => r.status === "I gang").length, icon: "⚡" },
+              ];
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                  {stats.map(s => (
+                    <div key={s.label} className="bg-white rounded-2xl border border-[#ede9e3] p-4 text-center">
+                      <div className="text-2xl mb-1">{s.icon}</div>
+                      <div className="font-bold text-2xl text-charcoal">{s.value}</div>
+                      <div className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mt-0.5">{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
             <h2 className="font-bold text-lg text-charcoal mb-4">Dine forespørgsler</h2>
             {requests.length === 0 ? (
               <div className="bg-white rounded-2xl border border-[#ede9e3] p-8 text-center">

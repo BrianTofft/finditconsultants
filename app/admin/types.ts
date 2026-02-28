@@ -10,6 +10,7 @@ export type Submission = {
   customer_decision: string | null; interview_datetime: string | null;
   interview_confirmed: boolean; cv_url: string | null;
   requests: { description: string; email: string } | null;
+  ai_rating: number | null; ai_summary: string | null;
 };
 
 export type Supplier = { id: string; email: string; company_name: string };

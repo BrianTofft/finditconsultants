@@ -293,6 +293,27 @@ export default function SupplierPage() {
 
       <div className="max-w-5xl mx-auto px-6 py-8">
         {tab === "requests" && (
+          <div className="space-y-6">
+            {/* Statistik */}
+            {(() => {
+              const stats = [
+                { label: "Modtagne opgaver", value: requests.length, icon: "📋" },
+                { label: "Indsendte profiler", value: submissions.length, icon: "👤" },
+                { label: "Præsenterede profiler", value: submissions.filter(s => s.status === "Valgt").length, icon: "⭐" },
+                { label: "Interviews", value: submissions.filter(s => s.customer_decision === "interview").length, icon: "🗓️" },
+              ];
+              return (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {stats.map(s => (
+                    <div key={s.label} className="bg-white rounded-2xl border border-[#ede9e3] p-4 text-center">
+                      <div className="text-2xl mb-1">{s.icon}</div>
+                      <div className="font-bold text-2xl text-charcoal">{s.value}</div>
+                      <div className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mt-0.5">{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div>
               <h2 className="font-bold text-lg text-charcoal mb-4">Aktive forespørgsler</h2>
@@ -416,6 +437,7 @@ export default function SupplierPage() {
                 </div>
               )}
             </div>
+          </div>
           </div>
         )}
 

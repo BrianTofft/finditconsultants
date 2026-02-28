@@ -17,11 +17,22 @@ const statusColor: Record<string, string> = {
   "Afvist": "bg-red-100 text-red-700",
 };
 
+function StarRating({ rating }: { rating: number }) {
+  return (
+    <div className="flex gap-0.5">
+      {[1,2,3,4,5].map(i => (
+        <span key={i} className={`text-base ${i <= rating ? "text-orange" : "text-charcoal/15"}`}>★</span>
+      ))}
+    </div>
+  );
+}
+
 export default function KonsulenterPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "Indsendt" | "Godkendt" | "Valgt" | "Afvist">("all");
   const [selecting, setSelecting] = useState<string | null>(null);
+  const [analyzing, setAnalyzing] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -51,6 +62,20 @@ export default function KonsulenterPage() {
     });
     setSubmissions(prev => prev.map(s => s.id === id ? { ...s, status: "Valgt" } : s));
     setSelecting(null);
+  };
+
+  const handleAiMatch = async (id: string) => {
+    setAnalyzing(id);
+    const res = await fetch("/api/ai-match", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ submission_id: id }),
+    });
+    const data = await res.json() as { rating?: number; summary?: string; error?: string };
+    if (!data.error && data.rating) {
+      setSubmissions(prev => prev.map(s => s.id === id ? { ...s, ai_rating: data.rating ?? null, ai_summary: data.summary ?? null } : s));
+    }
+    setAnalyzing(null);
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -157,6 +182,18 @@ export default function KonsulenterPage() {
                         </div>
                         {s.bio && <p className="text-xs text-charcoal/60 mt-2 line-clamp-2">{s.bio}</p>}
 
+                        {/* AI-analyse */}
+                        {s.ai_rating ? (
+                          <div className="mt-3 border border-orange/20 bg-orange/5 rounded-xl p-3">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="text-[10px] font-extrabold tracking-widest uppercase text-orange/70">AI-match</span>
+                              <StarRating rating={s.ai_rating} />
+                              <span className="text-xs font-bold text-charcoal/50">{s.ai_rating}/5</span>
+                            </div>
+                            <p className="text-xs text-charcoal/70 whitespace-pre-line leading-relaxed">{s.ai_summary}</p>
+                          </div>
+                        ) : null}
+
                         {s.customer_decision === "interview" && (
                           <div className="mt-3 border-t border-[#f0ede8] pt-3">
                             <p className="text-xs font-extrabold tracking-widest uppercase text-green-600 mb-1">✓ Kunde ønsker interview</p>
@@ -234,6 +271,13 @@ export default function KonsulenterPage() {
                           <span className="text-xs bg-red-100 text-red-600 font-bold px-3 py-1.5 rounded-lg">✗ Afvist</span>
                         )}
 
+                        <button
+                          onClick={() => handleAiMatch(s.id)}
+                          disabled={analyzing === s.id}
+                          className="text-xs bg-orange/10 text-orange font-bold px-3 py-1 rounded-full hover:bg-orange/20 transition-colors disabled:opacity-50 whitespace-nowrap"
+                        >
+                          {analyzing === s.id ? "Analyserer…" : s.ai_rating ? "🤖 Genanalysér" : "🤖 AI-match"}
+                        </button>
                         <button
                           onClick={() => handleDelete(s.id, s.name)}
                           className="text-xs bg-red-50 text-red-400 font-bold px-3 py-1 rounded-full hover:bg-red-100 transition-colors"
