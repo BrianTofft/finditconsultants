@@ -2,10 +2,33 @@
 import { useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 
-type ChatUser = { sender_id: string; sender_name: string; sender_type: string; latest: string; unread: number };
-type Message = { id: string; sender_type: string; sender_id: string; sender_name: string; content: string; created_at: string; read_by_admin: boolean };
+type ChatUser = {
+  sender_id: string;
+  sender_name: string;
+  sender_type: string;
+  latest: string;
+  unread: number;
+};
+
+type RequestGroup = {
+  request_id: string;
+  description: string;
+  users: ChatUser[];
+};
+
+type Message = {
+  id: string;
+  sender_type: string;
+  sender_id: string;
+  sender_name: string;
+  content: string;
+  created_at: string;
+  read_by_admin: boolean;
+};
 
 export default function BeskederPage() {
+  const [requestGroups, setRequestGroups] = useState<RequestGroup[]>([]);
+  const [ungroupedUsers, setUngroupedUsers] = useState<ChatUser[]>([]);
   const [chatUsers, setChatUsers] = useState<ChatUser[]>([]);
   const [selectedUser, setSelectedUser] = useState<ChatUser | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -19,6 +42,7 @@ export default function BeskederPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) setAdminId(user.id);
 
+      // 1. Hent alle chat-beskeder og byg brugerliste
       const { data: allChats } = await supabase
         .from("chat_messages")
         .select("*")
@@ -29,11 +53,93 @@ export default function BeskederPage() {
         if (msg.sender_type === "admin") continue;
         const uid = msg.sender_id;
         if (!byUser[uid]) {
-          byUser[uid] = { sender_id: uid, sender_name: msg.sender_name, sender_type: msg.sender_type, latest: msg.created_at, unread: 0 };
+          byUser[uid] = {
+            sender_id: uid,
+            sender_name: msg.sender_name,
+            sender_type: msg.sender_type,
+            latest: msg.created_at,
+            unread: 0,
+          };
         }
         if (!msg.read_by_admin) byUser[uid].unread++;
       }
-      setChatUsers(Object.values(byUser).sort((a, b) => new Date(b.latest).getTime() - new Date(a.latest).getTime()));
+      const chatUserList = Object.values(byUser).sort(
+        (a, b) => new Date(b.latest).getTime() - new Date(a.latest).getTime()
+      );
+
+      // 2. Find kunde- og leverandør-IDs
+      const customerIds = chatUserList.filter(u => u.sender_type === "customer").map(u => u.sender_id);
+      const supplierIds = chatUserList.filter(u => u.sender_type === "supplier").map(u => u.sender_id);
+
+      // 3. Hent kunde-emails for at matche mod requests
+      const { data: customerData } = customerIds.length > 0
+        ? await supabase.from("customers").select("id, email").in("id", customerIds)
+        : { data: [] };
+
+      const customerEmailMap: Record<string, string> = {};
+      for (const c of customerData ?? []) customerEmailMap[c.id] = c.email;
+
+      // 4. Hent godkendte requests for kunderne
+      const customerEmails = Object.values(customerEmailMap).filter(Boolean);
+      const { data: customerRequests } = customerEmails.length > 0
+        ? await supabase
+            .from("requests")
+            .select("id, description, email")
+            .in("email", customerEmails)
+            .eq("admin_status", "accepted")
+        : { data: [] };
+
+      // 5. Hent request_suppliers for leverandørerne
+      const { data: rsData } = supplierIds.length > 0
+        ? await supabase.from("request_suppliers").select("request_id, supplier_id").in("supplier_id", supplierIds)
+        : { data: [] };
+
+      // 6. Hent request-beskrivelser for leverandørernes opgaver
+      const supplierRequestIds = [...new Set((rsData ?? []).map(rs => rs.request_id))];
+      const { data: supplierRequests } = supplierRequestIds.length > 0
+        ? await supabase.from("requests").select("id, description").in("id", supplierRequestIds)
+        : { data: [] };
+
+      // 7. Byg request-beskrivelsesmap
+      const requestDescMap: Record<string, string> = {};
+      for (const r of [...(customerRequests ?? []), ...(supplierRequests ?? [])]) {
+        requestDescMap[r.id] = r.description;
+      }
+
+      // 8. Map bruger → hvilke requests de er tilknyttet
+      const userRequestMap: Record<string, string[]> = {};
+      for (const r of customerRequests ?? []) {
+        const cId = Object.entries(customerEmailMap).find(([, email]) => email === r.email)?.[0];
+        if (cId) {
+          if (!userRequestMap[cId]) userRequestMap[cId] = [];
+          userRequestMap[cId].push(r.id);
+        }
+      }
+      for (const rs of rsData ?? []) {
+        if (!userRequestMap[rs.supplier_id]) userRequestMap[rs.supplier_id] = [];
+        userRequestMap[rs.supplier_id].push(rs.request_id);
+      }
+
+      // 9. Byg gruppestruktur
+      const groupMap: Record<string, RequestGroup> = {};
+      const groupedIds = new Set<string>();
+
+      for (const u of chatUserList) {
+        const rids = userRequestMap[u.sender_id] ?? [];
+        for (const rid of rids) {
+          if (!groupMap[rid]) {
+            groupMap[rid] = { request_id: rid, description: requestDescMap[rid] ?? "Ukendt opgave", users: [] };
+          }
+          if (!groupMap[rid].users.find(x => x.sender_id === u.sender_id)) {
+            groupMap[rid].users.push(u);
+          }
+          groupedIds.add(u.sender_id);
+        }
+      }
+
+      setRequestGroups(Object.values(groupMap));
+      setUngroupedUsers(chatUserList.filter(u => !groupedIds.has(u.sender_id)));
+      setChatUsers(chatUserList);
       setLoading(false);
     };
     init();
@@ -47,7 +153,11 @@ export default function BeskederPage() {
       .order("created_at", { ascending: true });
     setMessages(data ?? []);
     await supabase.from("chat_messages").update({ read_by_admin: true }).eq("sender_id", senderId);
-    setChatUsers(prev => prev.map(u => u.sender_id === senderId ? { ...u, unread: 0 } : u));
+    // Opdater ulæste i alle lister
+    const markRead = (u: ChatUser) => u.sender_id === senderId ? { ...u, unread: 0 } : u;
+    setRequestGroups(prev => prev.map(g => ({ ...g, users: g.users.map(markRead) })));
+    setUngroupedUsers(prev => prev.map(markRead));
+    setChatUsers(prev => prev.map(markRead));
     setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
   };
 
@@ -69,12 +179,42 @@ export default function BeskederPage() {
   const handleDeleteConversation = async (senderId: string, senderName: string) => {
     if (!confirm(`Er du sikker på at du vil slette hele samtalen med ${senderName}?\n\nDenne handling kan ikke fortrydes.`)) return;
     await supabase.from("chat_messages").delete().eq("sender_id", senderId);
-    setChatUsers(prev => prev.filter(u => u.sender_id !== senderId));
+    const remove = (list: ChatUser[]) => list.filter(u => u.sender_id !== senderId);
+    setRequestGroups(prev => prev.map(g => ({ ...g, users: remove(g.users) })).filter(g => g.users.length > 0));
+    setUngroupedUsers(prev => remove(prev));
+    setChatUsers(prev => remove(prev));
     setSelectedUser(null);
     setMessages([]);
   };
 
   const totalUnread = chatUsers.reduce((sum, u) => sum + u.unread, 0);
+
+  // Samlet antal samtaler på tværs af alle grupper
+  const totalConversations = chatUsers.length;
+
+  const UserRow = ({ u }: { u: ChatUser }) => (
+    <div
+      onClick={() => { setSelectedUser(u); loadChat(u.sender_id); }}
+      className={`px-4 py-3 cursor-pointer border-b border-[#f8f6f3] transition-colors flex items-center gap-3 ${
+        selectedUser?.sender_id === u.sender_id
+          ? "bg-orange/10 border-l-2 border-l-orange"
+          : "hover:bg-[#fafaf8]"
+      }`}
+    >
+      <div className="w-8 h-8 rounded-full bg-[#2d2c2c] flex items-center justify-center text-xs font-black text-white flex-shrink-0">
+        {u.sender_name?.slice(0, 2).toUpperCase()}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-bold text-sm text-charcoal truncate">{u.sender_name}</div>
+        <div className="text-xs text-charcoal/40">{u.sender_type === "customer" ? "Kunde" : "Leverandør"}</div>
+      </div>
+      {u.unread > 0 && (
+        <span className="w-5 h-5 rounded-full bg-orange text-white text-[10px] font-black flex items-center justify-center flex-shrink-0">
+          {u.unread}
+        </span>
+      )}
+    </div>
+  );
 
   if (loading) return (
     <div className="p-8 animate-pulse">
@@ -91,49 +231,48 @@ export default function BeskederPage() {
       <div className="mb-5 flex-shrink-0">
         <h1 className="font-bold text-2xl text-charcoal mb-1">Beskeder</h1>
         <p className="text-charcoal/45 text-sm">
-          {chatUsers.length} samtale{chatUsers.length !== 1 ? "r" : ""}
+          {totalConversations} samtale{totalConversations !== 1 ? "r" : ""}
           {totalUnread > 0 && <span className="ml-2 text-orange font-bold">· {totalUnread} ulæste</span>}
         </p>
       </div>
 
       <div className="flex gap-4 flex-1 min-h-0">
-        {/* User list */}
-        <div className="w-60 flex-shrink-0 bg-white rounded-2xl border border-[#ede9e3] overflow-hidden flex flex-col">
+        {/* Samtaleliste — grupperet per opgave */}
+        <div className="w-64 flex-shrink-0 bg-white rounded-2xl border border-[#ede9e3] overflow-hidden flex flex-col">
           <div className="px-4 py-3 border-b border-[#f0ede8]">
             <p className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40">Samtaler</p>
           </div>
           <div className="flex-1 overflow-y-auto">
-            {chatUsers.length === 0 && (
+            {totalConversations === 0 && (
               <p className="text-charcoal/30 text-sm text-center py-10">Ingen beskeder endnu</p>
             )}
-            {chatUsers.map(u => (
-              <div
-                key={u.sender_id}
-                onClick={() => { setSelectedUser(u); loadChat(u.sender_id); }}
-                className={`px-4 py-3.5 cursor-pointer border-b border-[#f8f6f3] transition-colors flex items-center gap-3 ${
-                  selectedUser?.sender_id === u.sender_id
-                    ? "bg-orange/10 border-l-2 border-l-orange"
-                    : "hover:bg-[#fafaf8]"
-                }`}
-              >
-                <div className="w-9 h-9 rounded-full bg-[#2d2c2c] flex items-center justify-center text-xs font-black text-white flex-shrink-0">
-                  {u.sender_name?.slice(0, 2).toUpperCase()}
+
+            {/* Grupperet per opgave */}
+            {requestGroups.map(group => (
+              <div key={group.request_id}>
+                <div className="px-4 py-2 bg-[#f8f6f3] border-b border-[#f0ede8]">
+                  <p className="text-[9px] font-extrabold tracking-widest uppercase text-charcoal/35">Opgave</p>
+                  <p className="text-xs font-bold text-charcoal/70 line-clamp-1 mt-0.5">{group.description}</p>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-sm text-charcoal truncate">{u.sender_name}</div>
-                  <div className="text-xs text-charcoal/40">{u.sender_type === "customer" ? "Kunde" : "Leverandør"}</div>
-                </div>
-                {u.unread > 0 && (
-                  <span className="w-5 h-5 rounded-full bg-orange text-white text-[10px] font-black flex items-center justify-center flex-shrink-0">
-                    {u.unread}
-                  </span>
-                )}
+                {group.users.map(u => <UserRow key={u.sender_id} u={u} />)}
               </div>
             ))}
+
+            {/* Øvrige samtaler (ikke tilknyttet en opgave) */}
+            {ungroupedUsers.length > 0 && (
+              <div>
+                {requestGroups.length > 0 && (
+                  <div className="px-4 py-2 bg-[#f8f6f3] border-b border-[#f0ede8]">
+                    <p className="text-[9px] font-extrabold tracking-widest uppercase text-charcoal/35">Øvrige samtaler</p>
+                  </div>
+                )}
+                {ungroupedUsers.map(u => <UserRow key={u.sender_id} u={u} />)}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Chat window */}
+        {/* Chat-vindue */}
         {selectedUser ? (
           <div className="flex-1 bg-white rounded-2xl border border-[#ede9e3] flex flex-col overflow-hidden">
             {/* Header */}
@@ -153,7 +292,7 @@ export default function BeskederPage() {
               </button>
             </div>
 
-            {/* Messages */}
+            {/* Beskeder */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {messages.map(msg => {
                 const isAdmin = msg.sender_type === "admin";
