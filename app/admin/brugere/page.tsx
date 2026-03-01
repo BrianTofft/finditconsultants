@@ -32,6 +32,7 @@ export default function BrugerePage() {
   const [createError, setCreateError] = useState("");
   const [createSuccess, setCreateSuccess] = useState(false);
   const [search, setSearch] = useState("");
+  const [groupByCompany, setGroupByCompany] = useState(false);
 
   // Edit state — kun én bruger kan være expanded ad gangen
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
@@ -194,12 +195,20 @@ export default function BrugerePage() {
           <h1 className="font-bold text-2xl text-charcoal mb-1">Brugere</h1>
           <p className="text-charcoal/45 text-sm">{users.length} bruger{users.length !== 1 ? "e" : ""} i alt</p>
         </div>
-        <button
-          onClick={() => setShowCreateForm(!showCreateForm)}
-          className="bg-orange text-white font-bold rounded-full px-5 py-2.5 text-sm hover:bg-orange-dark transition-all"
-        >
-          + Opret bruger
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setGroupByCompany(g => !g)}
+            className={`font-bold rounded-full px-5 py-2.5 text-sm transition-all border ${groupByCompany ? "bg-charcoal text-white border-charcoal" : "bg-white text-charcoal/60 border-[#e8e5e0] hover:border-charcoal/30"}`}
+          >
+            🏢 Grupér pr. firma
+          </button>
+          <button
+            onClick={() => setShowCreateForm(!showCreateForm)}
+            className="bg-orange text-white font-bold rounded-full px-5 py-2.5 text-sm hover:bg-orange-dark transition-all"
+          >
+            + Opret bruger
+          </button>
+        </div>
       </div>
 
       {/* Create user form */}
@@ -250,7 +259,60 @@ export default function BrugerePage() {
         />
       </div>
 
-      <div className="space-y-2">
+      {/* Firma-gruperet visning */}
+      {groupByCompany && (() => {
+        const groups: Record<string, typeof filtered> = {};
+        for (const u of filtered) {
+          const key = (u.rolle === "Leverandør" ? u.supplier_company : u.company_name) || u.email;
+          if (!groups[key]) groups[key] = [];
+          groups[key].push(u);
+        }
+        const sorted = Object.entries(groups).sort(([a], [b]) => a.localeCompare(b, "da"));
+        return (
+          <div className="space-y-4">
+            {sorted.map(([company, members]) => (
+              <div key={company} className="bg-white rounded-2xl border border-[#ede9e3] overflow-hidden">
+                <div className="px-5 py-3 bg-[#f8f6f3] border-b border-[#ede9e3] flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-charcoal">🏢 {company}</span>
+                    {members.length > 1 && (
+                      <span className="text-xs bg-orange/15 text-orange font-bold px-2 py-0.5 rounded-full">{members.length} brugere</span>
+                    )}
+                  </div>
+                  <div className="flex gap-1">
+                    {[...new Set(members.map(m => m.rolle))].map(r => (
+                      <span key={r} className={`text-xs font-bold px-2 py-0.5 rounded-full ${rolleColor[r] ?? "bg-gray-100 text-gray-500"}`}>{r}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="divide-y divide-[#f5f2ee]">
+                  {members.map(u => (
+                    <div key={u.id} className="px-5 py-3 flex items-center justify-between gap-4 hover:bg-[#faf9f7] transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-sm text-charcoal">{u.contact_name || u.email}</span>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${rolleColor[u.rolle] ?? "bg-gray-100 text-gray-500"}`}>{u.rolle}</span>
+                        </div>
+                        <p className="text-xs text-charcoal/45 mt-0.5">{u.email}{u.phone ? ` · ${u.phone}` : ""}</p>
+                      </div>
+                      <div className="flex gap-1.5 flex-shrink-0">
+                        <button onClick={() => handleExpand(u)} className={`text-xs font-bold px-3 py-1 rounded-full transition-colors ${expandedUser === u.id ? "bg-orange text-white" : "bg-orange/10 text-orange hover:bg-orange/20"}`}>
+                          {expandedUser === u.id ? "Luk ↑" : "Rediger ✎"}
+                        </button>
+                        <button onClick={() => handleResetPassword(u.email)} className="text-xs bg-blue-50 text-blue-600 font-bold px-3 py-1 rounded-full hover:bg-blue-100 transition-colors">Reset pw</button>
+                        <button onClick={() => handleDeleteUser(u.id, u.email)} className="text-xs bg-red-50 text-red-600 font-bold px-3 py-1 rounded-full hover:bg-red-100 transition-colors">Slet</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
+      {/* Flad liste */}
+      <div className={`space-y-2 ${groupByCompany ? "hidden" : ""}`}>
         {filtered.map(u => (
           <div key={u.id} className="bg-white rounded-2xl border border-[#ede9e3] overflow-hidden">
             {/* Bruger-række */}
@@ -410,3 +472,4 @@ export default function BrugerePage() {
     </div>
   );
 }
+

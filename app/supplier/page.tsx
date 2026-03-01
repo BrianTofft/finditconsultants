@@ -40,6 +40,14 @@ type Profile = {
   language: string;
 };
 
+type SupplierTeamMember = {
+  id: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+};
+
 type Tab = "requests" | "submissions" | "messages" | "profile";
 
 type PortalSidebarProps = {
@@ -157,6 +165,7 @@ export default function SupplierPage() {
   const [profile, setProfile] = useState<Profile>({ company_name: "", first_name: "", last_name: "", email: "", phone: "", company_type: "", competencies: [], extra_competencies: "", language: "" });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<SupplierTeamMember[]>([]);
 
   useEffect(() => {
     const init = async () => {
@@ -204,6 +213,16 @@ export default function SupplierPage() {
       setRequests(reqData ?? []);
       setSubmissions(subData ?? []);
       setLoading(false);
+
+      // Find kollegaer fra samme virksomhed
+      if (supplierData.company_name) {
+        const { data: teamData } = await supabase
+          .from("suppliers")
+          .select("id, email, first_name, last_name, phone")
+          .eq("company_name", supplierData.company_name)
+          .neq("id", user.id);
+        setTeamMembers(teamData ?? []);
+      }
 
       if (!supplierData.company_name) {
         setTab("profile");
@@ -648,6 +667,26 @@ export default function SupplierPage() {
                 className="w-full bg-orange text-white font-bold rounded-full px-8 py-3 text-sm hover:bg-orange-dark transition-all disabled:opacity-50">
                 {saved ? "Gemt ✓" : saving ? "Gemmer…" : "Gem profil"}
               </button>
+              {teamMembers.length > 0 && (
+                <div className="border-t border-[#f0ede8] pt-4 mt-2">
+                  <p className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mb-3">
+                    👥 Kollegaer fra {profile.company_name}
+                  </p>
+                  <div className="space-y-2">
+                    {teamMembers.map(m => (
+                      <div key={m.id} className="flex items-center justify-between bg-[#f8f6f3] rounded-xl px-4 py-2.5">
+                        <div>
+                          <p className="text-sm font-semibold text-charcoal">
+                            {[m.first_name, m.last_name].filter(Boolean).join(" ") || m.email}
+                          </p>
+                          <p className="text-xs text-charcoal/45">{m.email}</p>
+                        </div>
+                        {m.phone && <p className="text-xs text-charcoal/45">{m.phone}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="border-t border-[#f0ede8] pt-4 mt-2">
                 <p className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mb-3">Skift password</p>
                 <ChangePassword />

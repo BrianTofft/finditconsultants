@@ -35,6 +35,13 @@ type Profile = {
   email: string;
 };
 
+type TeamMember = {
+  id: string;
+  email: string;
+  contact_name: string;
+  phone: string;
+};
+
 type Tab = "requests" | "profile" | "messages";
 
 type PortalSidebarProps = {
@@ -146,6 +153,8 @@ export default function PortalPage() {
   const [saved, setSaved] = useState(false);
   const [interviewDates, setInterviewDates] = useState<Record<string, string>>({});
   const [deciding, setDeciding] = useState<string | null>(null);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [teamRequests, setTeamRequests] = useState<Request[]>([]);
 
   useEffect(() => {
     const init = async () => {
@@ -163,6 +172,35 @@ export default function PortalPage() {
           phone: customerData.phone ?? "",
           email: customerData.email ?? user.email ?? "",
         });
+
+        // Find kollegaer fra samme virksomhed
+        if (customerData.company_name) {
+          const { data: teamData } = await supabase
+            .from("customers")
+            .select("id, email, contact_name, phone")
+            .eq("company_name", customerData.company_name)
+            .neq("id", user.id);
+
+          if (teamData && teamData.length > 0) {
+            setTeamMembers(teamData);
+            // Hent deres forespørgsler
+            const { data: teamReqAll } = await supabase
+              .from("requests")
+              .select("*")
+              .in("email", teamData.map((m: TeamMember) => m.email))
+              .order("created_at", { ascending: false });
+            const { data: teamSubData } = await supabase
+              .from("consultant_submissions")
+              .select("*")
+              .eq("status", "Valgt")
+              .in("request_id", (teamReqAll ?? []).map(r => r.id));
+            const teamMerged = (teamReqAll ?? []).map(r => ({
+              ...r,
+              submissions: (teamSubData ?? []).filter(s => s.request_id === r.id),
+            }));
+            setTeamRequests(teamMerged);
+          }
+        }
       } else {
         setProfile(p => ({ ...p, email: user.email ?? "" }));
       }
@@ -397,6 +435,40 @@ export default function PortalPage() {
                 ))}
               </div>
             )}
+            {/* Team-forespørgsler */}
+            {teamRequests.length > 0 && (
+              <div className="mt-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <h2 className="font-bold text-lg text-charcoal">Forespørgsler fra {profile.company_name}</h2>
+                  <span className="text-xs bg-charcoal/10 text-charcoal/50 font-bold px-2 py-0.5 rounded-full">{teamRequests.length} fra kollegaer</span>
+                </div>
+                <div className="space-y-3">
+                  {teamRequests.map(r => {
+                    const owner = teamMembers.find(m => m.email === r.email);
+                    return (
+                      <div key={r.id} className="bg-white rounded-2xl border border-[#ede9e3] p-4 opacity-85">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <p className="text-sm text-charcoal font-semibold line-clamp-2">{r.description || "Ingen beskrivelse"}</p>
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {r.competencies?.map(c => (
+                                <span key={c} className="bg-charcoal/10 text-charcoal/60 text-xs font-bold px-2 py-0.5 rounded-full">{c}</span>
+                              ))}
+                            </div>
+                            <p className="text-charcoal/35 text-xs mt-2">
+                              👤 {owner?.contact_name || owner?.email || "Kollega"} · {new Date(r.created_at).toLocaleDateString("da-DK")}
+                            </p>
+                          </div>
+                          <span className={`text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap ${statusColor[r.status] ?? "bg-gray-100 text-gray-600"}`}>
+                            {r.status}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </>
        )}
 
@@ -452,6 +524,24 @@ export default function PortalPage() {
                 className="w-full bg-orange text-white font-bold rounded-full px-8 py-3 text-sm hover:bg-orange-dark transition-all disabled:opacity-50">
                 {saved ? "Gemt ✓" : saving ? "Gemmer…" : "Gem profil"}
               </button>
+              {teamMembers.length > 0 && (
+                <div className="border-t border-[#f0ede8] pt-4 mt-2">
+                  <p className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mb-3">
+                    👥 Kollegaer fra {profile.company_name}
+                  </p>
+                  <div className="space-y-2">
+                    {teamMembers.map(m => (
+                      <div key={m.id} className="flex items-center justify-between bg-[#f8f6f3] rounded-xl px-4 py-2.5">
+                        <div>
+                          <p className="text-sm font-semibold text-charcoal">{m.contact_name || m.email}</p>
+                          <p className="text-xs text-charcoal/45">{m.email}</p>
+                        </div>
+                        {m.phone && <p className="text-xs text-charcoal/45">{m.phone}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="border-t border-[#f0ede8] pt-4 mt-2">
                 <p className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mb-3">Skift password</p>
                 <ChangePassword />
