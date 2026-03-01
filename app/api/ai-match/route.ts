@@ -53,7 +53,7 @@ Beskrivelse: ${sub.bio ?? "Ikke angivet"}
 
 Svar KUN med et JSON-objekt i følgende format (ingen forklaring udenfor JSON):
 {
-  "rating": <heltal 1-5 hvor 1 = svagt match, 5 = perfekt match>,
+  "rating": <heltal 1-10 hvor 1 = meget svagt match, 10 = perfekt match>,
   "summary": "<præcis og konkret vurdering på dansk, max 10 linjer, der forklarer styrker, svagheder og det samlede match>"
 }`;
 
@@ -71,7 +71,7 @@ Svar KUN med et JSON-objekt i følgende format (ingen forklaring udenfor JSON):
     if (!jsonMatch) throw new Error("Ugyldigt JSON-svar fra AI");
 
     const result = JSON.parse(jsonMatch[0]) as { rating: number; summary: string };
-    const rating = Math.min(5, Math.max(1, Math.round(result.rating)));
+    const rating = Math.min(10, Math.max(1, Math.round(result.rating)));
     const summary = result.summary;
 
     // Gem i DB

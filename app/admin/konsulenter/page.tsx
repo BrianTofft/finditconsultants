@@ -19,10 +19,13 @@ const statusColor: Record<string, string> = {
 
 function StarRating({ rating }: { rating: number }) {
   return (
-    <div className="flex gap-0.5">
-      {[1,2,3,4,5].map(i => (
-        <span key={i} className={`text-base ${i <= rating ? "text-orange" : "text-charcoal/15"}`}>★</span>
-      ))}
+    <div className="flex items-center gap-1">
+      <div className="flex gap-0.5">
+        {[1,2,3,4,5,6,7,8,9,10].map(i => (
+          <span key={i} className={`text-sm ${i <= rating ? "text-orange" : "text-charcoal/15"}`}>★</span>
+        ))}
+      </div>
+      <span className="text-xs font-bold text-charcoal/50 ml-1">{rating}/10</span>
     </div>
   );
 }

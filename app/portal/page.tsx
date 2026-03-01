@@ -416,22 +416,37 @@ export default function PortalPage() {
             <h2 className="font-bold text-lg text-charcoal mb-5">Min profil</h2>
             <div className="space-y-4">
               <div>
-                <label className={lbl}>Firmanavn <span className="normal-case font-normal text-charcoal/30">(kan ikke ændres)</span></label>
-                <div className="w-full rounded-xl border border-[#e8e5e0] bg-[#f0ede8] px-4 py-2.5 text-sm text-charcoal/60">
-                  {profile.company_name || <span className="italic">Ikke angivet</span>}
-                </div>
+                <label className={lbl}>Virksomhed</label>
+                <input className={inp} placeholder="Firma A/S" value={profile.company_name} onChange={e => setProfile(p => ({ ...p, company_name: e.target.value }))} />
               </div>
-              <div>
-                <label className={lbl}>Kontaktperson</label>
-                <input className={inp} placeholder="Navn Efternavn" value={profile.contact_name} onChange={e => setProfile(p => ({ ...p, contact_name: e.target.value }))} />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className={lbl}>Fornavn</label>
+                  <input className={inp} placeholder="Fornavn" value={(profile.contact_name ?? "").split(" ")[0] ?? ""} onChange={e => {
+                    const parts = (profile.contact_name ?? "").split(" ");
+                    parts[0] = e.target.value;
+                    setProfile(p => ({ ...p, contact_name: parts.join(" ").trim() }));
+                  }} />
+                </div>
+                <div>
+                  <label className={lbl}>Efternavn</label>
+                  <input className={inp} placeholder="Efternavn" value={(profile.contact_name ?? "").split(" ").slice(1).join(" ")} onChange={e => {
+                    const first = (profile.contact_name ?? "").split(" ")[0] ?? "";
+                    setProfile(p => ({ ...p, contact_name: `${first} ${e.target.value}`.trim() }));
+                  }} />
+                </div>
               </div>
               <div>
                 <label className={lbl}>Telefon</label>
                 <input className={inp} placeholder="+45 12 34 56 78" value={profile.phone} onChange={e => setProfile(p => ({ ...p, phone: e.target.value }))} />
               </div>
               <div>
-                <label className={lbl}>Email</label>
+                <label className={lbl}>Email <span className="normal-case font-normal text-charcoal/30">(kan ikke ændres)</span></label>
                 <input className={inp} disabled value={profile.email} />
+              </div>
+              <div>
+                <label className={lbl}>Type</label>
+                <div className="w-full rounded-xl border border-[#e8e5e0] bg-[#f0ede8] px-4 py-2.5 text-sm text-charcoal/60">Kunde</div>
               </div>
               <button onClick={handleSaveProfile} disabled={saving}
                 className="w-full bg-orange text-white font-bold rounded-full px-8 py-3 text-sm hover:bg-orange-dark transition-all disabled:opacity-50">

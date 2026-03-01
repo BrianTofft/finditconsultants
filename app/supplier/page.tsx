@@ -581,10 +581,8 @@ export default function SupplierPage() {
             <h2 className="font-bold text-lg text-charcoal mb-5">Min profil</h2>
             <div className="space-y-4">
               <div>
-                <label className={lbl}>Virksomhed <span className="normal-case font-normal text-charcoal/30">(kan ikke ændres)</span></label>
-                <div className="w-full rounded-xl border border-[#e8e5e0] bg-[#f0ede8] px-4 py-2.5 text-sm text-charcoal/60">
-                  {profile.company_name || <span className="italic">Ikke angivet</span>}
-                </div>
+                <label className={lbl}>Virksomhed</label>
+                <input className={inp} placeholder="Firma A/S" value={profile.company_name} onChange={e => setProfile(p => ({ ...p, company_name: e.target.value }))} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -597,7 +595,7 @@ export default function SupplierPage() {
                 </div>
               </div>
               <div>
-                <label className={lbl}>Email</label>
+                <label className={lbl}>Email <span className="normal-case font-normal text-charcoal/30">(kan ikke ændres)</span></label>
                 <input className={inp} disabled value={profile.email} />
               </div>
               <div>
