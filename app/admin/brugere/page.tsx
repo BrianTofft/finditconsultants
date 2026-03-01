@@ -20,6 +20,7 @@ type EditData = {
   last_name: string;
   phone: string;
   company_type: string;
+  company_name: string;
 };
 
 export default function BrugerePage() {
@@ -34,7 +35,7 @@ export default function BrugerePage() {
 
   // Edit state — kun én bruger kan være expanded ad gangen
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
-  const [editData, setEditData] = useState<EditData>({ contact_name: "", first_name: "", last_name: "", phone: "", company_type: "" });
+  const [editData, setEditData] = useState<EditData>({ contact_name: "", first_name: "", last_name: "", phone: "", company_type: "", company_name: "" });
   const [loadingEdit, setLoadingEdit] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [savedEdit, setSavedEdit] = useState(false);
@@ -103,6 +104,7 @@ export default function BrugerePage() {
         last_name: "",
         phone: data?.phone ?? u.phone ?? "",
         company_type: "",
+        company_name: data?.company_name ?? u.company_name ?? "",
       });
     } else if (u.rolle === "Leverandør") {
       const { data } = await supabase.from("suppliers").select("*").eq("id", u.id).single();
@@ -112,6 +114,7 @@ export default function BrugerePage() {
         last_name: data?.last_name ?? "",
         phone: data?.phone ?? u.phone ?? "",
         company_type: data?.company_type ?? "",
+        company_name: data?.company_name ?? u.supplier_company ?? u.company_name ?? "",
       });
     } else if (u.rolle === "Admin") {
       const { data } = await supabase.from("admins").select("*").eq("id", u.id).single();
@@ -121,9 +124,10 @@ export default function BrugerePage() {
         last_name: data?.last_name ?? "",
         phone: data?.phone ?? u.phone ?? "",
         company_type: "",
+        company_name: "",
       });
     } else {
-      setEditData({ contact_name: "", first_name: "", last_name: "", phone: u.phone ?? "", company_type: "" });
+      setEditData({ contact_name: "", first_name: "", last_name: "", phone: u.phone ?? "", company_type: "", company_name: "" });
     }
 
     setLoadingEdit(false);
@@ -135,6 +139,7 @@ export default function BrugerePage() {
       await supabase.from("customers").update({
         contact_name: editData.contact_name,
         phone: editData.phone,
+        company_name: editData.company_name,
       }).eq("id", u.id);
     } else if (u.rolle === "Leverandør") {
       await supabase.from("suppliers").update({
@@ -143,6 +148,7 @@ export default function BrugerePage() {
         contact_name: `${editData.first_name} ${editData.last_name}`.trim(),
         phone: editData.phone,
         company_type: editData.company_type,
+        company_name: editData.company_name,
       }).eq("id", u.id);
     } else if (u.rolle === "Admin") {
       await supabase.from("admins").update({
@@ -251,13 +257,29 @@ export default function BrugerePage() {
             <div className="p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <span className="font-bold text-sm text-charcoal">{u.company_name || u.supplier_company || u.email}</span>
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span className="font-bold text-sm text-charcoal">
+                      {u.rolle === "Leverandør"
+                        ? (u.supplier_company || u.company_name || u.email)
+                        : (u.company_name || u.email)}
+                    </span>
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${rolleColor[u.rolle] ?? "bg-gray-100 text-gray-500"}`}>{u.rolle}</span>
                   </div>
-                  {u.contact_name && <p className="text-xs text-charcoal/60">👤 {u.contact_name}</p>}
-                  <p className="text-xs text-charcoal/50 mt-0.5">✉️ {u.email}</p>
-                  {u.phone && <p className="text-xs text-charcoal/50 mt-0.5">📞 {u.phone}</p>}
+                  <div className="flex flex-wrap gap-x-4 gap-y-0.5">
+                    {u.contact_name && (
+                      <p className="text-xs text-charcoal/60">
+                        <span className="font-semibold text-charcoal/40 mr-1">Kontakt</span>{u.contact_name}
+                      </p>
+                    )}
+                    <p className="text-xs text-charcoal/55">
+                      <span className="font-semibold text-charcoal/40 mr-1">Email</span>{u.email}
+                    </p>
+                    {u.phone && (
+                      <p className="text-xs text-charcoal/55">
+                        <span className="font-semibold text-charcoal/40 mr-1">Tlf.</span>{u.phone}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                   <p className="text-[10px] text-charcoal/30">{new Date(u.created_at).toLocaleDateString("da-DK")}</p>
@@ -307,10 +329,8 @@ export default function BrugerePage() {
                     {/* Kunde-felter */}
                     {u.rolle === "Kunde" && (
                       <>
-                        <div>
-                          <label className={lbl}>Firmanavn (kan ikke ændres)</label>
-                          <div className={roReadonly}>{u.company_name || <span className="italic">Ikke angivet</span>}</div>
-                        </div>
+                        {field(`company-${u.id}`, "Firmanavn", editData.company_name,
+                          v => setEditData(d => ({ ...d, company_name: v })), "Firma A/S")}
                         <div className="grid grid-cols-2 gap-3">
                           {field(`contact-${u.id}`, "Kontaktperson", editData.contact_name,
                             v => setEditData(d => ({ ...d, contact_name: v })), "Navn Efternavn")}
@@ -323,10 +343,8 @@ export default function BrugerePage() {
                     {/* Leverandør-felter */}
                     {u.rolle === "Leverandør" && (
                       <>
-                        <div>
-                          <label className={lbl}>Virksomhed (kan ikke ændres)</label>
-                          <div className={roReadonly}>{u.supplier_company || u.company_name || <span className="italic">Ikke angivet</span>}</div>
-                        </div>
+                        {field(`company-${u.id}`, "Virksomhed", editData.company_name,
+                          v => setEditData(d => ({ ...d, company_name: v })), "Firma A/S")}
                         <div className="grid grid-cols-2 gap-3">
                           {field(`fname-${u.id}`, "Fornavn", editData.first_name,
                             v => setEditData(d => ({ ...d, first_name: v })), "Fornavn")}
