@@ -37,6 +37,67 @@ type Profile = {
 
 type Tab = "requests" | "profile" | "messages";
 
+type PortalSidebarProps = {
+  tab: Tab;
+  setTab: (t: Tab) => void;
+  companyLabel: string;
+  onLogout: () => void;
+};
+
+function PortalSidebar({ tab, setTab, companyLabel, onLogout }: PortalSidebarProps) {
+  const navItems: { tab: Tab; label: string; icon: string }[] = [
+    { tab: "requests", label: "Forespørgsler", icon: "📋" },
+    { tab: "messages", label: "Beskeder",      icon: "💬" },
+    { tab: "profile",  label: "Min profil",    icon: "⚙️" },
+  ];
+
+  return (
+    <aside className="w-56 bg-[#2d2c2c] flex flex-col fixed h-full z-10">
+      {/* Logo */}
+      <div className="px-5 py-5 border-b border-white/10">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 bg-orange rounded-lg flex items-center justify-center flex-shrink-0">
+            <span className="text-white text-xs font-black">FI</span>
+          </div>
+          <div>
+            <p className="text-white font-bold text-sm leading-tight">FindIT</p>
+            <p className="text-white/40 text-[10px] font-semibold tracking-wide uppercase">Kundeportal</p>
+          </div>
+        </div>
+        {companyLabel && (
+          <p className="text-white/30 text-[11px] font-semibold mt-2 truncate">{companyLabel}</p>
+        )}
+      </div>
+      {/* Nav */}
+      <nav className="flex-1 py-3 overflow-y-auto">
+        {navItems.map(item => (
+          <button
+            key={item.tab}
+            onClick={() => setTab(item.tab)}
+            className={`w-[calc(100%-1rem)] flex items-center gap-3 px-3 py-2.5 mx-2 rounded-xl transition-all mb-0.5 text-left ${
+              tab === item.tab
+                ? "bg-orange text-white shadow-sm"
+                : "text-white/55 hover:text-white hover:bg-white/10"
+            }`}
+          >
+            <span className="text-base w-5 text-center flex-shrink-0">{item.icon}</span>
+            <span className="text-sm font-semibold flex-1 truncate">{item.label}</span>
+          </button>
+        ))}
+      </nav>
+      {/* Logout */}
+      <div className="px-4 py-4 border-t border-white/10">
+        <button
+          onClick={onLogout}
+          className="w-full text-left text-white/40 hover:text-white/80 text-xs font-semibold transition-colors px-2 py-1.5 rounded-lg hover:bg-white/5"
+        >
+          Log ud →
+        </button>
+      </div>
+    </aside>
+  );
+}
+
 function ChangePassword() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -174,6 +235,10 @@ export default function PortalPage() {
     setTimeout(() => setSaved(false), 2000);
   };
 
+  const handleLogout = () => {
+    supabase.auth.signOut().then(() => router.push("/"));
+  };
+
   const statusColor: Record<string, string> = {
     "Ny": "bg-blue-100 text-blue-700",
     "I gang": "bg-orange-100 text-orange-700",
@@ -195,27 +260,14 @@ export default function PortalPage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#f8f6f3]">
-      <div className="bg-gradient-to-br from-[#2d2c2c] to-[#1a1919] border-b-4 border-orange">
-        <div className="max-w-4xl mx-auto px-6 py-5 flex items-center justify-between">
-          <div>
-            <h1 className="font-bold text-xl text-white">Kundeportal</h1>
-            <p className="text-white/50 text-xs mt-0.5">{profile.company_name || profile.email}</p>
-          </div>
-          <button onClick={() => supabase.auth.signOut().then(() => router.push("/"))}
-            className="text-white/50 hover:text-white text-sm font-semibold transition-colors">Log ud →</button>
-        </div>
-        <div className="max-w-4xl mx-auto px-6 flex gap-1 pb-0">
-          {(["requests", "messages", "profile"] as Tab[]).map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`px-5 py-2.5 text-sm font-bold rounded-t-xl transition-all ${tab === t ? "bg-[#f8f6f3] text-charcoal" : "text-white/50 hover:text-white"}`}>
-              {t === "requests" ? "Forespørgsler" : t === "messages" ? "Beskeder" : "Min profil"}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto px-6 py-8">
+    <div className="flex h-screen bg-[#f8f6f3] overflow-hidden">
+      <PortalSidebar
+        tab={tab}
+        setTab={setTab}
+        companyLabel={profile.company_name || profile.email}
+        onLogout={handleLogout}
+      />
+      <main className="flex-1 ml-56 overflow-y-auto p-8">
         {tab === "requests" && (
           <>
             {/* Statistik */}
@@ -392,7 +444,7 @@ export default function PortalPage() {
             </div>
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 }

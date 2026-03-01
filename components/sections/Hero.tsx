@@ -64,7 +64,7 @@ export default function Hero() {
           {/* Headline */}
           <h1 className="font-bold text-5xl lg:text-6xl text-charcoal leading-[1.08] tracking-tight mb-6">
             Fortæl os hvad I mangler.<br />
-            <span className="relative inline-block">
+            <span className="relative inline-block pb-2">
               <span className="text-orange">Vi finder konsulenterne.</span>
               <svg className="absolute -bottom-1 left-0 w-full" viewBox="0 0 300 8" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
                 <path d="M2 6 Q75 2 150 5 Q225 8 298 4" stroke="#2d2c2c" strokeWidth="3" strokeLinecap="round" fill="none" className="draw-underline"/>
