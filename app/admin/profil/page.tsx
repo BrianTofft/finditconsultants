@@ -128,25 +128,29 @@ export default function AdminProfilPage() {
 
   const Field = ({ label, value, onChange, readOnly = false }: {
     label: string; value: string; onChange?: (v: string) => void; readOnly?: boolean;
-  }) => (
-    <div>
-      <label className="block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/45 mb-1.5">
-        {label}
-      </label>
-      {readOnly ? (
-        <div className="w-full rounded-xl border border-[#e8e5e0] bg-[#f0ede8] px-4 py-2.5 text-sm text-charcoal/60">
-          {value || <span className="text-charcoal/30 italic">Ikke udfyldt</span>}
-        </div>
-      ) : (
-        <input
-          type="text"
-          value={value}
-          onChange={e => onChange?.(e.target.value)}
-          className="w-full rounded-xl border border-[#e8e5e0] bg-[#f8f6f3] px-4 py-2.5 text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-orange/25 focus:border-orange transition-all"
-        />
-      )}
-    </div>
-  );
+  }) => {
+    const id = `field-${label.toLowerCase().replace(/\s+/g, "-")}`;
+    return (
+      <div>
+        <label htmlFor={readOnly ? undefined : id} className="block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/45 mb-1.5">
+          {label}
+        </label>
+        {readOnly ? (
+          <div className="w-full rounded-xl border border-[#e8e5e0] bg-[#f0ede8] px-4 py-2.5 text-sm text-charcoal/60">
+            {value || <span className="text-charcoal/30 italic">Ikke udfyldt</span>}
+          </div>
+        ) : (
+          <input
+            id={id}
+            type="text"
+            value={value}
+            onChange={e => onChange?.(e.target.value)}
+            className="w-full rounded-xl border border-[#e8e5e0] bg-[#f8f6f3] px-4 py-2.5 text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-orange/25 focus:border-orange transition-all"
+          />
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="p-8 max-w-2xl">

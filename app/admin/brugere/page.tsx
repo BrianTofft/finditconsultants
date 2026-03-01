@@ -12,6 +12,15 @@ const rolleColor: Record<string, string> = {
 
 const inp = "w-full rounded-xl border border-[#e8e5e0] bg-[#f8f6f3] px-4 py-2.5 text-sm text-charcoal focus:outline-none focus:border-orange transition-all";
 const lbl = "block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/45 mb-1.5";
+const roReadonly = "w-full rounded-xl border border-[#e8e5e0] bg-[#f0ede8] px-4 py-2.5 text-sm text-charcoal/60";
+
+type EditData = {
+  contact_name: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  company_type: string;
+};
 
 export default function BrugerePage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -22,6 +31,13 @@ export default function BrugerePage() {
   const [createError, setCreateError] = useState("");
   const [createSuccess, setCreateSuccess] = useState(false);
   const [search, setSearch] = useState("");
+
+  // Edit state — kun én bruger kan være expanded ad gangen
+  const [expandedUser, setExpandedUser] = useState<string | null>(null);
+  const [editData, setEditData] = useState<EditData>({ contact_name: "", first_name: "", last_name: "", phone: "", company_type: "" });
+  const [loadingEdit, setLoadingEdit] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [savedEdit, setSavedEdit] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -70,7 +86,85 @@ export default function BrugerePage() {
       body: JSON.stringify({ id }),
     });
     setUsers(prev => prev.filter(u => u.id !== id));
+    if (expandedUser === id) setExpandedUser(null);
   };
+
+  const handleExpand = async (u: User) => {
+    if (expandedUser === u.id) { setExpandedUser(null); return; }
+    setExpandedUser(u.id);
+    setSavedEdit(false);
+    setLoadingEdit(true);
+
+    if (u.rolle === "Kunde") {
+      const { data } = await supabase.from("customers").select("*").eq("id", u.id).single();
+      setEditData({
+        contact_name: data?.contact_name ?? u.contact_name ?? "",
+        first_name: "",
+        last_name: "",
+        phone: data?.phone ?? u.phone ?? "",
+        company_type: "",
+      });
+    } else if (u.rolle === "Leverandør") {
+      const { data } = await supabase.from("suppliers").select("*").eq("id", u.id).single();
+      setEditData({
+        contact_name: "",
+        first_name: data?.first_name ?? "",
+        last_name: data?.last_name ?? "",
+        phone: data?.phone ?? u.phone ?? "",
+        company_type: data?.company_type ?? "",
+      });
+    } else if (u.rolle === "Admin") {
+      const { data } = await supabase.from("admins").select("*").eq("id", u.id).single();
+      setEditData({
+        contact_name: "",
+        first_name: data?.first_name ?? "",
+        last_name: data?.last_name ?? "",
+        phone: data?.phone ?? u.phone ?? "",
+        company_type: "",
+      });
+    } else {
+      setEditData({ contact_name: "", first_name: "", last_name: "", phone: u.phone ?? "", company_type: "" });
+    }
+
+    setLoadingEdit(false);
+  };
+
+  const handleSaveEdit = async (u: User) => {
+    setSavingEdit(true);
+    if (u.rolle === "Kunde") {
+      await supabase.from("customers").update({
+        contact_name: editData.contact_name,
+        phone: editData.phone,
+      }).eq("id", u.id);
+    } else if (u.rolle === "Leverandør") {
+      await supabase.from("suppliers").update({
+        first_name: editData.first_name,
+        last_name: editData.last_name,
+        contact_name: `${editData.first_name} ${editData.last_name}`.trim(),
+        phone: editData.phone,
+        company_type: editData.company_type,
+      }).eq("id", u.id);
+    } else if (u.rolle === "Admin") {
+      await supabase.from("admins").update({
+        first_name: editData.first_name,
+        last_name: editData.last_name,
+        phone: editData.phone,
+      }).eq("id", u.id);
+    }
+    setSavingEdit(false);
+    setSavedEdit(true);
+    setTimeout(() => setSavedEdit(false), 2500);
+    // Genindlæs brugerlisten
+    const { data: userData } = await supabase.from("user_roles").select("*");
+    setUsers(userData ?? []);
+  };
+
+  const field = (id: string, label: string, value: string, onChange: (v: string) => void, placeholder = "") => (
+    <div>
+      <label htmlFor={id} className={lbl}>{label}</label>
+      <input id={id} className={inp} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} />
+    </div>
+  );
 
   const filtered = users.filter(u => {
     if (!search) return true;
@@ -152,33 +246,141 @@ export default function BrugerePage() {
 
       <div className="space-y-2">
         {filtered.map(u => (
-          <div key={u.id} className="bg-white rounded-2xl border border-[#ede9e3] p-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <span className="font-bold text-sm text-charcoal">{u.company_name || u.supplier_company || u.email}</span>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${rolleColor[u.rolle] ?? "bg-gray-100 text-gray-500"}`}>{u.rolle}</span>
+          <div key={u.id} className="bg-white rounded-2xl border border-[#ede9e3] overflow-hidden">
+            {/* Bruger-række */}
+            <div className="p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <span className="font-bold text-sm text-charcoal">{u.company_name || u.supplier_company || u.email}</span>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${rolleColor[u.rolle] ?? "bg-gray-100 text-gray-500"}`}>{u.rolle}</span>
+                  </div>
+                  {u.contact_name && <p className="text-xs text-charcoal/60">👤 {u.contact_name}</p>}
+                  <p className="text-xs text-charcoal/50 mt-0.5">✉️ {u.email}</p>
+                  {u.phone && <p className="text-xs text-charcoal/50 mt-0.5">📞 {u.phone}</p>}
                 </div>
-                {u.contact_name && <p className="text-xs text-charcoal/60">👤 {u.contact_name}</p>}
-                <p className="text-xs text-charcoal/50 mt-0.5">✉️ {u.email}</p>
-                {u.phone && <p className="text-xs text-charcoal/50 mt-0.5">📞 {u.phone}</p>}
-              </div>
-              <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                <p className="text-[10px] text-charcoal/30">{new Date(u.created_at).toLocaleDateString("da-DK")}</p>
-                <button
-                  onClick={() => handleResetPassword(u.email)}
-                  className="text-xs bg-blue-50 text-blue-600 font-bold px-3 py-1 rounded-full hover:bg-blue-100 transition-colors"
-                >
-                  Reset pw
-                </button>
-                <button
-                  onClick={() => handleDeleteUser(u.id, u.email)}
-                  className="text-xs bg-red-50 text-red-600 font-bold px-3 py-1 rounded-full hover:bg-red-100 transition-colors"
-                >
-                  Slet
-                </button>
+                <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                  <p className="text-[10px] text-charcoal/30">{new Date(u.created_at).toLocaleDateString("da-DK")}</p>
+                  <button
+                    onClick={() => handleExpand(u)}
+                    className={`text-xs font-bold px-3 py-1 rounded-full transition-colors ${
+                      expandedUser === u.id
+                        ? "bg-orange text-white"
+                        : "bg-orange/10 text-orange hover:bg-orange/20"
+                    }`}
+                  >
+                    {expandedUser === u.id ? "Luk ↑" : "Rediger ✎"}
+                  </button>
+                  <button
+                    onClick={() => handleResetPassword(u.email)}
+                    className="text-xs bg-blue-50 text-blue-600 font-bold px-3 py-1 rounded-full hover:bg-blue-100 transition-colors"
+                  >
+                    Reset pw
+                  </button>
+                  <button
+                    onClick={() => handleDeleteUser(u.id, u.email)}
+                    className="text-xs bg-red-50 text-red-600 font-bold px-3 py-1 rounded-full hover:bg-red-100 transition-colors"
+                  >
+                    Slet
+                  </button>
+                </div>
               </div>
             </div>
+
+            {/* Udvidet redigeringssektion */}
+            {expandedUser === u.id && (
+              <div className="border-t border-[#f0ede8] bg-[#faf9f7] px-5 py-4">
+                {loadingEdit ? (
+                  <p className="text-charcoal/40 text-sm animate-pulse">Henter profil…</p>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/35 mb-3">
+                      Rediger profil — {u.rolle}
+                    </p>
+
+                    {/* Email — altid read-only */}
+                    <div>
+                      <label className={lbl}>Email (kan ikke ændres)</label>
+                      <div className={roReadonly}>{u.email}</div>
+                    </div>
+
+                    {/* Kunde-felter */}
+                    {u.rolle === "Kunde" && (
+                      <>
+                        <div>
+                          <label className={lbl}>Firmanavn (kan ikke ændres)</label>
+                          <div className={roReadonly}>{u.company_name || <span className="italic">Ikke angivet</span>}</div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          {field(`contact-${u.id}`, "Kontaktperson", editData.contact_name,
+                            v => setEditData(d => ({ ...d, contact_name: v })), "Navn Efternavn")}
+                          {field(`phone-${u.id}`, "Telefon", editData.phone,
+                            v => setEditData(d => ({ ...d, phone: v })), "+45 12 34 56 78")}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Leverandør-felter */}
+                    {u.rolle === "Leverandør" && (
+                      <>
+                        <div>
+                          <label className={lbl}>Virksomhed (kan ikke ændres)</label>
+                          <div className={roReadonly}>{u.supplier_company || u.company_name || <span className="italic">Ikke angivet</span>}</div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          {field(`fname-${u.id}`, "Fornavn", editData.first_name,
+                            v => setEditData(d => ({ ...d, first_name: v })), "Fornavn")}
+                          {field(`lname-${u.id}`, "Efternavn", editData.last_name,
+                            v => setEditData(d => ({ ...d, last_name: v })), "Efternavn")}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          {field(`phone-${u.id}`, "Telefon", editData.phone,
+                            v => setEditData(d => ({ ...d, phone: v })), "+45 12 34 56 78")}
+                          <div>
+                            <label htmlFor={`ctype-${u.id}`} className={lbl}>Virksomhedstype</label>
+                            <select id={`ctype-${u.id}`} className={inp} value={editData.company_type} onChange={e => setEditData(d => ({ ...d, company_type: e.target.value }))}>
+                              <option value="">Vælg…</option>
+                              <option>Konsulenthus (egne konsulenter)</option>
+                              <option>Konsulentformidler (freelancers)</option>
+                              <option>Selvstændig (freelancer)</option>
+                            </select>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Admin-felter */}
+                    {u.rolle === "Admin" && (
+                      <div className="grid grid-cols-2 gap-3">
+                        {field(`fname-${u.id}`, "Fornavn", editData.first_name,
+                          v => setEditData(d => ({ ...d, first_name: v })), "Fornavn")}
+                        {field(`lname-${u.id}`, "Efternavn", editData.last_name,
+                          v => setEditData(d => ({ ...d, last_name: v })), "Efternavn")}
+                        {field(`phone-${u.id}`, "Telefon", editData.phone,
+                          v => setEditData(d => ({ ...d, phone: v })), "+45 12 34 56 78")}
+                      </div>
+                    )}
+
+                    {u.rolle === "Ingen rolle" && (
+                      <p className="text-charcoal/40 text-sm italic">Brugeren har ingen rolle og kan ikke redigeres.</p>
+                    )}
+
+                    {u.rolle !== "Ingen rolle" && (
+                      <div className="flex items-center gap-3 pt-1">
+                        <button
+                          onClick={() => handleSaveEdit(u)}
+                          disabled={savingEdit}
+                          className="bg-orange text-white font-bold rounded-full px-6 py-2 text-sm hover:bg-orange-dark transition-all disabled:opacity-50"
+                        >
+                          {savingEdit ? "Gemmer…" : "Gem ændringer"}
+                        </button>
+                        {savedEdit && <span className="text-green-600 text-sm font-bold">✓ Gemt</span>}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         ))}
         {filtered.length === 0 && (

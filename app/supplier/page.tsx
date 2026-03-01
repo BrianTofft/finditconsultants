@@ -291,7 +291,7 @@ export default function SupplierPage() {
   };
 
   const handleLogout = () => {
-    supabase.auth.signOut().then(() => router.push("/"));
+    supabase.auth.signOut().then(() => { window.location.href = "https://finditconsultants.com"; });
   };
 
   const statusColor: Record<string, string> = {

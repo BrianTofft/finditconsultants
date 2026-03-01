@@ -130,7 +130,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    router.push("/admin/login");
+    window.location.href = "https://finditconsultants.com";
   };
 
   // Login page renders without sidebar
