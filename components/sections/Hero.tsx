@@ -11,9 +11,14 @@ const PHOTOS = [
 ];
 
 const NOTIFICATIONS = [
-  { icon: "📩", text: "Ny forespørgsel — 6 leverandører kontaktet", time: "Nu" },
-  { icon: "✅", text: "Konsulent fundet til DSV A/S", time: "3 min" },
-  { icon: "👤", text: "4 kandidater klar til gennemgang", time: "12 min" },
+  { icon: "📩", text: "Ny forespørgsel modtaget — 70+ leverandører notificeret", time: "Nu" },
+  { icon: "✅", text: "Konsulent fundet til DSV A/S — under 3 dage", time: "4 min" },
+  { icon: "👤", text: "7 screenede kandidater klar til gennemgang", time: "11 min" },
+  { icon: "🤝", text: "Kontrakt underskrevet — PFA Pension", time: "32 min" },
+  { icon: "📋", text: "Rockwool modtog 6 konsulentprofiler til review", time: "1 t" },
+  { icon: "⚡", text: "William Demant søger Azure-arkitekt — aktiveret nu", time: "2 t" },
+  { icon: "✅", text: "Coop fandt den rette IT-konsulent på rekordtid", time: "3 t" },
+  { icon: "📡", text: "Nordic Bioscience — markedet aktiveret med det samme", time: "I dag" },
 ];
 
 function LiveNotification() {
@@ -27,7 +32,7 @@ function LiveNotification() {
         setIdx(i => (i + 1) % NOTIFICATIONS.length);
         setVisible(true);
       }, 400);
-    }, 3500);
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 

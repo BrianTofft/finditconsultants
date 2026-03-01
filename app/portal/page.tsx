@@ -60,7 +60,7 @@ function PortalSidebar({ tab, setTab, companyLabel, onLogout }: PortalSidebarPro
             <span className="text-white text-xs font-black">FI</span>
           </div>
           <div>
-            <p className="text-white font-bold text-sm leading-tight">FindIT</p>
+            <p className="text-white font-bold text-sm leading-tight">FindITconsultants</p>
             <p className="text-white/40 text-[10px] font-semibold tracking-wide uppercase">Kundeportal</p>
           </div>
         </div>

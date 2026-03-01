@@ -43,7 +43,7 @@ const PHASES: Phase[] = [
     n: "05", title: "Direkte kontrakt", flow: "↔",
     kunde:      { icon: "🤝", text: "Indgår kontrakten direkte med den valgte leverandør. Ingen mellemled, intet gebyr." },
     findit:     null,
-    leverandor: { icon: "📄", text: "Underskriver kontrakt direkte med kunden. FindIT er ikke part i aftalen." },
+    leverandor: { icon: "📄", text: "Underskriver kontrakt direkte med kunden. FindITconsultants er ikke part i aftalen." },
   },
 ];
 
@@ -53,31 +53,31 @@ const LANES = [
     key: "kunde"      as const,
     label: "Kunde",
     emoji: "🏢",
-    headerBg:  "bg-orange/10 border-orange/30",
-    headerText:"text-orange",
-    cellBg:    "bg-orange/5 border-orange/20",
-    dot:       "bg-orange",
-    activeDot: "bg-orange",
+    headerBg:   "bg-orange border-orange",
+    headerText: "text-white",
+    cellBg:     "bg-orange/20 border-orange/40",
+    dot:        "bg-orange",
+    legendText: "text-orange",
   },
   {
     key: "findit"     as const,
-    label: "FindIT",
+    label: "FindITconsultants",
     emoji: "⚡",
-    headerBg:  "bg-charcoal/8 border-charcoal/20",
-    headerText:"text-charcoal",
-    cellBg:    "bg-charcoal/4 border-charcoal/10",
-    dot:       "bg-charcoal",
-    activeDot: "bg-charcoal",
+    headerBg:   "bg-charcoal border-charcoal",
+    headerText: "text-white",
+    cellBg:     "bg-charcoal/10 border-charcoal/30",
+    dot:        "bg-charcoal",
+    legendText: "text-charcoal",
   },
   {
     key: "leverandor" as const,
     label: "Leverandør",
     emoji: "👥",
-    headerBg:  "bg-[#4a7c59]/10 border-[#4a7c59]/30",
-    headerText:"text-[#4a7c59]",
-    cellBg:    "bg-[#4a7c59]/5 border-[#4a7c59]/20",
-    dot:       "bg-[#4a7c59]",
-    activeDot: "bg-[#4a7c59]",
+    headerBg:   "bg-[#4a7c59] border-[#4a7c59]",
+    headerText: "text-white",
+    cellBg:     "bg-[#4a7c59]/20 border-[#4a7c59]/40",
+    dot:        "bg-[#4a7c59]",
+    legendText: "text-[#4a7c59]",
   },
 ] as const;
 
@@ -129,7 +129,7 @@ export default function HowItWorks() {
           <SectionHeader
             eyebrow="Sådan fungerer det"
             title={<>Fra behov til kontrakt — <span className="text-orange italic">3 parter, 5 faser</span></>}
-            sub="FindIT koordinerer processen mellem dig, vores leverandørnetværk og konsulenterne — du vælger frit og indgår aftalen direkte."
+            sub="FindITconsultants koordinerer processen mellem dig, vores leverandørnetværk og konsulenterne — du vælger frit og indgår aftalen direkte."
             center
           />
         </RevealOnScroll>
@@ -202,7 +202,7 @@ export default function HowItWorks() {
             {LANES.map(lane => (
               <div key={lane.key} className="flex items-center gap-1.5">
                 <span className={`w-2.5 h-2.5 rounded-full ${lane.dot}`} />
-                <span className={`text-xs font-bold opacity-70 ${lane.headerText}`}>{lane.label}</span>
+                <span className={`text-xs font-bold opacity-70 ${lane.legendText}`}>{lane.label}</span>
               </div>
             ))}
             <span className="text-charcoal/25 text-xs">· · ·</span>

@@ -34,7 +34,7 @@ export default function Footer() {
           </div>
         </div>
         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs">
-          <p>© {new Date().getFullYear()} FindITkonsulenter.dk — Alle rettigheder forbeholdes</p>
+          <p>© {new Date().getFullYear()} FindITconsultants.com — Alle rettigheder forbeholdes</p>
           <div className="flex gap-6">
             <Link href="/privacy" className="hover:text-white transition-colors">Privatlivspolitik</Link>
             <Link href="/cookies" className="hover:text-white transition-colors">Cookies</Link>
