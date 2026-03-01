@@ -25,12 +25,13 @@ export default function AnsøgningerPage() {
     setProcessing(app.id);
 
     if (decision === "accepted") {
+      const tempPassword = Math.random().toString(36).slice(-10) + "Aa1!";
       const res = await fetch("/api/create-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: app.email,
-          password: Math.random().toString(36).slice(-10),
+          password: tempPassword,
           role: "supplier",
           company_name: app.company_name,
           contact_name: `${app.first_name} ${app.last_name}`,
@@ -51,7 +52,12 @@ export default function AnsøgningerPage() {
       await fetch("/api/notify-supplier-approved", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: app.email, first_name: app.first_name, company_name: app.company_name }),
+        body: JSON.stringify({
+          email: app.email,
+          first_name: app.first_name,
+          company_name: app.company_name,
+          password: tempPassword,
+        }),
       });
     }
 

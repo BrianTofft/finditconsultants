@@ -364,8 +364,10 @@ export default function PortalPage() {
             <h2 className="font-bold text-lg text-charcoal mb-5">Min profil</h2>
             <div className="space-y-4">
               <div>
-                <label className={lbl}>Firmanavn</label>
-                <input className={inp} placeholder="Dit firma A/S" value={profile.company_name} onChange={e => setProfile(p => ({ ...p, company_name: e.target.value }))} />
+                <label className={lbl}>Firmanavn <span className="normal-case font-normal text-charcoal/30">(kan ikke ændres)</span></label>
+                <div className="w-full rounded-xl border border-[#e8e5e0] bg-[#f0ede8] px-4 py-2.5 text-sm text-charcoal/60">
+                  {profile.company_name || <span className="italic">Ikke angivet</span>}
+                </div>
               </div>
               <div>
                 <label className={lbl}>Kontaktperson</label>

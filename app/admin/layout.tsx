@@ -17,6 +17,7 @@ function Sidebar({ counts, onLogout }: { counts: BadgeCounts; onLogout: () => vo
     { href: "/admin/ansøgninger", label: "Ansøgninger", icon: "📋", badge: counts.applications },
     { href: "/admin/brugere", label: "Brugere", icon: "👥" },
     { href: "/admin/beskeder", label: "Beskeder", icon: "💬", badge: counts.messages },
+    { href: "/admin/profil", label: "Min profil", icon: "⚙️" },
   ];
 
   return (

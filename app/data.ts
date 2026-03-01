@@ -22,11 +22,11 @@ export const WHY_ITEMS = [
 ];
 
 export const STEPS = [
-  { n: "01", title: "Beskriv behovet",       desc: "Udfyld formularen \u2014 det tager under 3 minutter. Fortæl om kompetencer, tidslinje og arbejdsform." },
-  { n: "02", title: "Vi aktiverer markedet",  desc: "Vi kontakter \u00f8jeblikkeligt 70+ konsulenthuse, bureauer og freelancenetv\u00e6rk i Danmark og nearshore." },
-  { n: "03", title: "Vi screener svarene",    desc: "Vi gennemg\u00e5r alle indkomne profiler og priser og sorterer irrelevante kandidater fra for dig." },
-  { n: "04", title: "Du v\u00e6lger frit",         desc: "Du modtager 4\u20139 relevante, screenede profiler med priser. Interview hvem du vil \u2014 ingen forpligtelse." },
-  { n: "05", title: "Direkte kontrakt",       desc: "Du indg\u00e5r aftalen direkte med den valgte leverand\u00f8r. Vi er ikke part i kontrakten og tager intet gebyr." },
+  { n: "01", icon: "📋", title: "Beskriv behovet",       desc: "Udfyld formularen på under 3 minutter — kompetencer, tidslinje, arbejdsform og budget. Helt gratis og uforpligtende." },
+  { n: "02", icon: "📡", title: "Vi aktiverer markedet",  desc: "Vi kontakter øjeblikkeligt 70+ konsulenthuse, bureauer og freelancenetværk i Danmark og nearshore." },
+  { n: "03", icon: "🔍", title: "Vi screener profiler",   desc: "Alle indkomne profiler og priser gennemgås grundigt. Irrelevante forslag sorteres fra, inden de når dig." },
+  { n: "04", icon: "👤", title: "Du vælger frit",         desc: "Du modtager 4–9 screenede profiler med priser i din kundeportal. Interview hvem du vil — ingen forpligtelse." },
+  { n: "05", icon: "🤝", title: "Direkte kontrakt",       desc: "Aftalen indgås direkte med den valgte leverandør. FindIT er ikke part i kontrakten og tager intet gebyr fra kunden." },
 ];
 
 export const SERVICES = [

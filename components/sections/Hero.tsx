@@ -67,7 +67,7 @@ export default function Hero() {
             <span className="relative inline-block">
               <span className="text-orange">Vi finder konsulenterne.</span>
               <svg className="absolute -bottom-1 left-0 w-full" viewBox="0 0 300 8" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-                <path d="M2 6 Q75 2 150 5 Q225 8 298 4" stroke="#e8632a" strokeWidth="3" strokeLinecap="round" fill="none" opacity="0.75"/>
+                <path d="M2 6 Q75 2 150 5 Q225 8 298 4" stroke="#2d2c2c" strokeWidth="3" strokeLinecap="round" fill="none" className="draw-underline"/>
               </svg>
             </span>
           </h1>
