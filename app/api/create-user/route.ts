@@ -7,7 +7,7 @@ const supabaseAdmin = createClient(
 );
 
 export async function POST(req: Request) {
-  const { email, password, role, company_name, contact_name, phone } = await req.json();
+  const { email, password, role, company_name, contact_name, phone, first_name, last_name, company_type } = await req.json();
 
   // Opret bruger i Supabase Auth
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -24,9 +24,21 @@ export async function POST(req: Request) {
 
   // Tilføj til den rigtige tabel
   if (role === "admin") {
-    await supabaseAdmin.from("admins").insert({ id: userId, email });
+    await supabaseAdmin.from("admins").insert({
+      id: userId, email,
+      first_name: first_name ?? "",
+      last_name: last_name ?? "",
+      phone: phone ?? "",
+    });
   } else if (role === "supplier") {
-    await supabaseAdmin.from("suppliers").insert({ id: userId, email, company_name, contact_name, phone });
+    const fullName = [first_name, last_name].filter(Boolean).join(" ") || contact_name || "";
+    await supabaseAdmin.from("suppliers").insert({
+      id: userId, email, company_name, phone,
+      first_name: first_name ?? "",
+      last_name: last_name ?? "",
+      contact_name: fullName,
+      company_type: company_type ?? "",
+    });
   } else if (role === "customer") {
     await supabaseAdmin.from("customers").insert({ id: userId, email, company_name, contact_name, phone });
   }

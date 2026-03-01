@@ -27,7 +27,7 @@ export default function BrugerePage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [newUser, setNewUser] = useState({ email: "", password: "", role: "customer", company_name: "", contact_name: "", phone: "" });
+  const [newUser, setNewUser] = useState({ email: "", password: "", role: "customer", company_name: "", contact_name: "", phone: "", first_name: "", last_name: "", company_type: "" });
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const [createSuccess, setCreateSuccess] = useState(false);
@@ -63,7 +63,7 @@ export default function BrugerePage() {
       setCreateError(data.error);
     } else {
       setCreateSuccess(true);
-      setNewUser({ email: "", password: "", role: "customer", company_name: "", contact_name: "", phone: "" });
+      setNewUser({ email: "", password: "", role: "customer", company_name: "", contact_name: "", phone: "", first_name: "", last_name: "", company_type: "" });
       const { data: userData } = await supabase.from("user_roles").select("*");
       setUsers(userData ?? []);
       setTimeout(() => { setCreateSuccess(false); setShowCreateForm(false); }, 2000);
@@ -178,7 +178,10 @@ export default function BrugerePage() {
     const q = search.toLowerCase();
     return u.email?.toLowerCase().includes(q)
       || u.company_name?.toLowerCase().includes(q)
-      || u.contact_name?.toLowerCase().includes(q);
+      || u.supplier_company?.toLowerCase().includes(q)
+      || u.contact_name?.toLowerCase().includes(q)
+      || u.first_name?.toLowerCase().includes(q)
+      || u.last_name?.toLowerCase().includes(q);
   });
 
   if (loading) return (
@@ -216,19 +219,54 @@ export default function BrugerePage() {
         <div className="bg-white rounded-2xl border border-[#ede9e3] p-6 mb-6">
           <h3 className="font-bold text-charcoal mb-4">Opret ny bruger</h3>
           <div className="grid grid-cols-2 gap-3 mb-4">
+            {/* Altid: Email + Password + Rolle */}
             <div><label className={lbl}>Email</label><input className={inp} type="email" placeholder="email@firma.dk" value={newUser.email} onChange={e => setNewUser(u => ({ ...u, email: e.target.value }))} /></div>
             <div><label className={lbl}>Password</label><input className={inp} type="password" placeholder="Midlertidigt password" value={newUser.password} onChange={e => setNewUser(u => ({ ...u, password: e.target.value }))} /></div>
-            <div>
+            <div className="col-span-2">
               <label className={lbl}>Rolle</label>
-              <select className={inp} value={newUser.role} onChange={e => setNewUser(u => ({ ...u, role: e.target.value }))}>
+              <select className={inp} value={newUser.role} onChange={e => setNewUser(u => ({ ...u, role: e.target.value, company_name: "", contact_name: "", phone: "", first_name: "", last_name: "", company_type: "" }))}>
                 <option value="customer">Kunde</option>
                 <option value="supplier">Leverandør</option>
                 <option value="admin">Admin</option>
               </select>
             </div>
-            <div><label className={lbl}>Firmanavn</label><input className={inp} placeholder="Firma A/S" value={newUser.company_name} onChange={e => setNewUser(u => ({ ...u, company_name: e.target.value }))} /></div>
-            <div><label className={lbl}>Kontaktperson</label><input className={inp} placeholder="Navn Efternavn" value={newUser.contact_name} onChange={e => setNewUser(u => ({ ...u, contact_name: e.target.value }))} /></div>
-            <div><label className={lbl}>Telefon</label><input className={inp} placeholder="+45 12 34 56 78" value={newUser.phone} onChange={e => setNewUser(u => ({ ...u, phone: e.target.value }))} /></div>
+
+            {/* Kunde-felter */}
+            {newUser.role === "customer" && (
+              <>
+                <div className="col-span-2"><label className={lbl}>Firmanavn</label><input className={inp} placeholder="Firma A/S" value={newUser.company_name} onChange={e => setNewUser(u => ({ ...u, company_name: e.target.value }))} /></div>
+                <div><label className={lbl}>Kontaktperson</label><input className={inp} placeholder="Navn Efternavn" value={newUser.contact_name} onChange={e => setNewUser(u => ({ ...u, contact_name: e.target.value }))} /></div>
+                <div><label className={lbl}>Telefon</label><input className={inp} placeholder="+45 12 34 56 78" value={newUser.phone} onChange={e => setNewUser(u => ({ ...u, phone: e.target.value }))} /></div>
+              </>
+            )}
+
+            {/* Leverandør-felter */}
+            {newUser.role === "supplier" && (
+              <>
+                <div className="col-span-2"><label className={lbl}>Virksomhedsnavn</label><input className={inp} placeholder="Firma A/S" value={newUser.company_name} onChange={e => setNewUser(u => ({ ...u, company_name: e.target.value }))} /></div>
+                <div><label className={lbl}>Fornavn</label><input className={inp} placeholder="Fornavn" value={newUser.first_name} onChange={e => setNewUser(u => ({ ...u, first_name: e.target.value }))} /></div>
+                <div><label className={lbl}>Efternavn</label><input className={inp} placeholder="Efternavn" value={newUser.last_name} onChange={e => setNewUser(u => ({ ...u, last_name: e.target.value }))} /></div>
+                <div><label className={lbl}>Telefon</label><input className={inp} placeholder="+45 12 34 56 78" value={newUser.phone} onChange={e => setNewUser(u => ({ ...u, phone: e.target.value }))} /></div>
+                <div>
+                  <label className={lbl}>Virksomhedstype</label>
+                  <select className={inp} value={newUser.company_type} onChange={e => setNewUser(u => ({ ...u, company_type: e.target.value }))}>
+                    <option value="">Vælg…</option>
+                    <option>Konsulenthus (egne konsulenter)</option>
+                    <option>Konsulentformidler (freelancers)</option>
+                    <option>Selvstændig (freelancer)</option>
+                  </select>
+                </div>
+              </>
+            )}
+
+            {/* Admin-felter */}
+            {newUser.role === "admin" && (
+              <>
+                <div><label className={lbl}>Fornavn</label><input className={inp} placeholder="Fornavn" value={newUser.first_name} onChange={e => setNewUser(u => ({ ...u, first_name: e.target.value }))} /></div>
+                <div><label className={lbl}>Efternavn</label><input className={inp} placeholder="Efternavn" value={newUser.last_name} onChange={e => setNewUser(u => ({ ...u, last_name: e.target.value }))} /></div>
+                <div><label className={lbl}>Telefon</label><input className={inp} placeholder="+45 12 34 56 78" value={newUser.phone} onChange={e => setNewUser(u => ({ ...u, phone: e.target.value }))} /></div>
+              </>
+            )}
           </div>
           {createError && <p className="text-red-500 text-xs font-bold mb-3">{createError}</p>}
           <div className="flex gap-2">
@@ -290,8 +328,15 @@ export default function BrugerePage() {
                     <div key={u.id} className="px-5 py-3 flex items-center justify-between gap-4 hover:bg-[#faf9f7] transition-colors">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-sm text-charcoal">{u.contact_name || u.email}</span>
+                          <span className="font-semibold text-sm text-charcoal">
+                            {(u.rolle === "Leverandør" || u.rolle === "Admin") && (u.first_name || u.last_name)
+                              ? [u.first_name, u.last_name].filter(Boolean).join(" ")
+                              : (u.contact_name || u.email)}
+                          </span>
                           <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${rolleColor[u.rolle] ?? "bg-gray-100 text-gray-500"}`}>{u.rolle}</span>
+                          {u.rolle === "Leverandør" && u.company_type && (
+                            <span className="text-xs text-charcoal/35 font-medium italic">{u.company_type}</span>
+                          )}
                         </div>
                         <p className="text-xs text-charcoal/45 mt-0.5">{u.email}{u.phone ? ` · ${u.phone}` : ""}</p>
                       </div>
@@ -320,17 +365,28 @@ export default function BrugerePage() {
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    {/* Titel: firmanavn for Kunde/Leverandør, navn for Admin */}
                     <span className="font-bold text-sm text-charcoal">
-                      {u.rolle === "Leverandør"
-                        ? (u.supplier_company || u.company_name || u.email)
-                        : (u.company_name || u.email)}
+                      {u.rolle === "Admin"
+                        ? (u.contact_name || u.email)
+                        : (u.company_name || u.supplier_company || u.email)}
                     </span>
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${rolleColor[u.rolle] ?? "bg-gray-100 text-gray-500"}`}>{u.rolle}</span>
+                    {u.rolle === "Leverandør" && u.company_type && (
+                      <span className="text-xs text-charcoal/40 font-medium italic">{u.company_type}</span>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-0.5">
-                    {u.contact_name && (
+                    {/* Kontaktperson: fornavn+efternavn for Leverandør/Admin, contact_name for Kunde */}
+                    {u.rolle === "Kunde" && u.contact_name && (
                       <p className="text-xs text-charcoal/60">
                         <span className="font-semibold text-charcoal/40 mr-1">Kontakt</span>{u.contact_name}
+                      </p>
+                    )}
+                    {(u.rolle === "Leverandør" || u.rolle === "Admin") && (u.first_name || u.last_name) && (
+                      <p className="text-xs text-charcoal/60">
+                        <span className="font-semibold text-charcoal/40 mr-1">Navn</span>
+                        {[u.first_name, u.last_name].filter(Boolean).join(" ")}
                       </p>
                     )}
                     <p className="text-xs text-charcoal/55">
@@ -344,7 +400,7 @@ export default function BrugerePage() {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                  <p className="text-[10px] text-charcoal/30">{new Date(u.created_at).toLocaleDateString("da-DK")}</p>
+                  {u.created_at && <p className="text-[10px] text-charcoal/30">{new Date(u.created_at).toLocaleDateString("da-DK")}</p>}
                   <button
                     onClick={() => handleExpand(u)}
                     className={`text-xs font-bold px-3 py-1 rounded-full transition-colors ${

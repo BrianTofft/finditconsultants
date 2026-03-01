@@ -18,6 +18,7 @@ export type Supplier = { id: string; email: string; company_name: string };
 export type User = {
   id: string; email: string; created_at: string; rolle: string;
   company_name: string; contact_name: string; phone: string; supplier_company: string;
+  first_name: string | null; last_name: string | null; company_type: string | null;
 };
 
 export type Contract = {
