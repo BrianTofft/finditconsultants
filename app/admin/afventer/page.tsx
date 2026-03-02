@@ -104,6 +104,16 @@ export default function AfventerPage() {
                     {r.work_mode && <span>📍 {r.work_mode}</span>}
                     {r.start_date && <span>📅 {r.start_date}</span>}
                   </div>
+                  {r.file_url && (
+                    <a
+                      href={r.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 mt-2 text-xs font-bold text-orange hover:underline"
+                    >
+                      📎 Se vedhæftet fil
+                    </a>
+                  )}
                 </div>
                 <div className="flex flex-col gap-2 flex-shrink-0">
                   <button

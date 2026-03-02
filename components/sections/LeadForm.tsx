@@ -2,10 +2,12 @@
 import { useState } from "react";
 import { COMPETENCIES } from "@/app/data";
 import Button from "@/components/ui/Button";
+import { supabase } from "@/lib/supabase";
 
 export default function LeadForm() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [dropOpen, setDropOpen] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -33,12 +35,29 @@ export default function LeadForm() {
     setLoading(true);
     setError(false);
     try {
+      // Upload fil til Supabase Storage hvis valgt
+      let fileUrl: string | null = null;
+      if (file) {
+        const ext = file.name.split(".").pop();
+        const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("request-files")
+          .upload(path, file, { upsert: false });
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage
+            .from("request-files")
+            .getPublicUrl(path);
+          fileUrl = urlData.publicUrl;
+        }
+      }
+
       const res = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
           competencies: Array.from(selected),
+          fileUrl,
         }),
       });
       if (res.ok) {
@@ -80,7 +99,7 @@ export default function LeadForm() {
         <div>
           <label className={lbl}>Upload evt. opgavebeskrivelse <span className="normal-case font-normal">(valgfrit)</span></label>
           <label className="flex items-center gap-3 w-full rounded-xl border border-dashed border-[#d4cfc8] bg-[#f8f6f3] px-4 py-2.5 cursor-pointer hover:border-orange hover:bg-orange-light transition-all group">
-            <input type="file" accept=".pdf,.doc,.docx,.txt" className="hidden" onChange={e => e.target.files?.[0] && setFileName(e.target.files[0].name)} />
+            <input type="file" accept=".pdf,.doc,.docx,.txt" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) { setFile(f); setFileName(f.name); } }} />
             <span className="text-base">📎</span>
             <div className="flex-1 min-w-0">
               <div className="text-xs font-bold text-charcoal">Klik for at uploade</div>

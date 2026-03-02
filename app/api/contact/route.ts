@@ -17,6 +17,7 @@ export async function POST(req: Request) {
     language,
     nearshore,
     email,
+    fileUrl,
   } = body;
 
   // Gem i database
@@ -31,6 +32,7 @@ export async function POST(req: Request) {
     language,
     nearshore,
     status: "Ny",
+    file_url: fileUrl || null,
   });
 
   // Send email
@@ -52,6 +54,7 @@ export async function POST(req: Request) {
         <p><strong>Omfang:</strong> ${scope}</p>
         <p><strong>Sprog:</strong> ${language}</p>
         <p><strong>Nearshore:</strong> ${nearshore}</p>
+        ${fileUrl ? `<hr /><p><strong>📎 Vedhæftet fil:</strong> <a href="${fileUrl}">${fileUrl}</a></p>` : ""}
       `,
     });
 

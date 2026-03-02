@@ -150,6 +150,17 @@ export default function ForspørgslerPage() {
                       {r.work_mode && <span>📍 {r.work_mode}</span>}
                       {r.start_date && <span>📅 {r.start_date}</span>}
                     </div>
+                    {r.file_url && (
+                      <a
+                        href={r.file_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={e => e.stopPropagation()}
+                        className="inline-flex items-center gap-1.5 mt-1.5 text-xs font-bold text-orange hover:underline"
+                      >
+                        📎 Se vedhæftet fil
+                      </a>
+                    )}
                   </div>
                   <div className="flex flex-col items-end gap-2 flex-shrink-0" onClick={e => e.stopPropagation()}>
                     <span className={`text-xs font-bold px-3 py-1 rounded-full ${statusColor[r.status] ?? "bg-gray-100 text-gray-600"}`}>{r.status}</span>
