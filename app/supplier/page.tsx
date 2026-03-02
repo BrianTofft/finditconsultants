@@ -241,8 +241,8 @@ export default function SupplierPage() {
     let cv_url = null;
     if (cvFile) {
       const fileName = `${supplierId}/${Date.now()}_${cvFile.name}`;
-      await supabase.storage.from("cvs").upload(fileName, cvFile);
-      const { data: urlData } = supabase.storage.from("cvs").getPublicUrl(fileName);
+      await supabase.storage.from("CVS").upload(fileName, cvFile);
+      const { data: urlData } = supabase.storage.from("CVS").getPublicUrl(fileName);
       cv_url = urlData.publicUrl;
     };
 
@@ -529,8 +529,8 @@ export default function SupplierPage() {
                       </label>
                     </div>  
                     <div>
-                      <label className={lbl}>Tilgængelighed</label>
-                      <input required className={inp} placeholder="F.eks. 1. marts 2026" value={form.availability} onChange={e => setForm(f => ({ ...f, availability: e.target.value }))} />
+                      <label className={lbl}>Tilgængelighed fra</label>
+                      <input type="date" required className={inp} value={form.availability} onChange={e => setForm(f => ({ ...f, availability: e.target.value }))} />
                     </div>
                     <div>
                       <label className={lbl}>Kort beskrivelse</label>

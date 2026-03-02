@@ -181,7 +181,7 @@ export default function KonsulenterPage() {
                         </div>
                         <div className="flex flex-wrap gap-4 text-xs text-charcoal/40 font-semibold">
                           {s.rate && <span>💰 {s.rate} DKK/t</span>}
-                          {s.availability && <span>📅 {s.availability}</span>}
+                          {s.availability && <span>📅 {new Date(s.availability).toLocaleDateString("da-DK")}</span>}
                         </div>
                         {s.bio && <p className="text-xs text-charcoal/60 mt-2 line-clamp-2">{s.bio}</p>}
 

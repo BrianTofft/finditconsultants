@@ -13,6 +13,7 @@ type Submission = {
   skills: string[];
   bio: string;
   availability: string;
+  cv_url: string | null;
   customer_decision: string | null;
   interview_datetime: string | null;
   interview_confirmed: boolean;
@@ -377,7 +378,15 @@ export default function PortalPage() {
                               <div key={s.id} className="bg-white rounded-xl border border-[#ede9e3] p-4">
                                 <div className="flex items-start justify-between gap-3 mb-3">
                                   <div className="flex-1">
-                                    <p className="font-bold text-sm text-charcoal">{s.name}</p>
+                                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                                      <p className="font-bold text-sm text-charcoal">{s.name}</p>
+                                      {s.cv_url && (
+                                        <a href={s.cv_url} target="_blank" rel="noopener noreferrer"
+                                          className="text-xs bg-blue-50 text-blue-600 font-bold px-2 py-0.5 rounded-full hover:bg-blue-100 transition-colors">
+                                          📄 CV
+                                        </a>
+                                      )}
+                                    </div>
                                     <p className="text-xs text-charcoal/50 mb-2">{s.title}</p>
                                     <div className="flex flex-wrap gap-1 mb-2">
                                       {s.skills?.map(skill => (
@@ -389,7 +398,7 @@ export default function PortalPage() {
                                   <div className="text-right shrink-0">
                                     {s.rate && <p className="font-bold text-sm text-orange">{s.rate} DKK/t</p>}
                                     {s.experience_years && <p className="text-xs text-charcoal/40">{s.experience_years} års erfaring</p>}
-                                    {s.availability && <p className="text-xs text-charcoal/40 mt-1">📅 {s.availability}</p>}
+                                    {s.availability && <p className="text-xs text-charcoal/40 mt-1">📅 {new Date(s.availability).toLocaleDateString("da-DK")}</p>}
                                   </div>
                                 </div>
 
