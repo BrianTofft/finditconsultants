@@ -20,6 +20,7 @@ export default function ForspørgslerPage() {
   const [editedCompetencies, setEditedCompetencies] = useState<Record<string, string[]>>({});
   const [aiRankings, setAiRankings] = useState<Record<string, Array<{ supplier_id: string; stars: number; reason: string }>>>({});
   const [ranking, setRanking] = useState<string | null>(null);
+  const [rankingError, setRankingError] = useState<Record<string, string>>({});
   const [showContractForm, setShowContractForm] = useState<string | null>(null);
   const [contractForm, setContractForm] = useState({ consultant_name: "", rate: "", duration: "", start_date: "", supplier_id: "" });
   const [savingContract, setSavingContract] = useState(false);
@@ -94,18 +95,29 @@ export default function ForspørgslerPage() {
 
   const rankSuppliers = async (requestId: string) => {
     setRanking(requestId);
+    setRankingError(prev => { const n = { ...prev }; delete n[requestId]; return n; });
     try {
       const res = await fetch("/api/ai-rank-suppliers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ request_id: requestId }),
       });
-      const data = await res.json();
-      if (data.rankings) setAiRankings(prev => ({ ...prev, [requestId]: data.rankings }));
+      const data = await res.json() as { rankings?: Array<{ supplier_id: string; stars: number; reason: string }>; error?: string };
+      if (data.error) {
+        setRankingError(prev => ({ ...prev, [requestId]: `AI fejl: ${data.error}` }));
+        console.error("AI ranking fejl:", data.error);
+      } else if (data.rankings && data.rankings.length > 0) {
+        setAiRankings(prev => ({ ...prev, [requestId]: data.rankings! }));
+      } else {
+        setRankingError(prev => ({ ...prev, [requestId]: "AI returnerede ingen rangering. Tjek serverlogs." }));
+      }
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setRankingError(prev => ({ ...prev, [requestId]: `Netværksfejl: ${msg}` }));
       console.error("AI ranking fejl:", err);
+    } finally {
+      setRanking(null);
     }
-    setRanking(null);
   };
 
   const withdrawSupplier = async (requestId: string, supplierId: string) => {
@@ -178,6 +190,9 @@ export default function ForspørgslerPage() {
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      {r.reference_number && (
+                        <span className="text-xs font-black text-orange bg-orange/10 px-2 py-0.5 rounded-full tracking-wide">{r.reference_number}</span>
+                      )}
                       <span className="font-bold text-charcoal">{r.email}</span>
                       <span className="text-charcoal/35 text-xs">{new Date(r.created_at).toLocaleDateString("da-DK")}</span>
                     </div>
@@ -283,6 +298,11 @@ export default function ForspørgslerPage() {
                       )}
                     </button>
                   </div>
+                  {rankingError[r.id] && (
+                    <div className="mb-3 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                      <p className="text-xs text-red-600 font-semibold">⚠ {rankingError[r.id]}</p>
+                    </div>
+                  )}
                   {aiRankings[r.id] && (
                     <p className="text-[10px] text-charcoal/40 font-semibold mb-2">Sorteret efter AI-match — klik for at vælge</p>
                   )}
