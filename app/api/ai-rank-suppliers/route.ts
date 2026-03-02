@@ -39,8 +39,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Ingen leverandører fundet" }, { status: 404 });
   }
 
+  // Brug simple numre i stedet for UUIDs — AI reproducerer ikke UUIDs pålideligt
   const supplierList = suppliers
-    .map(s => `ID: ${s.id}
+    .map((s, idx) => `NR: ${idx}
 Firma: ${s.company_name || s.email}
 Type: ${s.company_type || "Ikke angivet"}
 Kompetencer: ${(s.competencies as string[] | null)?.join(", ") || "Ikke angivet"}
@@ -48,7 +49,7 @@ Ekstra kompetencer: ${s.extra_competencies || "Ingen"}
 Sprog: ${s.language || "Ikke angivet"}`)
     .join("\n---\n");
 
-  const prompt = `Du er en erfaren IT-rekrutteringsekspert i Danmark. Du skal vurdere og rangere følgende leverandørvirksomheder op mod en given IT-konsulentopgave.
+  const prompt = `Du er en erfaren IT-rekrutteringsekspert i Danmark. Vurder og rangér følgende leverandørvirksomheder op mod en IT-konsulentopgave.
 
 OPGAVE:
 Beskrivelse: ${request.description || "Ikke angivet"}
@@ -64,20 +65,13 @@ Note fra admin: ${request.admin_note || "Ingen"}
 LEVERANDØRER:
 ${supplierList}
 
-Vurder ALLE leverandører og giv hver en stjernebedømmelse fra 1–5 baseret på match med opgaven:
-- 5 stjerner: Meget stærkt match, leverandøren dækker de fleste eller alle kompetencer
-- 4 stjerner: Godt match, dækker hoveddelen af kompetencerne
-- 3 stjerner: Rimeligt match, delvist overlap
-- 2 stjerner: Svagt match, begrænset overlap
-- 1 stjerne: Dårligt match, meget lidt eller intet overlap
+Giv ALLE leverandører en stjernebedømmelse fra 1–5:
+5 = Meget stærkt match | 4 = Godt match | 3 = Rimeligt | 2 = Svagt | 1 = Dårligt
 
-Svar KUN med et JSON-array (ingen tekst udenfor JSON):
-[
-  { "supplier_id": "<ID>", "stars": <1-5>, "reason": "<kort begrundelse på dansk, max 15 ord>" },
-  ...
-]
+Svar KUN med JSON-array, ingen tekst udenfor:
+[{"nr":<NR>,"stars":<1-5>,"reason":"<dansk begrundelse max 12 ord>"},...]
 
-Inkludér ALLE leverandører i svaret, sorteret fra højeste til laveste match.`;
+Inkludér ALLE leverandører, sorteret fra højeste til laveste match.`;
 
   try {
     const message = await anthropic.messages.create({
@@ -90,14 +84,18 @@ Inkludér ALLE leverandører i svaret, sorteret fra højeste til laveste match.`
     const jsonMatch = text.match(/\[[\s\S]*\]/);
     if (!jsonMatch) throw new Error("Ugyldigt JSON-svar fra AI");
 
-    const rankings = JSON.parse(jsonMatch[0]) as SupplierRanking[];
+    const raw = JSON.parse(jsonMatch[0]) as Array<{ nr: number; stars: number; reason: string }>;
 
-    // Valider og clamp stjerner
-    const validated = rankings
-      .filter(r => r.supplier_id && r.stars)
-      .map(r => ({ ...r, stars: Math.min(5, Math.max(1, Math.round(r.stars))) }));
+    // Map nr → rigtig supplier_id
+    const rankings: SupplierRanking[] = raw
+      .filter(r => typeof r.nr === "number" && suppliers[r.nr])
+      .map(r => ({
+        supplier_id: suppliers[r.nr].id,
+        stars: Math.min(5, Math.max(1, Math.round(r.stars))),
+        reason: r.reason,
+      }));
 
-    return NextResponse.json({ rankings: validated });
+    return NextResponse.json({ rankings });
   } catch (err) {
     console.error("AI leverandør-ranking fejl:", err);
     return NextResponse.json({ error: "AI-analyse mislykkedes" }, { status: 500 });
