@@ -14,6 +14,8 @@ type Request = {
   duration: string;
   work_mode: string;
   start_date: string;
+  file_url?: string | null;
+  max_rate?: number | null;
 };
 
 type Submission = {
