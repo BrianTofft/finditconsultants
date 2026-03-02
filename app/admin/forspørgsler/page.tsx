@@ -13,6 +13,7 @@ export default function ForspørgslerPage() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [selectedSuppliers, setSelectedSuppliers] = useState<Record<string, Set<string>>>({});
   const [notifying, setNotifying] = useState<string | null>(null);
+  const [withdrawing, setWithdrawing] = useState<string | null>(null);
   const [notified, setNotified] = useState<Record<string, boolean>>({});
   const [adminNotes, setAdminNotes] = useState<Record<string, string>>({});
   const [showContractForm, setShowContractForm] = useState<string | null>(null);
@@ -76,6 +77,18 @@ export default function ForspørgslerPage() {
     setNotifiedSuppliers(prev => ({ ...prev, [requestId]: [...(prev[requestId] ?? []), ...selected] }));
     setNotifying(null);
     setTimeout(() => setNotified(prev => ({ ...prev, [requestId]: false })), 3000);
+  };
+
+  const withdrawSupplier = async (requestId: string, supplierId: string) => {
+    const supplier = suppliers.find(s => s.id === supplierId);
+    if (!confirm(`Træk forespørgslen tilbage fra ${supplier?.company_name || supplier?.email}?\n\nLeverandøren vil ikke længere kunne se opgaven i sin portal.`)) return;
+    setWithdrawing(supplierId);
+    await supabase.from("request_suppliers").delete().eq("request_id", requestId).eq("supplier_id", supplierId);
+    setNotifiedSuppliers(prev => ({
+      ...prev,
+      [requestId]: (prev[requestId] ?? []).filter(id => id !== supplierId),
+    }));
+    setWithdrawing(null);
   };
 
   const createContract = async (requestId: string) => {
@@ -216,10 +229,10 @@ export default function ForspørgslerPage() {
                         <div
                           key={s.id}
                           onClick={() => !alreadyNotified && toggleSupplier(r.id, s.id)}
-                          className={`flex items-center gap-2 p-3 rounded-xl border cursor-pointer transition-all text-sm font-semibold ${
+                          className={`flex items-center gap-2 p-3 rounded-xl border transition-all text-sm font-semibold ${
                             alreadyNotified ? "border-green-200 bg-green-50 text-green-700 cursor-default"
-                            : isSelected ? "border-orange bg-orange/5 text-charcoal"
-                            : "border-[#e8e5e0] bg-white hover:border-orange/50 text-charcoal"
+                            : isSelected ? "border-orange bg-orange/5 text-charcoal cursor-pointer"
+                            : "border-[#e8e5e0] bg-white hover:border-orange/50 text-charcoal cursor-pointer"
                           }`}
                         >
                           <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-colors ${
@@ -233,7 +246,17 @@ export default function ForspørgslerPage() {
                               </svg>
                             )}
                           </div>
-                          <span className="truncate">{s.company_name || s.email}</span>
+                          <span className="truncate flex-1">{s.company_name || s.email}</span>
+                          {alreadyNotified && (
+                            <button
+                              onClick={e => { e.stopPropagation(); withdrawSupplier(r.id, s.id); }}
+                              disabled={withdrawing === s.id}
+                              title="Træk forespørgsel tilbage"
+                              className="ml-auto text-[10px] font-bold text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 px-2 py-0.5 rounded-full transition-colors disabled:opacity-50 flex-shrink-0"
+                            >
+                              {withdrawing === s.id ? "…" : "Træk tilbage"}
+                            </button>
+                          )}
                         </div>
                       );
                     })}
