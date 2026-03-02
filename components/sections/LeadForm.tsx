@@ -197,12 +197,11 @@ export default function LeadForm() {
             <input
               type="number"
               className={inp}
-              placeholder="950"
+              placeholder="950 DKK/t"
               min="0"
               value={form.maxRate}
               onChange={e => setForm(f => ({ ...f, maxRate: e.target.value }))}
             />
-            <p className="text-[10px] text-charcoal/35 mt-1 font-semibold">DKK/time ekskl. moms — valgfrit</p>
           </div>
         </div>
 
