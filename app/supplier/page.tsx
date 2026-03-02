@@ -403,10 +403,22 @@ export default function SupplierPage() {
                           <span key={c} className="bg-orange/10 text-orange text-xs font-bold px-2 py-0.5 rounded-full">{c}</span>
                         ))}
                       </div>
-                      <div className="flex gap-3 text-xs text-charcoal/40 font-semibold">
+                      <div className="flex flex-wrap gap-3 text-xs text-charcoal/40 font-semibold">
                         {r.duration && <span>⏱ {r.duration}</span>}
                         {r.work_mode && <span>📍 {r.work_mode}</span>}
+                        {r.max_rate && <span className="text-green font-bold">💰 Maks. {r.max_rate} DKK/t</span>}
                       </div>
+                      {r.file_url && (
+                        <a
+                          href={r.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={e => e.stopPropagation()}
+                          className="inline-flex items-center gap-1 mt-2 text-xs font-bold text-orange hover:underline"
+                        >
+                          📎 Se opgavebeskrivelse
+                        </a>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -426,9 +438,27 @@ export default function SupplierPage() {
                   </div>
                 ) : (
                   <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-[#ede9e3] p-5 space-y-3">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-between mb-1">
                       <p className="text-xs text-charcoal/50 font-semibold">Forespørgsel valgt</p>
                       <button type="button" onClick={() => setSelectedRequest(null)} className="text-charcoal/40 hover:text-charcoal text-xs">× Annuller</button>
+                    </div>
+                    {/* Opgave-context til leverandøren */}
+                    <div className="bg-[#f8f6f3] rounded-xl p-3 mb-1 flex flex-wrap gap-3 text-xs font-semibold text-charcoal/55">
+                      {selectedRequest.max_rate && (
+                        <span className="text-green font-bold">💰 Maks. {selectedRequest.max_rate} DKK/time</span>
+                      )}
+                      {selectedRequest.duration && <span>⏱ {selectedRequest.duration}</span>}
+                      {selectedRequest.work_mode && <span>📍 {selectedRequest.work_mode}</span>}
+                      {selectedRequest.file_url && (
+                        <a
+                          href={selectedRequest.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-orange font-bold hover:underline"
+                        >
+                          📎 Se opgavebeskrivelse
+                        </a>
+                      )}
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>

@@ -18,6 +18,7 @@ export async function POST(req: Request) {
     nearshore,
     email,
     fileUrl,
+    maxRate,
   } = body;
 
   // Gem i database
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
     nearshore,
     status: "Ny",
     file_url: fileUrl || null,
+    max_rate: maxRate || null,
   });
 
   // Send email
@@ -53,7 +55,8 @@ export async function POST(req: Request) {
         <p><strong>Arbejdsform:</strong> ${workMode}</p>
         <p><strong>Omfang:</strong> ${scope}</p>
         <p><strong>Sprog:</strong> ${language}</p>
-        <p><strong>Nearshore:</strong> ${nearshore}</p>
+        <p><strong>Nearshore/Offshore:</strong> ${nearshore}</p>
+        ${maxRate ? `<p><strong>Maks. timepris:</strong> ${maxRate} DKK/time</p>` : ""}
         ${fileUrl ? `<hr /><p><strong>📎 Vedhæftet fil:</strong> <a href="${fileUrl}">${fileUrl}</a></p>` : ""}
       `,
     });

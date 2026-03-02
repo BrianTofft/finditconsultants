@@ -149,6 +149,7 @@ export default function ForspørgslerPage() {
                       {r.duration && <span>⏱ {r.duration}</span>}
                       {r.work_mode && <span>📍 {r.work_mode}</span>}
                       {r.start_date && <span>📅 {r.start_date}</span>}
+                      {r.max_rate && <span>💰 Maks. {r.max_rate} DKK/time</span>}
                     </div>
                     {r.file_url && (
                       <a

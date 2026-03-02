@@ -20,7 +20,8 @@ export default function LeadForm() {
     workMode: "Onsite",
     scope: "Fuldtid",
     language: "Dansk",
-    nearshore: "Ja, hvis relevant",
+    nearshore: "Ja",
+    maxRate: "",
     email: "",
   });
 
@@ -58,6 +59,7 @@ export default function LeadForm() {
           ...form,
           competencies: Array.from(selected),
           fileUrl,
+          maxRate: form.maxRate ? parseInt(form.maxRate) : null,
         }),
       });
       if (res.ok) {
@@ -185,10 +187,22 @@ export default function LeadForm() {
             </select>
           </div>
           <div>
-            <label className={lbl}>Nearshore?</label>
+            <label className={lbl}>Nearshore/Offshore <span className="normal-case font-normal">(lavere timepris)</span></label>
             <select className={inp} value={form.nearshore} onChange={e => setForm(f => ({ ...f, nearshore: e.target.value }))}>
-              <option>Ja, hvis relevant</option><option>Nej tak</option>
+              <option>Ja</option><option>Nej</option>
             </select>
+          </div>
+          <div>
+            <label className={lbl}>Maksimal timepris</label>
+            <input
+              type="number"
+              className={inp}
+              placeholder="950"
+              min="0"
+              value={form.maxRate}
+              onChange={e => setForm(f => ({ ...f, maxRate: e.target.value }))}
+            />
+            <p className="text-[10px] text-charcoal/35 mt-1 font-semibold">DKK/time ekskl. moms — valgfrit</p>
           </div>
         </div>
 
