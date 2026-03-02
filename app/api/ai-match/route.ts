@@ -57,9 +57,15 @@ Svar KUN med et JSON-objekt i følgende format (ingen forklaring udenfor JSON):
   "summary": "<præcis og konkret vurdering på dansk, max 10 linjer, der forklarer styrker, svagheder og det samlede match>"
 }`;
 
+  // Tjek at API-nøgle er sat
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error("ANTHROPIC_API_KEY mangler i miljøvariabler");
+    return NextResponse.json({ error: "ANTHROPIC_API_KEY er ikke konfigureret i Vercel" }, { status: 500 });
+  }
+
   try {
     const message = await anthropic.messages.create({
-      model: "claude-haiku-4-5",
+      model: "claude-3-5-haiku-20241022",
       max_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
     });
@@ -68,7 +74,7 @@ Svar KUN med et JSON-objekt i følgende format (ingen forklaring udenfor JSON):
 
     // Parse JSON fra svaret
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("Ugyldigt JSON-svar fra AI");
+    if (!jsonMatch) throw new Error(`Ugyldigt JSON-svar fra AI: ${text.slice(0, 200)}`);
 
     const result = JSON.parse(jsonMatch[0]) as { rating: number; summary: string };
     const rating = Math.min(10, Math.max(1, Math.round(result.rating)));
@@ -82,7 +88,8 @@ Svar KUN med et JSON-objekt i følgende format (ingen forklaring udenfor JSON):
 
     return NextResponse.json({ rating, summary });
   } catch (err) {
-    console.error("AI match fejl:", err);
-    return NextResponse.json({ error: "AI-analyse mislykkedes" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("AI match fejl:", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

@@ -73,9 +73,15 @@ Svar KUN med JSON-array, ingen tekst udenfor:
 
 Inkludér ALLE leverandører, sorteret fra højeste til laveste match.`;
 
+  // Tjek at API-nøgle er sat
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error("ANTHROPIC_API_KEY mangler i miljøvariabler");
+    return NextResponse.json({ error: "ANTHROPIC_API_KEY er ikke konfigureret i Vercel" }, { status: 500 });
+  }
+
   try {
     const message = await anthropic.messages.create({
-      model: "claude-haiku-4-5",
+      model: "claude-3-5-haiku-20241022",
       max_tokens: 2048,
       messages: [{ role: "user", content: prompt }],
     });

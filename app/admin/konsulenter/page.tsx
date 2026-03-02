@@ -36,6 +36,7 @@ export default function KonsulenterPage() {
   const [filter, setFilter] = useState<"all" | "Indsendt" | "Godkendt" | "Valgt" | "Afvist">("all");
   const [selecting, setSelecting] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState<string | null>(null);
+  const [aiErrors, setAiErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const load = async () => {
@@ -69,16 +70,29 @@ export default function KonsulenterPage() {
 
   const handleAiMatch = async (id: string) => {
     setAnalyzing(id);
-    const res = await fetch("/api/ai-match", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ submission_id: id }),
-    });
-    const data = await res.json() as { rating?: number; summary?: string; error?: string };
-    if (!data.error && data.rating) {
-      setSubmissions(prev => prev.map(s => s.id === id ? { ...s, ai_rating: data.rating ?? null, ai_summary: data.summary ?? null } : s));
+    setAiErrors(prev => { const n = { ...prev }; delete n[id]; return n; });
+    try {
+      const res = await fetch("/api/ai-match", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ submission_id: id }),
+      });
+      const data = await res.json() as { rating?: number; summary?: string; error?: string };
+      if (data.error) {
+        setAiErrors(prev => ({ ...prev, [id]: `AI fejl: ${data.error}` }));
+        console.error("AI match API fejl:", data.error);
+      } else if (data.rating) {
+        setSubmissions(prev => prev.map(s => s.id === id ? { ...s, ai_rating: data.rating ?? null, ai_summary: data.summary ?? null } : s));
+      } else {
+        setAiErrors(prev => ({ ...prev, [id]: "AI returnerede intet resultat. Tjek serverlogs." }));
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setAiErrors(prev => ({ ...prev, [id]: `Netværksfejl: ${msg}` }));
+      console.error("AI match fejl:", err);
+    } finally {
+      setAnalyzing(null);
     }
-    setAnalyzing(null);
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -191,11 +205,16 @@ export default function KonsulenterPage() {
                             <div className="flex items-center gap-2 mb-1.5">
                               <span className="text-[10px] font-extrabold tracking-widest uppercase text-orange/70">AI-match</span>
                               <StarRating rating={s.ai_rating} />
-                              <span className="text-xs font-bold text-charcoal/50">{s.ai_rating}/5</span>
                             </div>
                             <p className="text-xs text-charcoal/70 whitespace-pre-line leading-relaxed">{s.ai_summary}</p>
                           </div>
                         ) : null}
+                        {/* Vis fejlbesked direkte på profilen */}
+                        {aiErrors[s.id] && (
+                          <div className="mt-2 bg-red-50 border border-red-200 rounded-xl p-2.5">
+                            <p className="text-xs text-red-600 font-semibold">⚠ {aiErrors[s.id]}</p>
+                          </div>
+                        )}
 
                         {s.customer_decision === "interview" && (
                           <div className="mt-3 border-t border-[#f0ede8] pt-3">
