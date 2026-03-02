@@ -18,6 +18,8 @@ export default function ForspørgslerPage() {
   const [notified, setNotified] = useState<Record<string, boolean>>({});
   const [adminNotes, setAdminNotes] = useState<Record<string, string>>({});
   const [editedCompetencies, setEditedCompetencies] = useState<Record<string, string[]>>({});
+  const [aiRankings, setAiRankings] = useState<Record<string, Array<{ supplier_id: string; stars: number; reason: string }>>>({});
+  const [ranking, setRanking] = useState<string | null>(null);
   const [showContractForm, setShowContractForm] = useState<string | null>(null);
   const [contractForm, setContractForm] = useState({ consultant_name: "", rate: "", duration: "", start_date: "", supplier_id: "" });
   const [savingContract, setSavingContract] = useState(false);
@@ -88,6 +90,22 @@ export default function ForspørgslerPage() {
     setEditedCompetencies(prev => ({ ...prev, [requestId]: updated }));
     await supabase.from("requests").update({ competencies: updated }).eq("id", requestId);
     setRequests(prev => prev.map(r => r.id === requestId ? { ...r, competencies: updated } : r));
+  };
+
+  const rankSuppliers = async (requestId: string) => {
+    setRanking(requestId);
+    try {
+      const res = await fetch("/api/ai-rank-suppliers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ request_id: requestId }),
+      });
+      const data = await res.json();
+      if (data.rankings) setAiRankings(prev => ({ ...prev, [requestId]: data.rankings }));
+    } catch (err) {
+      console.error("AI ranking fejl:", err);
+    }
+    setRanking(null);
   };
 
   const withdrawSupplier = async (requestId: string, supplierId: string) => {
@@ -251,42 +269,79 @@ export default function ForspørgslerPage() {
                     onChange={e => setAdminNotes(prev => ({ ...prev, [r.id]: e.target.value }))}
                     onBlur={async () => { await supabase.from("requests").update({ admin_note: adminNotes[r.id] }).eq("id", r.id); }}
                   />
-                  <h3 className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mb-2">Vælg leverandører</h3>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40">Vælg leverandører</h3>
+                    <button
+                      onClick={() => rankSuppliers(r.id)}
+                      disabled={ranking === r.id}
+                      className="flex items-center gap-1.5 text-xs font-bold bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1.5 rounded-full transition-colors disabled:opacity-50"
+                    >
+                      {ranking === r.id ? (
+                        <><span className="animate-spin inline-block">⟳</span> Analyserer…</>
+                      ) : (
+                        <>🤖 AI-rangér leverandører</>
+                      )}
+                    </button>
+                  </div>
+                  {aiRankings[r.id] && (
+                    <p className="text-[10px] text-charcoal/40 font-semibold mb-2">Sorteret efter AI-match — klik for at vælge</p>
+                  )}
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
-                    {suppliers.map(s => {
+                    {(aiRankings[r.id]
+                      ? [...suppliers].sort((a, b) => {
+                          const ra = aiRankings[r.id].find(x => x.supplier_id === a.id)?.stars ?? 0;
+                          const rb = aiRankings[r.id].find(x => x.supplier_id === b.id)?.stars ?? 0;
+                          return rb - ra;
+                        })
+                      : suppliers
+                    ).map(s => {
                       const alreadyNotified = notifiedSuppliers[r.id]?.includes(s.id);
                       const isSelected = selectedSuppliers[r.id]?.has(s.id);
+                      const ranking_data = aiRankings[r.id]?.find(x => x.supplier_id === s.id);
                       return (
                         <div
                           key={s.id}
                           onClick={() => !alreadyNotified && toggleSupplier(r.id, s.id)}
-                          className={`flex items-center gap-2 p-3 rounded-xl border transition-all text-sm font-semibold ${
+                          title={ranking_data?.reason}
+                          className={`flex flex-col gap-1.5 p-3 rounded-xl border transition-all text-sm font-semibold ${
                             alreadyNotified ? "border-green-200 bg-green-50 text-green-700 cursor-default"
                             : isSelected ? "border-orange bg-orange/5 text-charcoal cursor-pointer"
                             : "border-[#e8e5e0] bg-white hover:border-orange/50 text-charcoal cursor-pointer"
                           }`}
                         >
-                          <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-colors ${
-                            alreadyNotified ? "bg-green-500 border-green-500"
-                            : isSelected ? "bg-orange border-orange"
-                            : "border-[#d4cfc8]"
-                          }`}>
-                            {(alreadyNotified || isSelected) && (
-                              <svg width="8" height="7" viewBox="0 0 10 8" fill="none">
-                                <path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border transition-colors ${
+                              alreadyNotified ? "bg-green-500 border-green-500"
+                              : isSelected ? "bg-orange border-orange"
+                              : "border-[#d4cfc8]"
+                            }`}>
+                              {(alreadyNotified || isSelected) && (
+                                <svg width="8" height="7" viewBox="0 0 10 8" fill="none">
+                                  <path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                              )}
+                            </div>
+                            <span className="truncate flex-1">{s.company_name || s.email}</span>
+                            {alreadyNotified && (
+                              <button
+                                onClick={e => { e.stopPropagation(); withdrawSupplier(r.id, s.id); }}
+                                disabled={withdrawing === s.id}
+                                title="Træk forespørgsel tilbage"
+                                className="ml-auto text-[10px] font-bold text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 px-2 py-0.5 rounded-full transition-colors disabled:opacity-50 flex-shrink-0"
+                              >
+                                {withdrawing === s.id ? "…" : "Træk tilbage"}
+                              </button>
                             )}
                           </div>
-                          <span className="truncate flex-1">{s.company_name || s.email}</span>
-                          {alreadyNotified && (
-                            <button
-                              onClick={e => { e.stopPropagation(); withdrawSupplier(r.id, s.id); }}
-                              disabled={withdrawing === s.id}
-                              title="Træk forespørgsel tilbage"
-                              className="ml-auto text-[10px] font-bold text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 px-2 py-0.5 rounded-full transition-colors disabled:opacity-50 flex-shrink-0"
-                            >
-                              {withdrawing === s.id ? "…" : "Træk tilbage"}
-                            </button>
+                          {ranking_data && (
+                            <div className="flex items-center gap-1.5">
+                              <div className="flex gap-0.5">
+                                {[1,2,3,4,5].map(i => (
+                                  <span key={i} className={`text-xs ${i <= ranking_data.stars ? "text-orange" : "text-charcoal/15"}`}>★</span>
+                                ))}
+                              </div>
+                              <span className="text-[10px] text-charcoal/45 font-medium truncate">{ranking_data.reason}</span>
+                            </div>
                           )}
                         </div>
                       );
