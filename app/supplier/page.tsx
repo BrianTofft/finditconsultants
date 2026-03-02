@@ -16,6 +16,7 @@ type Request = {
   start_date: string;
   file_url?: string | null;
   max_rate?: number | null;
+  admin_note?: string | null;
 };
 
 type Submission = {
@@ -445,21 +446,29 @@ export default function SupplierPage() {
                       <button type="button" onClick={() => setSelectedRequest(null)} className="text-charcoal/40 hover:text-charcoal text-xs">× Annuller</button>
                     </div>
                     {/* Opgave-context til leverandøren */}
-                    <div className="bg-[#f8f6f3] rounded-xl p-3 mb-1 flex flex-wrap gap-3 text-xs font-semibold text-charcoal/55">
-                      {selectedRequest.max_rate && (
-                        <span className="text-green font-bold">💰 Maks. {selectedRequest.max_rate} DKK/time</span>
-                      )}
-                      {selectedRequest.duration && <span>⏱ {selectedRequest.duration}</span>}
-                      {selectedRequest.work_mode && <span>📍 {selectedRequest.work_mode}</span>}
-                      {selectedRequest.file_url && (
-                        <a
-                          href={selectedRequest.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-orange font-bold hover:underline"
-                        >
-                          📎 Se opgavebeskrivelse
-                        </a>
+                    <div className="bg-[#f8f6f3] rounded-xl p-3 mb-1 space-y-2">
+                      <div className="flex flex-wrap gap-3 text-xs font-semibold text-charcoal/55">
+                        {selectedRequest.max_rate && (
+                          <span className="text-green font-bold">💰 Maks. {selectedRequest.max_rate} DKK/time</span>
+                        )}
+                        {selectedRequest.duration && <span>⏱ {selectedRequest.duration}</span>}
+                        {selectedRequest.work_mode && <span>📍 {selectedRequest.work_mode}</span>}
+                        {selectedRequest.file_url && (
+                          <a
+                            href={selectedRequest.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-orange font-bold hover:underline"
+                          >
+                            📎 Se opgavebeskrivelse
+                          </a>
+                        )}
+                      </div>
+                      {selectedRequest.admin_note && (
+                        <div className="border-t border-[#ede9e3] pt-2">
+                          <p className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mb-1">Note fra FindIT</p>
+                          <p className="text-xs text-charcoal/70 font-medium">{selectedRequest.admin_note}</p>
+                        </div>
                       )}
                     </div>
                     <div className="grid grid-cols-2 gap-3">
