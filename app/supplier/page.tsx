@@ -17,6 +17,7 @@ type Request = {
   file_url?: string | null;
   max_rate?: number | null;
   admin_note?: string | null;
+  reference_number?: string | null;
 };
 
 type Submission = {
@@ -400,6 +401,9 @@ export default function SupplierPage() {
                     <div key={r.id}
                       onClick={() => { setSelectedRequest(r); setSubmitted(false); }}
                       className={`bg-white rounded-2xl border p-4 cursor-pointer transition-all ${selectedRequest?.id === r.id ? "border-orange shadow-md" : "border-[#ede9e3] hover:border-orange/50"}`}>
+                      {r.reference_number && (
+                        <span className="inline-block text-xs font-black text-orange bg-orange/10 px-2 py-0.5 rounded-full tracking-wide mb-1.5">{r.reference_number}</span>
+                      )}
                       <p className="text-sm font-semibold text-charcoal line-clamp-2 mb-2">{r.description || "Ingen beskrivelse"}</p>
                       <div className="flex flex-wrap gap-1.5 mb-2">
                         {r.competencies?.map(c => (
