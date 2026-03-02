@@ -104,10 +104,12 @@ export default function ForspørgslerPage() {
       });
       const data = await res.json() as { rankings?: Array<{ supplier_id: string; stars: number; reason: string }>; error?: string };
       if (data.error) {
-        setRankingError(prev => ({ ...prev, [requestId]: `AI fejl: ${data.error}` }));
-        console.error("AI ranking fejl:", data.error);
+        const errMsg = data.error;
+        setRankingError(prev => ({ ...prev, [requestId]: `AI fejl: ${errMsg}` }));
+        console.error("AI ranking fejl:", errMsg);
       } else if (data.rankings && data.rankings.length > 0) {
-        setAiRankings(prev => ({ ...prev, [requestId]: data.rankings! }));
+        const rankings = data.rankings;
+        setAiRankings(prev => ({ ...prev, [requestId]: rankings }));
       } else {
         setRankingError(prev => ({ ...prev, [requestId]: "AI returnerede ingen rangering. Tjek serverlogs." }));
       }
