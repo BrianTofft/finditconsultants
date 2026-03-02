@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import type { Request, Supplier } from "../types";
+import { COMPETENCIES } from "@/app/data";
 
 const STATUSES = ["Ny", "I gang", "Afsluttet"];
 
@@ -16,6 +17,7 @@ export default function ForspørgslerPage() {
   const [withdrawing, setWithdrawing] = useState<string | null>(null);
   const [notified, setNotified] = useState<Record<string, boolean>>({});
   const [adminNotes, setAdminNotes] = useState<Record<string, string>>({});
+  const [editedCompetencies, setEditedCompetencies] = useState<Record<string, string[]>>({});
   const [showContractForm, setShowContractForm] = useState<string | null>(null);
   const [contractForm, setContractForm] = useState({ consultant_name: "", rate: "", duration: "", start_date: "", supplier_id: "" });
   const [savingContract, setSavingContract] = useState(false);
@@ -77,6 +79,15 @@ export default function ForspørgslerPage() {
     setNotifiedSuppliers(prev => ({ ...prev, [requestId]: [...(prev[requestId] ?? []), ...selected] }));
     setNotifying(null);
     setTimeout(() => setNotified(prev => ({ ...prev, [requestId]: false })), 3000);
+  };
+
+  const toggleCompetency = async (requestId: string, competency: string, current: string[]) => {
+    const updated = current.includes(competency)
+      ? current.filter(c => c !== competency)
+      : [...current, competency];
+    setEditedCompetencies(prev => ({ ...prev, [requestId]: updated }));
+    await supabase.from("requests").update({ competencies: updated }).eq("id", requestId);
+    setRequests(prev => prev.map(r => r.id === requestId ? { ...r, competencies: updated } : r));
   };
 
   const withdrawSupplier = async (requestId: string, supplierId: string) => {
@@ -211,6 +222,26 @@ export default function ForspørgslerPage() {
               {/* Expanded: supplier selection */}
               {expanded === r.id && (
                 <div className="border-t border-[#ede9e3] bg-[#faf9f7] p-5">
+                  <h3 className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mb-2">Kompetencer</h3>
+                  <div className="flex flex-wrap gap-1.5 mb-4">
+                    {COMPETENCIES.map(c => {
+                      const active = (editedCompetencies[r.id] ?? r.competencies ?? []).includes(c);
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => toggleCompetency(r.id, c, editedCompetencies[r.id] ?? r.competencies ?? [])}
+                          className={`text-xs font-bold px-3 py-1 rounded-full border transition-all ${
+                            active
+                              ? "bg-orange text-white border-orange"
+                              : "bg-white text-charcoal/50 border-[#e8e5e0] hover:border-orange/50"
+                          }`}
+                        >
+                          {c}
+                        </button>
+                      );
+                    })}
+                  </div>
                   <h3 className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mb-2">Note til leverandører</h3>
                   <textarea
                     className="w-full rounded-xl border border-[#e8e5e0] bg-white px-4 py-2.5 text-sm text-charcoal placeholder:text-charcoal/30 focus:outline-none focus:ring-2 focus:ring-orange/20 focus:border-orange transition-all resize-none mb-4"
