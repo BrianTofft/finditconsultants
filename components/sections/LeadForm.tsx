@@ -187,7 +187,7 @@ export default function LeadForm() {
             </select>
           </div>
           <div>
-            <label className={lbl}>Nearshore/Offshore <span className="normal-case font-normal">(lavere timepris)</span></label>
+            <label className={lbl}>Near-/Offshore <span className="normal-case font-normal">(lav timepris)</span></label>
             <select className={inp} value={form.nearshore} onChange={e => setForm(f => ({ ...f, nearshore: e.target.value }))}>
               <option>Ja</option><option>Nej</option>
             </select>
