@@ -105,7 +105,8 @@ Inkludér ALLE leverandører, sorteret fra højeste til laveste match.`;
 
     return NextResponse.json({ rankings });
   } catch (err) {
-    console.error("AI leverandør-ranking fejl:", err);
-    return NextResponse.json({ error: "AI-analyse mislykkedes" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("AI leverandør-ranking fejl:", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
