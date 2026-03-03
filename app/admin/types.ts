@@ -2,7 +2,7 @@ export type Request = {
   id: string; created_at: string; email: string; description: string;
   competencies: string[]; status: string; duration: string; work_mode: string;
   start_date: string; admin_note?: string; admin_status?: string;
-  file_url?: string | null; max_rate?: number | null;
+  file_url?: string | null; max_rate?: number | null; reference_number?: string | null;
 };
 
 export type Submission = {

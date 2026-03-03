@@ -26,6 +26,7 @@ type Request = {
   competencies: string[];
   status: string;
   email: string;
+  reference_number?: string | null;
   submissions?: Submission[];
 };
 
@@ -343,7 +344,12 @@ export default function PortalPage() {
                       onClick={() => setExpandedRequest(expandedRequest === r.id ? null : r.id)}>
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
-                          <p className="text-sm text-charcoal font-semibold line-clamp-2">{r.description || "Ingen beskrivelse"}</p>
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            {r.reference_number && (
+                              <span className="text-xs font-black text-orange bg-orange/10 px-2 py-0.5 rounded-full tracking-wide">{r.reference_number}</span>
+                            )}
+                            <p className="text-sm text-charcoal font-semibold line-clamp-2">{r.description || "Ingen beskrivelse"}</p>
+                          </div>
                           <div className="flex flex-wrap gap-1.5 mt-2">
                             {r.competencies?.map(c => (
                               <span key={c} className="bg-orange/10 text-orange text-xs font-bold px-2 py-0.5 rounded-full">{c}</span>

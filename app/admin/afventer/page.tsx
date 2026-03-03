@@ -90,6 +90,9 @@ export default function AfventerPage() {
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    {r.reference_number && (
+                      <span className="text-xs font-black text-orange bg-orange/10 px-2 py-0.5 rounded-full tracking-wide">{r.reference_number}</span>
+                    )}
                     <span className="font-bold text-charcoal">{r.email}</span>
                     <span className="text-charcoal/35 text-xs">{new Date(r.created_at).toLocaleDateString("da-DK")}</span>
                   </div>
