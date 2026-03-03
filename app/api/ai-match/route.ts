@@ -36,7 +36,22 @@ export async function POST(req: NextRequest) {
     start_date: string;
   } | null;
 
-  const prompt = `Du er en erfaren IT-rekrutteringsekspert i Danmark. Analyser nedenstående konsulentprofil op mod opgavebeskrivelsen og giv en objektiv vurdering.
+  // Forsøg at hente CV som PDF (base64) — falder tilbage til tekst-only hvis det fejler
+  let cvBase64: string | null = null;
+  if (sub.cv_url) {
+    try {
+      const pdfRes = await fetch(sub.cv_url);
+      if (pdfRes.ok) {
+        const pdfBuffer = await pdfRes.arrayBuffer();
+        cvBase64 = Buffer.from(pdfBuffer).toString("base64");
+      }
+    } catch {
+      // CV kunne ikke hentes — fortsæt uden
+      console.warn("Kunne ikke hente CV-PDF:", sub.cv_url);
+    }
+  }
+
+  const prompt = `Du er en erfaren IT-rekrutteringsekspert i Danmark. Analyser nedenstående konsulentprofil op mod opgavebeskrivelsen og giv en objektiv vurdering.${cvBase64 ? " Et CV er vedhæftet som PDF — brug det som primær kilde til konsulentens erfaring og kompetencer." : ""}
 
 OPGAVE:
 Beskrivelse: ${req_data?.description ?? "Ikke angivet"}
@@ -66,10 +81,22 @@ Svar KUN med et JSON-objekt i følgende format (ingen forklaring udenfor JSON):
   }
 
   try {
+    // Byg message-indhold: med CV (PDF) eller uden
+    type MessageContent =
+      | { type: "text"; text: string }
+      | { type: "document"; source: { type: "base64"; media_type: "application/pdf"; data: string } };
+
+    const content: MessageContent[] = cvBase64
+      ? [
+          { type: "document", source: { type: "base64", media_type: "application/pdf", data: cvBase64 } },
+          { type: "text", text: prompt },
+        ]
+      : [{ type: "text", text: prompt }];
+
     const message = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 1024,
-      messages: [{ role: "user", content: prompt }],
+      messages: [{ role: "user", content }],
     });
 
     const text = message.content[0].type === "text" ? message.content[0].text : "";
