@@ -17,6 +17,8 @@ type Submission = {
   customer_decision: string | null;
   interview_datetime: string | null;
   interview_confirmed: boolean;
+  ai_rating: number | null;
+  ai_summary: string | null;
 };
 
 type Request = {
@@ -400,6 +402,21 @@ export default function PortalPage() {
                                       ))}
                                     </div>
                                     {s.bio && <p className="text-xs text-charcoal/60 line-clamp-3">{s.bio}</p>}
+                                    {/* FindIT AI-vurdering */}
+                                    {s.ai_rating && (
+                                      <div className="mt-3 border border-orange/20 bg-orange/5 rounded-xl p-3">
+                                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                          <span className="text-[10px] font-extrabold tracking-widest uppercase text-orange/70">FindIT vurdering</span>
+                                          <div className="flex gap-0.5">
+                                            {[1,2,3,4,5,6,7,8,9,10].map(i => (
+                                              <span key={i} className={`text-xs ${i <= s.ai_rating! ? "text-orange" : "text-charcoal/15"}`}>★</span>
+                                            ))}
+                                          </div>
+                                          <span className="text-[10px] font-bold text-charcoal/40">{s.ai_rating}/10</span>
+                                        </div>
+                                        {s.ai_summary && <p className="text-xs text-charcoal/60 leading-relaxed">{s.ai_summary}</p>}
+                                      </div>
+                                    )}
                                   </div>
                                   <div className="text-right shrink-0">
                                     {s.rate && <p className="font-bold text-sm text-orange">{s.rate} DKK/t</p>}

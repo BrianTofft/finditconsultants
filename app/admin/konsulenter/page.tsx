@@ -37,6 +37,7 @@ export default function KonsulenterPage() {
   const [selecting, setSelecting] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState<string | null>(null);
   const [aiErrors, setAiErrors] = useState<Record<string, string>>({});
+  const [editingSummary, setEditingSummary] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const load = async () => {
@@ -93,6 +94,14 @@ export default function KonsulenterPage() {
     } finally {
       setAnalyzing(null);
     }
+  };
+
+  const handleSaveSummary = async (id: string) => {
+    const newSummary = editingSummary[id];
+    if (newSummary === undefined) return;
+    await supabase.from("consultant_submissions").update({ ai_summary: newSummary }).eq("id", id);
+    setSubmissions(prev => prev.map(s => s.id === id ? { ...s, ai_summary: newSummary } : s));
+    setEditingSummary(prev => Object.fromEntries(Object.entries(prev).filter(([k]) => k !== id)));
   };
 
   const handleDelete = async (id: string, name: string) => {
@@ -202,11 +211,46 @@ export default function KonsulenterPage() {
                         {/* AI-analyse */}
                         {s.ai_rating ? (
                           <div className="mt-3 border border-orange/20 bg-orange/5 rounded-xl p-3">
-                            <div className="flex items-center gap-2 mb-1.5">
-                              <span className="text-[10px] font-extrabold tracking-widest uppercase text-orange/70">AI-match</span>
-                              <StarRating rating={s.ai_rating} />
+                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-extrabold tracking-widest uppercase text-orange/70">AI-match</span>
+                                <StarRating rating={s.ai_rating} />
+                              </div>
+                              {editingSummary[s.id] === undefined && (
+                                <button
+                                  onClick={() => setEditingSummary(prev => ({ ...prev, [s.id]: s.ai_summary ?? "" }))}
+                                  className="text-[10px] text-orange/60 hover:text-orange font-bold transition-colors shrink-0"
+                                >
+                                  ✎ Rediger
+                                </button>
+                              )}
                             </div>
-                            <p className="text-xs text-charcoal/70 whitespace-pre-line leading-relaxed">{s.ai_summary}</p>
+                            {editingSummary[s.id] !== undefined ? (
+                              <div className="space-y-2">
+                                <textarea
+                                  value={editingSummary[s.id]}
+                                  onChange={e => setEditingSummary(prev => ({ ...prev, [s.id]: e.target.value }))}
+                                  rows={5}
+                                  className="w-full text-xs text-charcoal rounded-lg border border-orange/30 bg-white px-3 py-2 focus:outline-none focus:border-orange resize-none leading-relaxed"
+                                />
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => handleSaveSummary(s.id)}
+                                    className="text-xs bg-orange text-white font-bold px-3 py-1 rounded-full hover:bg-orange/80 transition-colors"
+                                  >
+                                    Gem
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingSummary(prev => Object.fromEntries(Object.entries(prev).filter(([k]) => k !== s.id)))}
+                                    className="text-xs text-charcoal/40 hover:text-charcoal font-semibold transition-colors"
+                                  >
+                                    Annullér
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-charcoal/70 whitespace-pre-line leading-relaxed">{s.ai_summary}</p>
+                            )}
                           </div>
                         ) : null}
                         {/* Vis fejlbesked direkte på profilen */}
