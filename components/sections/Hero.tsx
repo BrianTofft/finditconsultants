@@ -10,39 +10,62 @@ const PHOTOS = [
   { src: "https://images.unsplash.com/photo-1553877522-43269d4ea984?w=400&q=80&fit=crop", badge: null, alt: "Strategisk IT-planlægning og dataanalyse" },
 ];
 
-const NOTIFICATIONS = [
-  { icon: "📩", text: "Ny forespørgsel modtaget — 70+ leverandører notificeret", time: "Nu" },
-  { icon: "✅", text: "Konsulent fundet til DSV A/S — under 3 dage", time: "4 min" },
-  { icon: "👤", text: "7 screenede kandidater klar til gennemgang", time: "11 min" },
-  { icon: "🤝", text: "Kontrakt underskrevet — PFA Pension", time: "32 min" },
-  { icon: "📋", text: "Rockwool modtog 6 konsulentprofiler til review", time: "1 t" },
-  { icon: "⚡", text: "William Demant søger Azure-arkitekt — aktiveret nu", time: "2 t" },
-  { icon: "✅", text: "Coop fandt den rette IT-konsulent på rekordtid", time: "3 t" },
-  { icon: "📡", text: "Nordic Bioscience — markedet aktiveret med det samme", time: "I dag" },
+// Fallback-kompetencer hvis DB er tom / fejler
+const FALLBACK: { name: string; count: number }[] = [
+  { name: "Azure", count: 2 }, { name: "React", count: 2 },
+  { name: "SAP", count: 1 }, { name: ".NET", count: 1 },
+  { name: "Python", count: 1 }, { name: "Cybersecurity", count: 1 },
 ];
 
-function LiveNotification() {
-  const [idx, setIdx] = useState(0);
-  const [visible, setVisible] = useState(true);
+function ActiveCompetencies() {
+  const [competencies, setCompetencies] = useState<{ name: string; count: number }[]>([]);
+  const [requestCount, setRequestCount] = useState<number | null>(null);
+  const [highlighted, setHighlighted] = useState(0);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setVisible(false);
-      setTimeout(() => {
-        setIdx(i => (i + 1) % NOTIFICATIONS.length);
-        setVisible(true);
-      }, 400);
-    }, 5000);
-    return () => clearInterval(interval);
+    fetch("/api/active-competencies")
+      .then(r => r.json())
+      .then((d: { competencies: { name: string; count: number }[]; requestCount: number }) => {
+        setCompetencies(d.competencies?.length ? d.competencies : FALLBACK);
+        setRequestCount(d.requestCount ?? null);
+        setLoaded(true);
+      })
+      .catch(() => { setCompetencies(FALLBACK); setLoaded(true); });
   }, []);
 
-  const n = NOTIFICATIONS[idx];
+  // Fremhæv én tag ad gangen i loop
+  useEffect(() => {
+    if (!competencies.length) return;
+    const t = setInterval(() => setHighlighted(i => (i + 1) % competencies.length), 1800);
+    return () => clearInterval(t);
+  }, [competencies.length]);
+
   return (
-    <div className={`flex items-center gap-3 bg-white border border-[#ede9e3] rounded-2xl px-4 py-3 shadow-md transition-all duration-400 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"}`}>
-      <span className="text-lg">{n.icon}</span>
-      <span className="text-xs font-semibold text-charcoal flex-1">{n.text}</span>
-      <span className="text-[10px] text-charcoal/35 font-bold whitespace-nowrap">{n.time}</span>
-      <span className="w-2 h-2 rounded-full bg-green animate-pulse flex-shrink-0" />
+    <div className={`bg-white border border-[#ede9e3] rounded-2xl px-4 py-3.5 shadow-md transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}>
+      <div className="flex items-center gap-2 mb-3">
+        <span className="w-2 h-2 rounded-full bg-green animate-pulse flex-shrink-0" />
+        <span className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40">Søges aktivt lige nu</span>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {competencies.map((c, i) => (
+          <span
+            key={c.name}
+            className={`text-xs font-bold px-3 py-1 rounded-full border transition-all duration-500 ${
+              i === highlighted
+                ? "bg-orange text-white border-orange scale-105 shadow-sm"
+                : "bg-[#f8f6f3] text-charcoal/70 border-[#ede9e3]"
+            }`}
+          >
+            {c.name}
+          </span>
+        ))}
+      </div>
+      {requestCount !== null && requestCount > 0 && (
+        <p className="text-[10px] text-charcoal/35 font-semibold mt-2.5">
+          Baseret på {requestCount} aktiv{requestCount !== 1 ? "e" : ""} forespørgsel{requestCount !== 1 ? "er" : ""}
+        </p>
+      )}
     </div>
   );
 }
@@ -61,9 +84,9 @@ export default function Hero() {
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-[1fr_460px] gap-12 items-start relative z-10">
         <div className="pb-16 pt-4">
 
-          {/* Live notifikation */}
+          {/* Aktive kompetencer */}
           <div className="mb-8 max-w-sm">
-            <LiveNotification />
+            <ActiveCompetencies />
           </div>
 
           {/* Headline */}
