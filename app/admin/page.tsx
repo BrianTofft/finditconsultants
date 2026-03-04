@@ -17,7 +17,7 @@ export default function AdminDashboard() {
       const [pendingRes, acceptedRes, subRes, contractRes, appRes, userRes, msgRes, recentReqRes, recentSubRes] =
         await Promise.all([
           supabase.from("requests").select("*", { count: "exact", head: true }).or("admin_status.is.null,admin_status.eq.pending"),
-          supabase.from("requests").select("*", { count: "exact", head: true }).eq("admin_status", "accepted"),
+          supabase.from("requests").select("*", { count: "exact", head: true }).eq("admin_status", "accepted").neq("status", "Afsluttet"),
           supabase.from("consultant_submissions").select("*", { count: "exact", head: true }),
           supabase.from("contracts").select("*", { count: "exact", head: true }),
           supabase.from("supplier_applications").select("*", { count: "exact", head: true }).eq("status", "Afventer"),

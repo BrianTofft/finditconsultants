@@ -21,6 +21,7 @@ export default function ForspørgslerPage() {
   const [aiRankings, setAiRankings] = useState<Record<string, Array<{ supplier_id: string; stars: number; reason: string }>>>({});
   const [ranking, setRanking] = useState<string | null>(null);
   const [rankingError, setRankingError] = useState<Record<string, string>>({});
+  const [statusFilter, setStatusFilter] = useState<"aktive" | "afsluttet">("aktive");
   const [showContractForm, setShowContractForm] = useState<string | null>(null);
   const [contractForm, setContractForm] = useState({ consultant_name: "", rate: "", duration: "", start_date: "", supplier_id: "" });
   const [savingContract, setSavingContract] = useState(false);
@@ -159,6 +160,10 @@ export default function ForspørgslerPage() {
     "Afsluttet": "bg-green-100 text-green-700",
   };
 
+  const filteredRequests = requests.filter(r =>
+    statusFilter === "afsluttet" ? r.status === "Afsluttet" : r.status !== "Afsluttet"
+  );
+
   const inp = "w-full rounded-xl border border-[#e8e5e0] bg-white px-4 py-2.5 text-sm text-charcoal focus:outline-none focus:border-orange transition-all";
   const lbl = "block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/45 mb-1.5";
 
@@ -173,16 +178,43 @@ export default function ForspørgslerPage() {
     <div className="p-8 max-w-4xl">
       <div className="mb-6">
         <h1 className="font-bold text-2xl text-charcoal mb-1">Forespørgsler</h1>
-        <p className="text-charcoal/45 text-sm">{requests.length} godkendt{requests.length !== 1 ? "e" : ""} forespørgsel{requests.length !== 1 ? "er" : ""}</p>
+        <p className="text-charcoal/45 text-sm mb-4">
+          {filteredRequests.length} {statusFilter === "afsluttet" ? "afsluttet" : "aktiv"}{filteredRequests.length !== 1 ? "e" : ""} forespørgsel{filteredRequests.length !== 1 ? "er" : ""}
+        </p>
+        {/* Statusfilter tabs */}
+        <div className="flex gap-2">
+          <button
+            onClick={() => setStatusFilter("aktive")}
+            className={`text-xs font-bold px-4 py-1.5 rounded-full border transition-all ${
+              statusFilter === "aktive"
+                ? "bg-charcoal text-white border-charcoal"
+                : "bg-white text-charcoal/50 border-[#e8e5e0] hover:border-charcoal/30"
+            }`}
+          >
+            Aktive ({requests.filter(r => r.status !== "Afsluttet").length})
+          </button>
+          <button
+            onClick={() => setStatusFilter("afsluttet")}
+            className={`text-xs font-bold px-4 py-1.5 rounded-full border transition-all ${
+              statusFilter === "afsluttet"
+                ? "bg-green-600 text-white border-green-600"
+                : "bg-white text-charcoal/50 border-[#e8e5e0] hover:border-green-400"
+            }`}
+          >
+            Afsluttede ({requests.filter(r => r.status === "Afsluttet").length})
+          </button>
+        </div>
       </div>
 
-      {requests.length === 0 ? (
+      {filteredRequests.length === 0 ? (
         <div className="bg-white rounded-2xl border border-[#ede9e3] p-12 text-center">
-          <p className="text-charcoal/40 text-sm">Ingen godkendte forespørgsler endnu</p>
+          <p className="text-charcoal/40 text-sm">
+            {statusFilter === "afsluttet" ? "Ingen afsluttede forespørgsler endnu" : "Ingen aktive forespørgsler"}
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {requests.map(r => (
+          {filteredRequests.map(r => (
             <div key={r.id} className="bg-white rounded-2xl border border-[#ede9e3] overflow-hidden">
               {/* Card header */}
               <div
