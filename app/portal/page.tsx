@@ -17,6 +17,7 @@ type Submission = {
   customer_decision: string | null;
   interview_datetime: string | null;
   interview_confirmed: boolean;
+  interview_proposed_by: string | null;
   ai_rating: number | null;
   ai_summary: string | null;
 };
@@ -164,20 +165,25 @@ function ConsultantCard({
   onDateChange,
   onDecision,
   deciding,
+  counterDate,
+  onCounterDateChange,
+  onCustomerResponse,
 }: {
   s: Submission;
   interviewDate: string;
   onDateChange: (val: string) => void;
   onDecision: (decision: "interview" | "afvist") => void;
   deciding: boolean;
+  counterDate: string;
+  onCounterDateChange: (val: string) => void;
+  onCustomerResponse: (action: "accept" | "counter", newDate?: string) => void;
 }) {
   const [showFullBio, setShowFullBio] = useState(false);
   const [showFullSummary, setShowFullSummary] = useState(false);
 
-  const decisionColor: Record<string, string> = {
-    interview: "bg-green-50 text-green-700 border border-green-200",
-    afvist: "bg-red-50 text-red-600 border border-red-200",
-  };
+  const fmtDate = (iso: string | null) => iso
+    ? new Date(iso).toLocaleString("da-DK", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    : null;
 
   return (
     <div className="bg-white rounded-2xl border border-[#ede9e3] flex flex-col overflow-hidden hover:shadow-md hover:border-orange/20 transition-all">
@@ -249,43 +255,110 @@ function ConsultantCard({
         )}
       </div>
 
-      {/* Footer */}
+      {/* Footer — interview state machine */}
       <div className="p-4 border-t border-[#f5f2ee]">
-        {s.customer_decision ? (
-          <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold ${decisionColor[s.customer_decision] ?? "bg-gray-100 text-gray-600"}`}>
-            {s.customer_decision === "interview" ? "✓ Indkaldt til interview" : "✗ Afvist"}
-            {s.interview_datetime && (
-              <span className="font-normal text-charcoal/50 ml-1">
-                {new Date(s.interview_datetime).toLocaleString("da-DK", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
-              </span>
-            )}
-            {s.interview_confirmed && <span className="ml-auto text-green-600">✓ Bekræftet</span>}
+
+        {/* State 0: Afvist */}
+        {s.customer_decision === "afvist" && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold bg-red-50 text-red-600 border border-red-200">
+            ✗ Afvist
           </div>
-        ) : (
+        )}
+
+        {/* State 1: Ingen beslutning endnu */}
+        {!s.customer_decision && (
           <div className="space-y-2">
-            <label className="block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/35 mb-1">Interviewtid (valgfrit)</label>
+            <label className="block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/35 mb-1">
+              Foreslå interviewtidspunkt
+            </label>
             <input
               type="datetime-local"
-              className="w-full rounded-xl border border-[#e8e5e0] bg-[#f8f6f3] px-3 py-2 text-xs text-charcoal focus:outline-none focus:border-orange transition-all"
+              className="w-full rounded-xl border border-[#e8e5e0] bg-[#f8f6f3] px-3 py-2.5 text-xs text-charcoal focus:outline-none focus:border-orange transition-all"
               value={interviewDate}
               onChange={e => onDateChange(e.target.value)}
             />
             <div className="flex gap-2">
               <button
                 onClick={() => onDecision("interview")}
-                disabled={deciding}
-                className="flex-1 bg-green-500 text-white font-bold rounded-full py-2.5 text-xs hover:bg-green-600 transition-all disabled:opacity-50">
-                Interview
+                disabled={deciding || !interviewDate}
+                className="flex-1 bg-green-500 text-white font-bold rounded-full py-2.5 text-xs hover:bg-green-600 transition-all disabled:opacity-40">
+                {deciding ? "Sender…" : "Interview →"}
               </button>
               <button
                 onClick={() => onDecision("afvist")}
                 disabled={deciding}
-                className="flex-1 bg-red-500 text-white font-bold rounded-full py-2.5 text-xs hover:bg-red-600 transition-all disabled:opacity-50">
+                className="flex-shrink-0 bg-red-100 text-red-600 font-bold rounded-full px-4 py-2.5 text-xs hover:bg-red-200 transition-all disabled:opacity-50">
                 Afvis
               </button>
             </div>
           </div>
         )}
+
+        {/* State 2: Kunde har foreslået — afventer leverandør */}
+        {s.customer_decision === "interview" && s.interview_proposed_by === "customer" && !s.interview_confirmed && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+            <p className="text-xs font-extrabold tracking-widest uppercase text-blue-600 mb-1">
+              ⏳ Foreslået — afventer leverandør
+            </p>
+            {s.interview_datetime && (
+              <p className="text-xs text-blue-700 font-semibold">
+                {fmtDate(s.interview_datetime)}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* State 3: Leverandør foreslår nyt tidspunkt — kunde skal svare */}
+        {s.customer_decision === "interview" && s.interview_proposed_by === "supplier" && !s.interview_confirmed && (
+          <div className="bg-orange/5 border border-orange/20 rounded-xl p-3 space-y-2">
+            <p className="text-xs font-extrabold tracking-widest uppercase text-orange mb-0.5">
+              📅 Leverandør foreslår nyt tidspunkt
+            </p>
+            {s.interview_datetime && (
+              <p className="text-xs text-charcoal font-bold">
+                {fmtDate(s.interview_datetime)}
+              </p>
+            )}
+            <button
+              onClick={() => onCustomerResponse("accept")}
+              disabled={deciding}
+              className="w-full bg-green-500 text-white font-bold rounded-full py-2.5 text-xs hover:bg-green-600 transition-all disabled:opacity-50">
+              {deciding ? "Bekræfter…" : "✓ Acceptér tidspunkt"}
+            </button>
+            <div className="pt-1">
+              <label className="block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/35 mb-1.5">
+                Foreslå andet tidspunkt
+              </label>
+              <input
+                type="datetime-local"
+                className="w-full rounded-xl border border-[#e8e5e0] bg-white px-3 py-2.5 text-xs text-charcoal focus:outline-none focus:border-orange transition-all"
+                value={counterDate}
+                onChange={e => onCounterDateChange(e.target.value)}
+              />
+              <button
+                onClick={() => onCustomerResponse("counter", counterDate)}
+                disabled={deciding || !counterDate}
+                className="w-full mt-1.5 bg-charcoal text-white font-bold rounded-full py-2.5 text-xs hover:bg-charcoal/80 transition-all disabled:opacity-40">
+                Foreslå nyt tidspunkt →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* State 4: Bekræftet */}
+        {s.interview_confirmed && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+            <p className="text-xs font-extrabold tracking-widest uppercase text-green-600 mb-1">
+              ✅ Interview bekræftet
+            </p>
+            {s.interview_datetime && (
+              <p className="text-xs text-green-700 font-bold">
+                {fmtDate(s.interview_datetime)}
+              </p>
+            )}
+          </div>
+        )}
+
       </div>
     </div>
   );
@@ -304,6 +377,7 @@ export default function PortalPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [interviewDates, setInterviewDates] = useState<Record<string, string>>({});
+  const [counterDateMap, setCounterDateMap] = useState<Record<string, string>>({});
   const [deciding, setDeciding] = useState<string | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [teamRequests, setTeamRequests] = useState<Request[]>([]);
@@ -375,9 +449,13 @@ export default function PortalPage() {
 
   const handleDecision = async (submissionId: string, decision: "interview" | "afvist") => {
     setDeciding(submissionId);
+    const isoDate = decision === "interview" && interviewDates[submissionId]
+      ? new Date(interviewDates[submissionId]).toISOString()
+      : null;
     const updates: Record<string, unknown> = { customer_decision: decision };
-    if (decision === "interview" && interviewDates[submissionId]) {
-      updates.interview_datetime = new Date(interviewDates[submissionId]).toISOString();
+    if (decision === "interview") {
+      updates.interview_proposed_by = "customer";
+      if (isoDate) updates.interview_datetime = isoDate;
     }
     await supabase.from("consultant_submissions").update(updates).eq("id", submissionId);
     await fetch("/api/notify-admin-interview", {
@@ -385,14 +463,57 @@ export default function PortalPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         decision, submission_id: submissionId,
-        interview_datetime: interviewDates[submissionId] ?? null,
+        interview_datetime: isoDate,
         customer_name: profile.company_name || profile.email,
       }),
     });
     setRequests(prev => prev.map(r => ({
       ...r,
       submissions: r.submissions?.map(s =>
-        s.id === submissionId ? { ...s, customer_decision: decision, interview_datetime: interviewDates[submissionId] ?? null } : s
+        s.id === submissionId
+          ? { ...s, customer_decision: decision, interview_datetime: isoDate, interview_proposed_by: decision === "interview" ? "customer" : null }
+          : s
+      ),
+    })));
+    setDeciding(null);
+  };
+
+  const handleCustomerResponse = async (submissionId: string, action: "accept" | "counter", newDate?: string) => {
+    setDeciding(submissionId);
+    const isoDate = newDate ? new Date(newDate).toISOString() : null;
+    const updates: Record<string, unknown> = {};
+    if (action === "accept") {
+      updates.interview_confirmed = true;
+    } else {
+      updates.interview_proposed_by = "customer";
+      updates.interview_confirmed = false;
+      if (isoDate) updates.interview_datetime = isoDate;
+    }
+    await supabase.from("consultant_submissions").update(updates).eq("id", submissionId);
+
+    // Notify supplier + admin
+    const submission = requests.flatMap(r => r.submissions ?? []).find(s => s.id === submissionId);
+    await fetch("/api/notify-customer-interview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        submission_id: submissionId,
+        action: action === "accept" ? "accepted" : "counter",
+        new_datetime: isoDate ?? submission?.interview_datetime ?? null,
+      }),
+    });
+
+    setRequests(prev => prev.map(r => ({
+      ...r,
+      submissions: r.submissions?.map(s =>
+        s.id === submissionId
+          ? {
+              ...s,
+              interview_confirmed: action === "accept" ? true : false,
+              interview_proposed_by: action === "accept" ? s.interview_proposed_by : "customer",
+              interview_datetime: isoDate ?? s.interview_datetime,
+            }
+          : s
       ),
     })));
     setDeciding(null);
@@ -661,6 +782,9 @@ export default function PortalPage() {
                     onDateChange={val => setInterviewDates(prev => ({ ...prev, [s.id]: val }))}
                     onDecision={decision => handleDecision(s.id, decision)}
                     deciding={deciding === s.id}
+                    counterDate={counterDateMap[s.id] ?? ""}
+                    onCounterDateChange={val => setCounterDateMap(prev => ({ ...prev, [s.id]: val }))}
+                    onCustomerResponse={(action, newDate) => handleCustomerResponse(s.id, action, newDate)}
                   />
                 ))}
               </div>

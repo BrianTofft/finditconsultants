@@ -31,6 +31,7 @@ type Submission = {
   customer_decision: string | null;
   interview_datetime: string | null;
   interview_confirmed: boolean;
+  interview_proposed_by: string | null;
   requests: {
     description: string;
     reference_number?: string | null;
@@ -164,13 +165,13 @@ function SubmissionCard({
   s,
   interviewDate,
   onDateChange,
-  onConfirm,
+  onSupplierResponse,
   confirming,
 }: {
   s: Submission;
   interviewDate: string;
   onDateChange: (val: string) => void;
-  onConfirm: (newDate?: string) => void;
+  onSupplierResponse: (action: "accept" | "counter", newDate?: string) => void;
   confirming: boolean;
 }) {
   const statusColor: Record<string, string> = {
@@ -186,12 +187,17 @@ function SubmissionCard({
     "Afvist":   "Afvist",
   };
 
+  const fmtDate = (iso: string | null) => iso
+    ? new Date(iso).toLocaleString("da-DK", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+    : null;
+
   return (
     <div className={`bg-white rounded-2xl border flex flex-col overflow-hidden transition-all hover:shadow-md ${
-      s.customer_decision === "interview" ? "border-green-200 hover:border-green-300" :
-      s.customer_decision === "afvist"    ? "border-red-200 hover:border-red-300" :
-      s.status === "Valgt"                ? "border-orange/30 hover:border-orange/50" :
-                                            "border-[#ede9e3] hover:border-orange/20"
+      s.interview_confirmed                                       ? "border-green-300 hover:border-green-400" :
+      s.customer_decision === "interview" && s.interview_proposed_by === "customer" ? "border-orange/40 hover:border-orange/60" :
+      s.customer_decision === "afvist"                            ? "border-red-200 hover:border-red-300" :
+      s.status === "Valgt"                                        ? "border-orange/30 hover:border-orange/50" :
+                                                                    "border-[#ede9e3] hover:border-orange/20"
     }`}>
 
       {/* ── Header ── */}
@@ -206,7 +212,6 @@ function SubmissionCard({
           </span>
         </div>
 
-        {/* Skills */}
         {s.skills && s.skills.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-2.5">
             {s.skills.map(skill => (
@@ -218,48 +223,13 @@ function SubmissionCard({
 
       {/* ── Body ── */}
       <div className="p-4 flex-1 flex flex-col gap-2">
-        {/* Rate */}
         {s.rate && (
           <p className="font-extrabold text-orange text-sm">{s.rate.toLocaleString("da-DK")} DKK/t</p>
         )}
 
-        {/* Præsenteret for kunde */}
         {s.status === "Valgt" && !s.customer_decision && (
           <div className="flex items-center gap-1.5 text-xs font-bold text-orange">
             <span>★</span> Præsenteret for kunden
-          </div>
-        )}
-
-        {/* Interview-sektion */}
-        {s.customer_decision === "interview" && (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-3">
-            <p className="text-xs font-extrabold tracking-widest uppercase text-green-600 mb-1">
-              ✓ Kunden ønsker interview
-            </p>
-            {s.interview_datetime && (
-              <p className="text-xs text-green-700 font-semibold mb-2">
-                {new Date(s.interview_datetime).toLocaleString("da-DK", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-              </p>
-            )}
-            {s.interview_confirmed ? (
-              <p className="text-xs text-green-600 font-bold">✓ Interview bekræftet</p>
-            ) : (
-              <div className="space-y-2">
-                <label className="block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40">Bekræft eller foreslå nyt tidspunkt</label>
-                <input
-                  type="datetime-local"
-                  className="w-full rounded-xl border border-[#e8e5e0] bg-white px-3 py-1.5 text-xs text-charcoal focus:outline-none focus:border-green-400 transition-all"
-                  value={interviewDate}
-                  onChange={e => onDateChange(e.target.value)}
-                />
-                <button
-                  onClick={() => onConfirm(interviewDate || undefined)}
-                  disabled={confirming}
-                  className="w-full bg-green-500 text-white font-bold rounded-full py-1.5 text-xs hover:bg-green-600 transition-all disabled:opacity-50">
-                  {confirming ? "Bekræfter…" : "Bekræft interview"}
-                </button>
-              </div>
-            )}
           </div>
         )}
 
@@ -267,6 +237,65 @@ function SubmissionCard({
         {s.customer_decision === "afvist" && (
           <div className="flex items-center gap-1.5 text-xs font-bold text-red-500">
             <span>✗</span> Afvist af kunde
+          </div>
+        )}
+
+        {/* State 1: Kunde foreslår tidspunkt — leverandør skal svare */}
+        {s.customer_decision === "interview" && s.interview_proposed_by === "customer" && !s.interview_confirmed && (
+          <div className="bg-orange/5 border border-orange/20 rounded-xl p-3 space-y-2">
+            <p className="text-xs font-extrabold tracking-widest uppercase text-orange mb-0.5">
+              📅 Kunde ønsker interview
+            </p>
+            {s.interview_datetime && (
+              <p className="text-xs text-charcoal font-bold">{fmtDate(s.interview_datetime)}</p>
+            )}
+            <button
+              onClick={() => onSupplierResponse("accept")}
+              disabled={confirming}
+              className="w-full bg-green-500 text-white font-bold rounded-full py-2.5 text-xs hover:bg-green-600 transition-all disabled:opacity-50">
+              {confirming ? "Bekræfter…" : "✓ Acceptér tidspunkt"}
+            </button>
+            <div className="pt-1">
+              <label className="block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mb-1.5">
+                Foreslå andet tidspunkt
+              </label>
+              <input
+                type="datetime-local"
+                className="w-full rounded-xl border border-[#e8e5e0] bg-white px-3 py-2 text-xs text-charcoal focus:outline-none focus:border-orange transition-all"
+                value={interviewDate}
+                onChange={e => onDateChange(e.target.value)}
+              />
+              <button
+                onClick={() => onSupplierResponse("counter", interviewDate || undefined)}
+                disabled={confirming || !interviewDate}
+                className="w-full mt-1.5 bg-charcoal text-white font-bold rounded-full py-2 text-xs hover:bg-charcoal/80 transition-all disabled:opacity-40">
+                Foreslå nyt tidspunkt →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* State 2: Leverandør har foreslået — afventer kunde */}
+        {s.customer_decision === "interview" && s.interview_proposed_by === "supplier" && !s.interview_confirmed && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+            <p className="text-xs font-extrabold tracking-widest uppercase text-blue-600 mb-1">
+              ⏳ Dit forslag afventer kundegodkendelse
+            </p>
+            {s.interview_datetime && (
+              <p className="text-xs text-blue-700 font-semibold">{fmtDate(s.interview_datetime)}</p>
+            )}
+          </div>
+        )}
+
+        {/* State 3: Bekræftet */}
+        {s.interview_confirmed && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+            <p className="text-xs font-extrabold tracking-widest uppercase text-green-600 mb-1">
+              ✅ Interview bekræftet
+            </p>
+            {s.interview_datetime && (
+              <p className="text-xs text-green-700 font-bold">{fmtDate(s.interview_datetime)}</p>
+            )}
           </div>
         )}
       </div>
@@ -426,13 +455,40 @@ export default function SupplierPage() {
     setTimeout(() => setSaved(false), 2000);
   };
 
-  const confirmInterview = async (submissionId: string, newDatetime?: string) => {
+  const handleSupplierResponse = async (submissionId: string, action: "accept" | "counter", newDatetime?: string) => {
     setConfirming(submissionId);
-    const updates: Record<string, unknown> = { interview_confirmed: true };
-    if (newDatetime) updates.interview_datetime = new Date(newDatetime).toISOString();
+    const isoDate = newDatetime ? new Date(newDatetime).toISOString() : null;
+    const updates: Record<string, unknown> = {};
+    if (action === "accept") {
+      updates.interview_confirmed = true;
+    } else {
+      updates.interview_proposed_by = "supplier";
+      updates.interview_confirmed = false;
+      if (isoDate) updates.interview_datetime = isoDate;
+    }
     await supabase.from("consultant_submissions").update(updates).eq("id", submissionId);
+
+    // Notify customer + admin
+    const submission = submissions.find(s => s.id === submissionId);
+    await fetch("/api/notify-customer-interview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        submission_id: submissionId,
+        action: action === "accept" ? "accepted" : "counter",
+        new_datetime: isoDate ?? submission?.interview_datetime ?? null,
+      }),
+    });
+
     setSubmissions(prev => prev.map(s =>
-      s.id === submissionId ? { ...s, interview_confirmed: true, interview_datetime: newDatetime ?? s.interview_datetime } : s
+      s.id === submissionId
+        ? {
+            ...s,
+            interview_confirmed: action === "accept" ? true : false,
+            interview_proposed_by: action === "accept" ? s.interview_proposed_by : "supplier",
+            interview_datetime: isoDate ?? s.interview_datetime,
+          }
+        : s
     ));
     setConfirming(null);
   };
@@ -753,7 +809,7 @@ export default function SupplierPage() {
                           s={s}
                           interviewDate={interviewDates[s.id] ?? ""}
                           onDateChange={val => setInterviewDates(prev => ({ ...prev, [s.id]: val }))}
-                          onConfirm={newDate => confirmInterview(s.id, newDate)}
+                          onSupplierResponse={(action, newDate) => handleSupplierResponse(s.id, action, newDate)}
                           confirming={confirming === s.id}
                         />
                       ))}

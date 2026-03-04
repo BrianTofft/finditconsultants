@@ -165,20 +165,44 @@ function AdminConsultantCard({
         )}
 
         {/* Interview-info */}
-        {s.customer_decision === "interview" && (
-          <div className="bg-green-50 border border-green-200 rounded-xl p-2.5">
-            <p className="text-xs font-extrabold tracking-widest uppercase text-green-600 mb-1">✓ Kunde ønsker interview</p>
-            {s.interview_datetime && (
-              <p className="text-xs text-green-700 font-semibold">
-                {new Date(s.interview_datetime).toLocaleString("da-DK", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
-              </p>
-            )}
-            {s.interview_confirmed
-              ? <p className="text-xs text-green-600 font-bold mt-1">✓ Bekræftet af leverandør</p>
-              : <p className="text-xs text-orange font-bold mt-1">⏳ Afventer svar fra leverandør</p>
-            }
-          </div>
-        )}
+        {s.customer_decision === "interview" && (() => {
+          const fmtDate = (iso: string | null) => iso
+            ? new Date(iso).toLocaleString("da-DK", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
+            : null;
+
+          if (s.interview_confirmed) {
+            return (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-2.5">
+                <p className="text-xs font-extrabold tracking-widest uppercase text-green-600 mb-1">✅ Interview bekræftet</p>
+                {s.interview_datetime && <p className="text-xs text-green-700 font-semibold">{fmtDate(s.interview_datetime)}</p>}
+              </div>
+            );
+          }
+          if (s.interview_proposed_by === "customer") {
+            return (
+              <div className="bg-orange/5 border border-orange/20 rounded-xl p-2.5">
+                <p className="text-xs font-extrabold tracking-widest uppercase text-orange mb-1">📅 Kunde foreslår interview</p>
+                {s.interview_datetime && <p className="text-xs text-charcoal font-semibold">{fmtDate(s.interview_datetime)}</p>}
+                <p className="text-xs text-charcoal/45 font-bold mt-1">⏳ Afventer svar fra leverandør</p>
+              </div>
+            );
+          }
+          if (s.interview_proposed_by === "supplier") {
+            return (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-2.5">
+                <p className="text-xs font-extrabold tracking-widest uppercase text-blue-600 mb-1">📅 Leverandør foreslår nyt tidspunkt</p>
+                {s.interview_datetime && <p className="text-xs text-blue-700 font-semibold">{fmtDate(s.interview_datetime)}</p>}
+                <p className="text-xs text-charcoal/45 font-bold mt-1">⏳ Afventer svar fra kunde</p>
+              </div>
+            );
+          }
+          return (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-2.5">
+              <p className="text-xs font-extrabold tracking-widest uppercase text-green-600 mb-1">✓ Kunde ønsker interview</p>
+              <p className="text-xs text-orange font-bold mt-1">⏳ Afventer svar fra leverandør</p>
+            </div>
+          );
+        })()}
 
         {s.customer_decision === "afvist" && (
           <p className="text-xs text-red-500 font-bold">✗ Afvist af kunde</p>
