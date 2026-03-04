@@ -705,41 +705,61 @@ export default function SupplierPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Forespørgselsliste */}
               <div>
-                <h2 className="font-bold text-lg text-charcoal mb-4">Aktive forespørgsler</h2>
+                <h2 className="font-bold text-lg text-charcoal mb-4">Forespørgsler</h2>
                 {requests.length === 0 ? (
                   <div className="bg-white rounded-2xl border border-[#ede9e3] p-8 text-center">
                     <div className="text-3xl mb-2">📋</div>
-                    <p className="text-charcoal/45 text-sm">Ingen aktive forespørgsler</p>
+                    <p className="text-charcoal/45 text-sm">Ingen forespørgsler endnu</p>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {requests.map(r => (
-                      <div key={r.id}
-                        onClick={() => { setSelectedRequest(r); setSubmitted(false); }}
-                        className={`bg-white rounded-2xl border p-4 cursor-pointer transition-all ${selectedRequest?.id === r.id ? "border-orange shadow-md" : "border-[#ede9e3] hover:border-orange/50 hover:shadow-sm"}`}>
-                        {r.reference_number && (
-                          <span className="inline-block text-xs font-black text-orange bg-orange/10 px-2 py-0.5 rounded-full tracking-wide mb-1.5">{r.reference_number}</span>
-                        )}
-                        <p className="text-sm font-semibold text-charcoal line-clamp-2 mb-2">{r.description || "Ingen beskrivelse"}</p>
-                        <div className="flex flex-wrap gap-1.5 mb-2">
-                          {r.competencies?.map(c => (
-                            <span key={c} className="bg-orange/10 text-orange text-xs font-bold px-2 py-0.5 rounded-full">{c}</span>
-                          ))}
-                        </div>
-                        <div className="flex flex-wrap gap-3 text-xs text-charcoal/40 font-semibold">
-                          {r.duration && <span>⏱ {r.duration}</span>}
-                          {r.work_mode && <span>📍 {r.work_mode}</span>}
-                          {r.max_rate && <span className="text-green font-bold">💰 Maks. {r.max_rate} DKK/t</span>}
-                        </div>
-                        {r.file_url && (
-                          <a href={r.file_url} target="_blank" rel="noopener noreferrer"
-                            onClick={e => e.stopPropagation()}
-                            className="inline-flex items-center gap-1 mt-2 text-xs font-bold text-orange hover:underline">
-                            📎 Se opgavebeskrivelse
-                          </a>
-                        )}
-                      </div>
-                    ))}
+                    {[...requests]
+                      .sort((a, b) => (a.status === "Afsluttet" ? 1 : 0) - (b.status === "Afsluttet" ? 1 : 0))
+                      .map(r => {
+                        const isCompleted = r.status === "Afsluttet";
+                        return (
+                          <div key={r.id}
+                            onClick={() => { if (!isCompleted) { setSelectedRequest(r); setSubmitted(false); } }}
+                            className={`bg-white rounded-2xl border p-4 transition-all ${
+                              isCompleted
+                                ? "border-[#ede9e3] opacity-60 cursor-default"
+                                : selectedRequest?.id === r.id
+                                  ? "border-orange shadow-md cursor-pointer"
+                                  : "border-[#ede9e3] hover:border-orange/50 hover:shadow-sm cursor-pointer"
+                            }`}>
+                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                              {r.reference_number && (
+                                <span className="text-xs font-black text-orange bg-orange/10 px-2 py-0.5 rounded-full tracking-wide">{r.reference_number}</span>
+                              )}
+                              {r.status && (
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${reqStatusColor[r.status] ?? "bg-gray-100 text-gray-600"}`}>
+                                  {r.status}
+                                </span>
+                              )}
+                            </div>
+                            <p className={`text-sm font-semibold line-clamp-2 mb-2 ${isCompleted ? "text-charcoal/50" : "text-charcoal"}`}>
+                              {r.description || "Ingen beskrivelse"}
+                            </p>
+                            <div className="flex flex-wrap gap-1.5 mb-2">
+                              {r.competencies?.map(c => (
+                                <span key={c} className={`text-xs font-bold px-2 py-0.5 rounded-full ${isCompleted ? "bg-charcoal/8 text-charcoal/40" : "bg-orange/10 text-orange"}`}>{c}</span>
+                              ))}
+                            </div>
+                            <div className="flex flex-wrap gap-3 text-xs text-charcoal/40 font-semibold">
+                              {r.duration && <span>⏱ {r.duration}</span>}
+                              {r.work_mode && <span>📍 {r.work_mode}</span>}
+                              {r.max_rate && <span className={isCompleted ? "" : "text-green font-bold"}>💰 Maks. {r.max_rate} DKK/t</span>}
+                            </div>
+                            {r.file_url && (
+                              <a href={r.file_url} target="_blank" rel="noopener noreferrer"
+                                onClick={e => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 mt-2 text-xs font-bold text-orange hover:underline">
+                                📎 Se opgavebeskrivelse
+                              </a>
+                            )}
+                          </div>
+                        );
+                      })}
                   </div>
                 )}
               </div>
