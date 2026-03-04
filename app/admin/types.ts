@@ -10,7 +10,7 @@ export type Submission = {
   rate: number; skills: string[]; bio: string; availability: string; status: string;
   customer_decision: string | null; interview_datetime: string | null;
   interview_confirmed: boolean; cv_url: string | null;
-  requests: { description: string; email: string } | null;
+  requests: { description: string; email: string; reference_number?: string | null; competencies?: string[]; status?: string } | null;
   ai_rating: number | null; ai_summary: string | null;
 };
 
