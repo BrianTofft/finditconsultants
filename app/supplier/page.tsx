@@ -25,11 +25,18 @@ type Submission = {
   request_id: string;
   name: string;
   title: string;
+  rate: number | null;
+  skills: string[] | null;
   status: string;
   customer_decision: string | null;
   interview_datetime: string | null;
   interview_confirmed: boolean;
-  requests: { description: string } | null;
+  requests: {
+    description: string;
+    reference_number?: string | null;
+    competencies?: string[];
+    status?: string;
+  } | null;
 };
 
 type Profile = {
@@ -64,7 +71,7 @@ type PortalSidebarProps = {
 function PortalSidebar({ tab, setTab, companyLabel, onLogout }: PortalSidebarProps) {
   const navItems: { tab: Tab; label: string; icon: string }[] = [
     { tab: "requests",    label: "Forespørgsler", icon: "📋" },
-    { tab: "submissions", label: "Mine profiler", icon: "👤" },
+    { tab: "submissions", label: "Konsulenter",   icon: "👤" },
     { tab: "messages",    label: "Beskeder",      icon: "💬" },
     { tab: "profile",     label: "Min profil",    icon: "⚙️" },
   ];
@@ -152,6 +159,122 @@ function ChangePassword() {
   );
 }
 
+/* ─── Konsulent-kort (leverandørvisning) ─────────────────────── */
+function SubmissionCard({
+  s,
+  interviewDate,
+  onDateChange,
+  onConfirm,
+  confirming,
+}: {
+  s: Submission;
+  interviewDate: string;
+  onDateChange: (val: string) => void;
+  onConfirm: (newDate?: string) => void;
+  confirming: boolean;
+}) {
+  const statusColor: Record<string, string> = {
+    "Indsendt": "bg-blue-100 text-blue-700",
+    "Godkendt": "bg-green-100 text-green-700",
+    "Valgt":    "bg-orange/15 text-orange",
+    "Afvist":   "bg-red-100 text-red-600",
+  };
+  const statusLabel: Record<string, string> = {
+    "Indsendt": "Afventer",
+    "Godkendt": "Godkendt",
+    "Valgt":    "Præsenteret",
+    "Afvist":   "Afvist",
+  };
+
+  return (
+    <div className={`bg-white rounded-2xl border flex flex-col overflow-hidden transition-all hover:shadow-md ${
+      s.customer_decision === "interview" ? "border-green-200 hover:border-green-300" :
+      s.customer_decision === "afvist"    ? "border-red-200 hover:border-red-300" :
+      s.status === "Valgt"                ? "border-orange/30 hover:border-orange/50" :
+                                            "border-[#ede9e3] hover:border-orange/20"
+    }`}>
+
+      {/* ── Header ── */}
+      <div className="p-4 border-b border-[#f5f2ee]">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-sm text-charcoal truncate">{s.name}</p>
+            <p className="text-xs text-charcoal/50 truncate mt-0.5">{s.title}</p>
+          </div>
+          <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full flex-shrink-0 ${statusColor[s.status] ?? "bg-gray-100 text-gray-600"}`}>
+            {statusLabel[s.status] ?? s.status}
+          </span>
+        </div>
+
+        {/* Skills */}
+        {s.skills && s.skills.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2.5">
+            {s.skills.map(skill => (
+              <span key={skill} className="bg-orange/10 text-orange text-[11px] font-bold px-2 py-0.5 rounded-full">{skill}</span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Body ── */}
+      <div className="p-4 flex-1 flex flex-col gap-2">
+        {/* Rate */}
+        {s.rate && (
+          <p className="font-extrabold text-orange text-sm">{s.rate.toLocaleString("da-DK")} DKK/t</p>
+        )}
+
+        {/* Præsenteret for kunde */}
+        {s.status === "Valgt" && !s.customer_decision && (
+          <div className="flex items-center gap-1.5 text-xs font-bold text-orange">
+            <span>★</span> Præsenteret for kunden
+          </div>
+        )}
+
+        {/* Interview-sektion */}
+        {s.customer_decision === "interview" && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3">
+            <p className="text-xs font-extrabold tracking-widest uppercase text-green-600 mb-1">
+              ✓ Kunden ønsker interview
+            </p>
+            {s.interview_datetime && (
+              <p className="text-xs text-green-700 font-semibold mb-2">
+                {new Date(s.interview_datetime).toLocaleString("da-DK", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+              </p>
+            )}
+            {s.interview_confirmed ? (
+              <p className="text-xs text-green-600 font-bold">✓ Interview bekræftet</p>
+            ) : (
+              <div className="space-y-2">
+                <label className="block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40">Bekræft eller foreslå nyt tidspunkt</label>
+                <input
+                  type="datetime-local"
+                  className="w-full rounded-xl border border-[#e8e5e0] bg-white px-3 py-1.5 text-xs text-charcoal focus:outline-none focus:border-green-400 transition-all"
+                  value={interviewDate}
+                  onChange={e => onDateChange(e.target.value)}
+                />
+                <button
+                  onClick={() => onConfirm(interviewDate || undefined)}
+                  disabled={confirming}
+                  className="w-full bg-green-500 text-white font-bold rounded-full py-1.5 text-xs hover:bg-green-600 transition-all disabled:opacity-50">
+                  {confirming ? "Bekræfter…" : "Bekræft interview"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Afvist */}
+        {s.customer_decision === "afvist" && (
+          <div className="flex items-center gap-1.5 text-xs font-bold text-red-500">
+            <span>✗</span> Afvist af kunde
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Hoved-komponent ────────────────────────────────────────── */
 export default function SupplierPage() {
   const router = useRouter();
   const [requests, setRequests] = useState<Request[]>([]);
@@ -210,7 +333,7 @@ export default function SupplierPage() {
 
       const { data: subData } = await supabase
         .from("consultant_submissions")
-        .select("*, requests(description)")
+        .select("*, requests(description, reference_number, competencies, status)")
         .eq("supplier_id", user.id)
         .order("created_at", { ascending: false });
 
@@ -218,7 +341,6 @@ export default function SupplierPage() {
       setSubmissions(subData ?? []);
       setLoading(false);
 
-      // Find kollegaer fra samme virksomhed
       if (supplierData.company_name) {
         const { data: teamData } = await supabase
           .from("suppliers")
@@ -245,7 +367,7 @@ export default function SupplierPage() {
       await supabase.storage.from("CVS").upload(fileName, cvFile);
       const { data: urlData } = supabase.storage.from("CVS").getPublicUrl(fileName);
       cv_url = urlData.publicUrl;
-    };
+    }
 
     await supabase.from("consultant_submissions").insert({
       request_id: selectedRequest.id,
@@ -261,15 +383,14 @@ export default function SupplierPage() {
       cv_url,
     });
 
-    // Advis admin
     await fetch("/api/notify-admin", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-      supplier_name: profile.company_name || profile.email,
-      consultant_name: form.name,
-      request_description: selectedRequest.description,
-    }),
+        supplier_name: profile.company_name || profile.email,
+        consultant_name: form.name,
+        request_description: selectedRequest.description,
+      }),
     });
 
     setSubmitted(true);
@@ -279,37 +400,40 @@ export default function SupplierPage() {
 
     const { data: subData } = await supabase
       .from("consultant_submissions")
-      .select("*")
-      .eq("supplier_id", supplierId);
+      .select("*, requests(description, reference_number, competencies, status)")
+      .eq("supplier_id", supplierId)
+      .order("created_at", { ascending: false });
     setSubmissions(subData ?? []);
   };
 
   const handleSaveProfile = async () => {
-  setSaving(true);
-  await supabase.from("suppliers").upsert({
-    id: supplierId,
-    email: profile.email,
-    company_name: profile.company_name,
-    first_name: profile.first_name,
-    last_name: profile.last_name,
-    contact_name: `${profile.first_name} ${profile.last_name}`.trim(),
-    phone: profile.phone,
-    company_type: profile.company_type,
-    competencies: profile.competencies,
-    extra_competencies: profile.extra_competencies,
-    language: profile.language,
-  });
-  setSaving(false);
-  setSaved(true);
-  setTimeout(() => setSaved(false), 2000);
-};
+    setSaving(true);
+    await supabase.from("suppliers").upsert({
+      id: supplierId,
+      email: profile.email,
+      company_name: profile.company_name,
+      first_name: profile.first_name,
+      last_name: profile.last_name,
+      contact_name: `${profile.first_name} ${profile.last_name}`.trim(),
+      phone: profile.phone,
+      company_type: profile.company_type,
+      competencies: profile.competencies,
+      extra_competencies: profile.extra_competencies,
+      language: profile.language,
+    });
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
 
   const confirmInterview = async (submissionId: string, newDatetime?: string) => {
     setConfirming(submissionId);
     const updates: Record<string, unknown> = { interview_confirmed: true };
     if (newDatetime) updates.interview_datetime = new Date(newDatetime).toISOString();
     await supabase.from("consultant_submissions").update(updates).eq("id", submissionId);
-    setSubmissions(prev => prev.map(s => s.id === submissionId ? { ...s, interview_confirmed: true, interview_datetime: newDatetime ?? s.interview_datetime } : s));
+    setSubmissions(prev => prev.map(s =>
+      s.id === submissionId ? { ...s, interview_confirmed: true, interview_datetime: newDatetime ?? s.interview_datetime } : s
+    ));
     setConfirming(null);
   };
 
@@ -317,22 +441,16 @@ export default function SupplierPage() {
     supabase.auth.signOut().then(() => { window.location.href = "https://finditconsultants.com"; });
   };
 
-  const statusColor: Record<string, string> = {
-    "Indsendt": "bg-blue-100 text-blue-700",
-    "Godkendt": "bg-green-100 text-green-700",
-    "Valgt": "bg-orange/15 text-orange",
-    "Afvist": "bg-red-100 text-red-700",
+  /* ── Gruppér indsendte konsulenter per forespørgsel ── */
+  type SubGroup = {
+    request_id: string;
+    description: string;
+    reference_number?: string | null;
+    competencies?: string[];
+    request_status?: string;
+    submissions: Submission[];
   };
 
-  const statusLabel: Record<string, string> = {
-    "Indsendt": "Afventer",
-    "Godkendt": "Godkendt",
-    "Valgt": "Præsenteret for kunde",
-    "Afvist": "Afvist",
-  };
-
-  // Gruppér mine indsendte profiler per opgave
-  type SubGroup = { request_id: string; description: string; submissions: Submission[] };
   const subGroups: SubGroup[] = [];
   const subGroupMap: Record<string, SubGroup> = {};
   for (const s of submissions) {
@@ -341,6 +459,9 @@ export default function SupplierPage() {
       subGroupMap[rid] = {
         request_id: rid,
         description: s.requests?.description ?? "Ukendt opgave",
+        reference_number: s.requests?.reference_number ?? null,
+        competencies: s.requests?.competencies ?? [],
+        request_status: s.requests?.status,
         submissions: [],
       };
       subGroups.push(subGroupMap[rid]);
@@ -350,6 +471,12 @@ export default function SupplierPage() {
 
   const inp = "w-full rounded-xl border border-[#e8e5e0] bg-[#f8f6f3] px-4 py-2.5 text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-orange/25 focus:border-orange transition-all";
   const lbl = "block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/45 mb-1.5";
+
+  const reqStatusColor: Record<string, string> = {
+    "Ny": "bg-blue-100 text-blue-700",
+    "I gang": "bg-orange/15 text-orange",
+    "Afsluttet": "bg-green-100 text-green-700",
+  };
 
   if (loading) return (
     <div className="min-h-screen bg-[#f8f6f3] flex items-center justify-center">
@@ -361,20 +488,24 @@ export default function SupplierPage() {
     <div className="flex h-screen bg-[#f8f6f3] overflow-hidden">
       <PortalSidebar
         tab={tab}
-        setTab={setTab}
+        setTab={t => { setTab(t); }}
         companyLabel={profile.company_name || profile.email}
         onLogout={handleLogout}
       />
       <main className="flex-1 ml-56 overflow-y-auto p-8">
+
+        {/* ══════════════════════════════════════════════
+            TAB: FORESPØRGSLER
+        ══════════════════════════════════════════════ */}
         {tab === "requests" && (
           <div className="space-y-6">
             {/* Statistik */}
             {(() => {
               const stats = [
-                { label: "Modtagne opgaver", value: requests.length, icon: "📋" },
-                { label: "Indsendte profiler", value: submissions.length, icon: "👤" },
-                { label: "Præsenterede profiler", value: submissions.filter(s => s.status === "Valgt").length, icon: "⭐" },
-                { label: "Interviews", value: submissions.filter(s => s.customer_decision === "interview").length, icon: "🗓️" },
+                { label: "Modtagne opgaver",     value: requests.length,                                           icon: "📋" },
+                { label: "Indsendte konsulenter", value: submissions.length,                                        icon: "👤" },
+                { label: "Præsenterede",          value: submissions.filter(s => s.status === "Valgt").length,     icon: "⭐" },
+                { label: "Interviews",            value: submissions.filter(s => s.customer_decision === "interview").length, icon: "🗓️" },
               ];
               return (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -388,118 +519,115 @@ export default function SupplierPage() {
                 </div>
               );
             })()}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div>
-              <h2 className="font-bold text-lg text-charcoal mb-4">Aktive forespørgsler</h2>
-              {requests.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-[#ede9e3] p-8 text-center">
-                  <p className="text-charcoal/45 text-sm">Ingen aktive forespørgsler</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {requests.map(r => (
-                    <div key={r.id}
-                      onClick={() => { setSelectedRequest(r); setSubmitted(false); }}
-                      className={`bg-white rounded-2xl border p-4 cursor-pointer transition-all ${selectedRequest?.id === r.id ? "border-orange shadow-md" : "border-[#ede9e3] hover:border-orange/50"}`}>
-                      {r.reference_number && (
-                        <span className="inline-block text-xs font-black text-orange bg-orange/10 px-2 py-0.5 rounded-full tracking-wide mb-1.5">{r.reference_number}</span>
-                      )}
-                      <p className="text-sm font-semibold text-charcoal line-clamp-2 mb-2">{r.description || "Ingen beskrivelse"}</p>
-                      <div className="flex flex-wrap gap-1.5 mb-2">
-                        {r.competencies?.map(c => (
-                          <span key={c} className="bg-orange/10 text-orange text-xs font-bold px-2 py-0.5 rounded-full">{c}</span>
-                        ))}
-                      </div>
-                      <div className="flex flex-wrap gap-3 text-xs text-charcoal/40 font-semibold">
-                        {r.duration && <span>⏱ {r.duration}</span>}
-                        {r.work_mode && <span>📍 {r.work_mode}</span>}
-                        {r.max_rate && <span className="text-green font-bold">💰 Maks. {r.max_rate} DKK/t</span>}
-                      </div>
-                      {r.file_url && (
-                        <a
-                          href={r.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={e => e.stopPropagation()}
-                          className="inline-flex items-center gap-1 mt-2 text-xs font-bold text-orange hover:underline"
-                        >
-                          📎 Se opgavebeskrivelse
-                        </a>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div>
-              <h2 className="font-bold text-lg text-charcoal mb-4">
-                {selectedRequest ? "Indsend konsulentprofil" : "Vælg en forespørgsel"}
-              </h2>
-              {selectedRequest ? (
-                submitted ? (
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Forespørgselsliste */}
+              <div>
+                <h2 className="font-bold text-lg text-charcoal mb-4">Aktive forespørgsler</h2>
+                {requests.length === 0 ? (
                   <div className="bg-white rounded-2xl border border-[#ede9e3] p-8 text-center">
-                    <div className="text-4xl mb-3">✅</div>
-                    <h3 className="font-bold text-charcoal mb-1">Profil indsendt!</h3>
-                    <p className="text-charcoal/50 text-sm mb-4">Vi behandler din profil hurtigst muligt.</p>
-                    <button onClick={() => setSelectedRequest(null)} className="text-orange font-bold text-sm hover:underline">← Tilbage</button>
+                    <div className="text-3xl mb-2">📋</div>
+                    <p className="text-charcoal/45 text-sm">Ingen aktive forespørgsler</p>
                   </div>
                 ) : (
-                  <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-[#ede9e3] p-5 space-y-3">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-xs text-charcoal/50 font-semibold">Forespørgsel valgt</p>
-                      <button type="button" onClick={() => setSelectedRequest(null)} className="text-charcoal/40 hover:text-charcoal text-xs">× Annuller</button>
-                    </div>
-                    {/* Opgave-context til leverandøren */}
-                    <div className="bg-[#f8f6f3] rounded-xl p-3 mb-1 space-y-2">
-                      <div className="flex flex-wrap gap-3 text-xs font-semibold text-charcoal/55">
-                        {selectedRequest.max_rate && (
-                          <span className="text-green font-bold">💰 Maks. {selectedRequest.max_rate} DKK/time</span>
+                  <div className="space-y-3">
+                    {requests.map(r => (
+                      <div key={r.id}
+                        onClick={() => { setSelectedRequest(r); setSubmitted(false); }}
+                        className={`bg-white rounded-2xl border p-4 cursor-pointer transition-all ${selectedRequest?.id === r.id ? "border-orange shadow-md" : "border-[#ede9e3] hover:border-orange/50 hover:shadow-sm"}`}>
+                        {r.reference_number && (
+                          <span className="inline-block text-xs font-black text-orange bg-orange/10 px-2 py-0.5 rounded-full tracking-wide mb-1.5">{r.reference_number}</span>
                         )}
-                        {selectedRequest.duration && <span>⏱ {selectedRequest.duration}</span>}
-                        {selectedRequest.work_mode && <span>📍 {selectedRequest.work_mode}</span>}
-                        {selectedRequest.file_url && (
-                          <a
-                            href={selectedRequest.file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-orange font-bold hover:underline"
-                          >
+                        <p className="text-sm font-semibold text-charcoal line-clamp-2 mb-2">{r.description || "Ingen beskrivelse"}</p>
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                          {r.competencies?.map(c => (
+                            <span key={c} className="bg-orange/10 text-orange text-xs font-bold px-2 py-0.5 rounded-full">{c}</span>
+                          ))}
+                        </div>
+                        <div className="flex flex-wrap gap-3 text-xs text-charcoal/40 font-semibold">
+                          {r.duration && <span>⏱ {r.duration}</span>}
+                          {r.work_mode && <span>📍 {r.work_mode}</span>}
+                          {r.max_rate && <span className="text-green font-bold">💰 Maks. {r.max_rate} DKK/t</span>}
+                        </div>
+                        {r.file_url && (
+                          <a href={r.file_url} target="_blank" rel="noopener noreferrer"
+                            onClick={e => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 mt-2 text-xs font-bold text-orange hover:underline">
                             📎 Se opgavebeskrivelse
                           </a>
                         )}
                       </div>
-                      {selectedRequest.admin_note && (
-                        <div className="border-t border-[#ede9e3] pt-2">
-                          <p className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mb-1">Note fra FindIT</p>
-                          <p className="text-xs text-charcoal/70 font-medium">{selectedRequest.admin_note}</p>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Indsend konsulentprofil */}
+              <div>
+                <h2 className="font-bold text-lg text-charcoal mb-4">
+                  {selectedRequest ? "Indsend konsulentprofil" : "Vælg en forespørgsel"}
+                </h2>
+                {selectedRequest ? (
+                  submitted ? (
+                    <div className="bg-white rounded-2xl border border-[#ede9e3] p-8 text-center">
+                      <div className="text-4xl mb-3">✅</div>
+                      <h3 className="font-bold text-charcoal mb-1">Profil indsendt!</h3>
+                      <p className="text-charcoal/50 text-sm mb-4">Vi behandler din profil hurtigst muligt.</p>
+                      <button onClick={() => setSelectedRequest(null)} className="text-orange font-bold text-sm hover:underline">← Tilbage</button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-[#ede9e3] p-5 space-y-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs text-charcoal/50 font-semibold">Forespørgsel valgt</p>
+                        <button type="button" onClick={() => setSelectedRequest(null)} className="text-charcoal/40 hover:text-charcoal text-xs">× Annuller</button>
+                      </div>
+                      {/* Opgave-context */}
+                      <div className="bg-[#f8f6f3] rounded-xl p-3 mb-1 space-y-2">
+                        <div className="flex flex-wrap gap-3 text-xs font-semibold text-charcoal/55">
+                          {selectedRequest.max_rate && (
+                            <span className="text-green font-bold">💰 Maks. {selectedRequest.max_rate} DKK/time</span>
+                          )}
+                          {selectedRequest.duration && <span>⏱ {selectedRequest.duration}</span>}
+                          {selectedRequest.work_mode && <span>📍 {selectedRequest.work_mode}</span>}
+                          {selectedRequest.file_url && (
+                            <a href={selectedRequest.file_url} target="_blank" rel="noopener noreferrer"
+                              className="text-orange font-bold hover:underline">
+                              📎 Se opgavebeskrivelse
+                            </a>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className={lbl}>Navn</label>
-                        <input required className={inp} placeholder="Konsulentens navn" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+                        {selectedRequest.admin_note && (
+                          <div className="border-t border-[#ede9e3] pt-2">
+                            <p className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mb-1">Note fra FindIT</p>
+                            <p className="text-xs text-charcoal/70 font-medium">{selectedRequest.admin_note}</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className={lbl}>Navn</label>
+                          <input required className={inp} placeholder="Konsulentens navn" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label className={lbl}>Titel</label>
+                          <input required className={inp} placeholder="F.eks. Senior Developer" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+                        </div>
+                        <div>
+                          <label className={lbl}>Sprog</label>
+                          <select className={inp} value={form.experience_years} onChange={e => setForm(f => ({ ...f, experience_years: e.target.value }))}>
+                            <option value="">Vælg…</option>
+                            <option>Dansk</option>
+                            <option>Engelsk</option>
+                            <option>Dansk & Engelsk</option>
+                            <option>Andet</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className={lbl}>Timepris (DKK)</label>
+                          <input type="number" required className={inp} placeholder="F.eks. 1200" value={form.rate} onChange={e => setForm(f => ({ ...f, rate: e.target.value }))} />
+                        </div>
                       </div>
                       <div>
-                        <label className={lbl}>Titel</label>
-                        <input required className={inp} placeholder="F.eks. Senior Developer" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
-                      </div>
-                      <div>
-                        <label className={lbl}>Sprog</label>
-                        <select className={inp} value={form.experience_years} onChange={e => setForm(f => ({ ...f, experience_years: e.target.value }))}>
-                          <option value="">Vælg…</option>
-                          <option>Dansk</option>
-                          <option>Engelsk</option>
-                          <option>Dansk & Engelsk</option>
-                          <option>Andet</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className={lbl}>Timepris (DKK)</label>
-                        <input type="number" required className={inp} placeholder="F.eks. 1200" value={form.rate} onChange={e => setForm(f => ({ ...f, rate: e.target.value }))} />
-                      </div>
-                    </div>
-                      <div className="col-span-2">
                         <label className={lbl}>Kompetencer</label>
                         <div className="flex flex-wrap gap-2">
                           {COMPETENCIES.map(c => {
@@ -518,108 +646,116 @@ export default function SupplierPage() {
                           })}
                         </div>
                       </div>
-                    <div className="col-span-2">
-                      <label className={lbl}>Upload CV <span className="normal-case font-normal">(valgfrit)</span></label>
-                      <label className="flex items-center gap-3 w-full rounded-xl border border-dashed border-[#d4cfc8] bg-[#f8f6f3] px-4 py-2.5 cursor-pointer hover:border-orange transition-all">
-                        <input type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={e => setCvFile(e.target.files?.[0] ?? null)} />
-                        <span className="text-base">📎</span>
-                        <div>
-                          <div className="text-xs font-bold text-charcoal">Klik for at uploade CV</div>
-                          {cvFile
-                            ? <div className="text-xs text-orange font-bold mt-0.5">✓ {cvFile.name}</div>
-                            : <div className="text-xs text-charcoal/40 mt-0.5">PDF eller Word</div>
-                          }
-                        </div>
-                      </label>
-                    </div>  
-                    <div>
-                      <label className={lbl}>Tilgængelighed fra</label>
-                      <input type="date" required className={inp} value={form.availability} onChange={e => setForm(f => ({ ...f, availability: e.target.value }))} />
-                    </div>
-                    <div>
-                      <label className={lbl}>Kort beskrivelse</label>
-                      <textarea required className={`${inp} resize-none`} rows={3} placeholder="Beskriv konsulentens erfaring og styrker…" value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} />
-                    </div>
-                    <button type="submit" disabled={submitting}
-                      className="w-full bg-orange text-white font-bold rounded-full px-8 py-3 text-sm hover:bg-orange-dark transition-all disabled:opacity-50">
-                      {submitting ? "Indsender…" : "Indsend profil →"}
-                    </button>
-                  </form>
-                )
-              ) : (
-                <div className="bg-white rounded-2xl border border-[#ede9e3] p-8 text-center">
-                  <p className="text-charcoal/45 text-sm">Klik på en forespørgsel for at indsende en konsulentprofil</p>
-                </div>
-              )}
+                      <div>
+                        <label className={lbl}>Upload CV <span className="normal-case font-normal">(valgfrit)</span></label>
+                        <label className="flex items-center gap-3 w-full rounded-xl border border-dashed border-[#d4cfc8] bg-[#f8f6f3] px-4 py-2.5 cursor-pointer hover:border-orange transition-all">
+                          <input type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={e => setCvFile(e.target.files?.[0] ?? null)} />
+                          <span className="text-base">📎</span>
+                          <div>
+                            <div className="text-xs font-bold text-charcoal">Klik for at uploade CV</div>
+                            {cvFile
+                              ? <div className="text-xs text-orange font-bold mt-0.5">✓ {cvFile.name}</div>
+                              : <div className="text-xs text-charcoal/40 mt-0.5">PDF eller Word</div>
+                            }
+                          </div>
+                        </label>
+                      </div>
+                      <div>
+                        <label className={lbl}>Tilgængelighed fra</label>
+                        <input type="date" required className={inp} value={form.availability} onChange={e => setForm(f => ({ ...f, availability: e.target.value }))} />
+                      </div>
+                      <div>
+                        <label className={lbl}>Kort beskrivelse</label>
+                        <textarea required className={`${inp} resize-none`} rows={3} placeholder="Beskriv konsulentens erfaring og styrker…" value={form.bio} onChange={e => setForm(f => ({ ...f, bio: e.target.value }))} />
+                      </div>
+                      <button type="submit" disabled={submitting}
+                        className="w-full bg-orange text-white font-bold rounded-full px-8 py-3 text-sm hover:bg-orange-dark transition-all disabled:opacity-50">
+                        {submitting ? "Indsender…" : "Indsend profil →"}
+                      </button>
+                    </form>
+                  )
+                ) : (
+                  <div className="bg-white rounded-2xl border border-[#ede9e3] p-8 text-center">
+                    <div className="text-3xl mb-2">👆</div>
+                    <p className="text-charcoal/45 text-sm">Klik på en forespørgsel for at indsende en konsulentprofil</p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
           </div>
         )}
 
+        {/* ══════════════════════════════════════════════
+            TAB: KONSULENTER
+        ══════════════════════════════════════════════ */}
         {tab === "submissions" && (
           <>
-            <h2 className="font-bold text-lg text-charcoal mb-4">Mine indsendte profiler</h2>
+            <h2 className="font-bold text-lg text-charcoal mb-6">Mine konsulenter</h2>
+
             {subGroups.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-[#ede9e3] p-8 text-center">
-                <p className="text-charcoal/45 text-sm">Du har ikke indsendt nogen profiler endnu</p>
+              <div className="bg-white rounded-2xl border border-[#ede9e3] p-10 text-center">
+                <div className="text-4xl mb-3">👤</div>
+                <p className="text-charcoal/50 text-sm font-semibold">Du har ikke indsendt nogen konsulenter endnu</p>
+                <p className="text-charcoal/35 text-xs mt-1">Gå til Forespørgsler for at indsende en profil.</p>
               </div>
             ) : (
-              <div className="space-y-8">
+              <div className="space-y-10">
                 {subGroups.map(group => (
                   <div key={group.request_id}>
-                    {/* Opgave-header */}
-                    <div className="mb-3 px-1">
-                      <p className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/35 mb-0.5">Opgave</p>
-                      <p className="font-bold text-sm text-charcoal line-clamp-2">{group.description}</p>
-                    </div>
 
-                    {/* Profiler under denne opgave */}
-                    <div className="space-y-2 border-l-2 border-orange/20 pl-3">
-                      {group.submissions.map(s => (
-                        <div key={s.id} className="bg-white rounded-2xl border border-[#ede9e3] p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex-1">
-                              <p className="font-bold text-sm text-charcoal">{s.name}</p>
-                              <p className="text-xs text-charcoal/50">{s.title}</p>
-                              {s.status === "Valgt" && (
-                                <p className="mt-1 text-xs text-orange font-bold">★ Din profil er præsenteret for kunden</p>
-                              )}
-                              {s.customer_decision === "interview" && (
-                                <div className="mt-3 border-t border-[#f0ede8] pt-3">
-                                  <p className="text-xs font-extrabold tracking-widest uppercase text-green-600 mb-2">
-                                    ✓ Kunde ønsker interview
-                                    {s.interview_datetime && ` — ${new Date(s.interview_datetime).toLocaleString("da-DK")}`}
-                                  </p>
-                                  {s.interview_confirmed ? (
-                                    <p className="text-xs text-green-600 font-bold">✓ Interview bekræftet</p>
-                                  ) : (
-                                    <div className="flex gap-2 items-end flex-wrap">
-                                      <div>
-                                        <label className="block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mb-1">Bekræft eller foreslå nyt tidspunkt</label>
-                                        <input type="datetime-local"
-                                          className="rounded-xl border border-[#e8e5e0] bg-[#f8f6f3] px-3 py-2 text-sm text-charcoal focus:outline-none focus:border-orange transition-all"
-                                          value={interviewDates[s.id] ?? ""}
-                                          onChange={e => setInterviewDates(prev => ({ ...prev, [s.id]: e.target.value }))} />
-                                      </div>
-                                      <button
-                                        onClick={() => confirmInterview(s.id, interviewDates[s.id])}
-                                        disabled={confirming === s.id}
-                                        className="bg-green-500 text-white font-bold rounded-full px-4 py-2 text-xs hover:bg-green-600 transition-all disabled:opacity-50">
-                                        {confirming === s.id ? "Bekræfter…" : "Bekræft interview"}
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                              {s.customer_decision === "afvist" && (
-                                <p className="mt-2 text-xs text-red-500 font-bold">✗ Afvist af kunde</p>
-                              )}
-                            </div>
-                            <span className={`text-xs font-bold px-3 py-1 rounded-full flex-shrink-0 ${statusColor[s.status] ?? "bg-gray-100 text-gray-600"}`}>
-                              {statusLabel[s.status] ?? s.status}
+                    {/* ── Forespørgselshoved ── */}
+                    <div className="bg-white rounded-2xl border border-[#ede9e3] p-4 mb-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                            {group.reference_number && (
+                              <span className="text-xs font-black text-orange bg-orange/10 px-2.5 py-0.5 rounded-full tracking-wide">{group.reference_number}</span>
+                            )}
+                            {group.request_status && (
+                              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${reqStatusColor[group.request_status] ?? "bg-gray-100 text-gray-600"}`}>
+                                {group.request_status}
+                              </span>
+                            )}
+                            <span className="text-xs font-bold bg-charcoal/8 text-charcoal/50 px-2.5 py-0.5 rounded-full">
+                              {group.submissions.length} konsulent{group.submissions.length !== 1 ? "er" : ""}
                             </span>
                           </div>
+                          <p className="text-sm text-charcoal font-semibold line-clamp-2">{group.description}</p>
+                          {group.competencies && group.competencies.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {group.competencies.map(c => (
+                                <span key={c} className="bg-orange/10 text-orange text-xs font-bold px-2 py-0.5 rounded-full">{c}</span>
+                              ))}
+                            </div>
+                          )}
                         </div>
+                        {/* Mini-stat */}
+                        <div className="shrink-0 text-right space-y-1">
+                          {group.submissions.filter(s => s.customer_decision === "interview").length > 0 && (
+                            <div className="text-xs font-bold text-green-600">
+                              ✓ {group.submissions.filter(s => s.customer_decision === "interview").length} interview
+                            </div>
+                          )}
+                          {group.submissions.filter(s => s.status === "Valgt" && !s.customer_decision).length > 0 && (
+                            <div className="text-xs font-bold text-orange">
+                              ★ {group.submissions.filter(s => s.status === "Valgt" && !s.customer_decision).length} præsenteret
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ── Konsulent-kort ── */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                      {group.submissions.map(s => (
+                        <SubmissionCard
+                          key={s.id}
+                          s={s}
+                          interviewDate={interviewDates[s.id] ?? ""}
+                          onDateChange={val => setInterviewDates(prev => ({ ...prev, [s.id]: val }))}
+                          onConfirm={newDate => confirmInterview(s.id, newDate)}
+                          confirming={confirming === s.id}
+                        />
                       ))}
                     </div>
                   </div>
@@ -628,8 +764,11 @@ export default function SupplierPage() {
             )}
           </>
         )}
-        
-         {tab === "messages" && (
+
+        {/* ══════════════════════════════════════════════
+            TAB: BESKEDER
+        ══════════════════════════════════════════════ */}
+        {tab === "messages" && (
           <div>
             <h2 className="font-bold text-lg text-charcoal mb-4">Beskeder</h2>
             <ChatWindow
@@ -640,6 +779,9 @@ export default function SupplierPage() {
           </div>
         )}
 
+        {/* ══════════════════════════════════════════════
+            TAB: MIN PROFIL
+        ══════════════════════════════════════════════ */}
         {tab === "profile" && (
           <div className="bg-white rounded-2xl border border-[#ede9e3] p-6 max-w-lg">
             <h2 className="font-bold text-lg text-charcoal mb-5">Min profil</h2>
