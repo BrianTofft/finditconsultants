@@ -32,6 +32,8 @@ type Submission = {
   interview_datetime: string | null;
   interview_confirmed: boolean;
   interview_proposed_by: string | null;
+  interview_location: string | null;
+  interview_address: string | null;
   requests: {
     description: string;
     reference_number?: string | null;
@@ -160,17 +162,69 @@ function ChangePassword() {
   );
 }
 
+/* ─── Hjælpere til sted-visning ──────────────────────────────── */
+function fmtLocation(loc: string | null, addr: string | null) {
+  return loc === "online" ? "💻 Online" : `📍 ${addr || "Fysisk møde"}`;
+}
+
+function LocationPicker({
+  location, address, onLocationChange, onAddressChange, bgClass = "bg-[#f8f6f3]"
+}: {
+  location: string; address: string;
+  onLocationChange: (v: string) => void; onAddressChange: (v: string) => void;
+  bgClass?: string;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mb-1">Sted</label>
+      <div className="flex gap-1.5">
+        {[{ value: "online", label: "💻 Online" }, { value: "physical", label: "📍 Fysisk" }].map(opt => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => onLocationChange(opt.value)}
+            className={`flex-1 py-1.5 text-[11px] font-bold rounded-lg border transition-all ${
+              location === opt.value
+                ? "bg-orange text-white border-orange"
+                : `${bgClass} border-[#e8e5e0] text-charcoal/60 hover:border-orange/40`
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+      {location === "physical" && (
+        <input
+          type="text"
+          placeholder="Adresse, by..."
+          className="w-full rounded-xl border border-[#e8e5e0] bg-white px-3 py-1.5 text-xs text-charcoal focus:outline-none focus:border-orange transition-all mt-1"
+          value={address}
+          onChange={e => onAddressChange(e.target.value)}
+        />
+      )}
+    </div>
+  );
+}
+
 /* ─── Konsulent-kort (leverandørvisning) ─────────────────────── */
 function SubmissionCard({
   s,
   interviewDate,
   onDateChange,
+  counterLocation,
+  onCounterLocationChange,
+  counterAddress,
+  onCounterAddressChange,
   onSupplierResponse,
   confirming,
 }: {
   s: Submission;
   interviewDate: string;
   onDateChange: (val: string) => void;
+  counterLocation: string;
+  onCounterLocationChange: (val: string) => void;
+  counterAddress: string;
+  onCounterAddressChange: (val: string) => void;
   onSupplierResponse: (action: "accept" | "counter", newDate?: string) => void;
   confirming: boolean;
 }) {
@@ -249,14 +303,17 @@ function SubmissionCard({
             {s.interview_datetime && (
               <p className="text-xs text-charcoal font-bold">{fmtDate(s.interview_datetime)}</p>
             )}
+            {s.interview_location && (
+              <p className="text-xs text-charcoal/70 font-semibold">{fmtLocation(s.interview_location, s.interview_address)}</p>
+            )}
             <button
               onClick={() => onSupplierResponse("accept")}
               disabled={confirming}
               className="w-full bg-green-500 text-white font-bold rounded-full py-2.5 text-xs hover:bg-green-600 transition-all disabled:opacity-50">
               {confirming ? "Bekræfter…" : "✓ Acceptér tidspunkt"}
             </button>
-            <div className="pt-1">
-              <label className="block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mb-1.5">
+            <div className="pt-1 space-y-1.5">
+              <label className="block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40">
                 Foreslå andet tidspunkt
               </label>
               <input
@@ -265,10 +322,16 @@ function SubmissionCard({
                 value={interviewDate}
                 onChange={e => onDateChange(e.target.value)}
               />
+              <LocationPicker
+                location={counterLocation}
+                address={counterAddress}
+                onLocationChange={onCounterLocationChange}
+                onAddressChange={onCounterAddressChange}
+              />
               <button
                 onClick={() => onSupplierResponse("counter", interviewDate || undefined)}
-                disabled={confirming || !interviewDate}
-                className="w-full mt-1.5 bg-charcoal text-white font-bold rounded-full py-2 text-xs hover:bg-charcoal/80 transition-all disabled:opacity-40">
+                disabled={confirming || !interviewDate || !counterLocation || (counterLocation === "physical" && !counterAddress)}
+                className="w-full mt-1 bg-charcoal text-white font-bold rounded-full py-2 text-xs hover:bg-charcoal/80 transition-all disabled:opacity-40">
                 Foreslå nyt tidspunkt →
               </button>
             </div>
@@ -284,6 +347,9 @@ function SubmissionCard({
             {s.interview_datetime && (
               <p className="text-xs text-blue-700 font-semibold">{fmtDate(s.interview_datetime)}</p>
             )}
+            {s.interview_location && (
+              <p className="text-xs text-blue-600/70 font-semibold">{fmtLocation(s.interview_location, s.interview_address)}</p>
+            )}
           </div>
         )}
 
@@ -295,6 +361,9 @@ function SubmissionCard({
             </p>
             {s.interview_datetime && (
               <p className="text-xs text-green-700 font-bold">{fmtDate(s.interview_datetime)}</p>
+            )}
+            {s.interview_location && (
+              <p className="text-xs text-green-600/70 font-semibold">{fmtLocation(s.interview_location, s.interview_address)}</p>
             )}
           </div>
         )}
@@ -315,6 +384,8 @@ export default function SupplierPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [interviewDates, setInterviewDates] = useState<Record<string, string>>({});
+  const [counterSupplierLocations, setCounterSupplierLocations] = useState<Record<string, string>>({});
+  const [counterSupplierAddresses, setCounterSupplierAddresses] = useState<Record<string, string>>({});
   const [confirming, setConfirming] = useState<string | null>(null);
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [tab, setTab] = useState<Tab>("requests");
@@ -458,6 +529,8 @@ export default function SupplierPage() {
   const handleSupplierResponse = async (submissionId: string, action: "accept" | "counter", newDatetime?: string) => {
     setConfirming(submissionId);
     const isoDate = newDatetime ? new Date(newDatetime).toISOString() : null;
+    const counterLoc = counterSupplierLocations[submissionId] ?? null;
+    const counterAddr = counterLoc === "physical" ? (counterSupplierAddresses[submissionId] ?? null) : null;
     const updates: Record<string, unknown> = {};
     if (action === "accept") {
       updates.interview_confirmed = true;
@@ -465,6 +538,8 @@ export default function SupplierPage() {
       updates.interview_proposed_by = "supplier";
       updates.interview_confirmed = false;
       if (isoDate) updates.interview_datetime = isoDate;
+      if (counterLoc) updates.interview_location = counterLoc;
+      updates.interview_address = counterLoc === "physical" ? counterAddr : null;
     }
     await supabase.from("consultant_submissions").update(updates).eq("id", submissionId);
 
@@ -487,6 +562,8 @@ export default function SupplierPage() {
             interview_confirmed: action === "accept" ? true : false,
             interview_proposed_by: action === "accept" ? s.interview_proposed_by : "supplier",
             interview_datetime: isoDate ?? s.interview_datetime,
+            interview_location: action === "accept" ? s.interview_location : (counterLoc ?? s.interview_location),
+            interview_address: action === "accept" ? s.interview_address : (counterAddr ?? s.interview_address),
           }
         : s
     ));
@@ -809,6 +886,10 @@ export default function SupplierPage() {
                           s={s}
                           interviewDate={interviewDates[s.id] ?? ""}
                           onDateChange={val => setInterviewDates(prev => ({ ...prev, [s.id]: val }))}
+                          counterLocation={counterSupplierLocations[s.id] ?? ""}
+                          onCounterLocationChange={val => setCounterSupplierLocations(prev => ({ ...prev, [s.id]: val }))}
+                          counterAddress={counterSupplierAddresses[s.id] ?? ""}
+                          onCounterAddressChange={val => setCounterSupplierAddresses(prev => ({ ...prev, [s.id]: val }))}
                           onSupplierResponse={(action, newDate) => handleSupplierResponse(s.id, action, newDate)}
                           confirming={confirming === s.id}
                         />

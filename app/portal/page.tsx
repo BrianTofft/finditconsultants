@@ -18,6 +18,8 @@ type Submission = {
   interview_datetime: string | null;
   interview_confirmed: boolean;
   interview_proposed_by: string | null;
+  interview_location: string | null;
+  interview_address: string | null;
   ai_rating: number | null;
   ai_summary: string | null;
 };
@@ -159,23 +161,97 @@ function ChangePassword() {
 }
 
 /* ─── Konsulent-kort ─────────────────────────────────────────── */
+function LocationPicker({
+  location,
+  address,
+  onLocationChange,
+  onAddressChange,
+  bgClass = "bg-[#f8f6f3]",
+}: {
+  location: string;
+  address: string;
+  onLocationChange: (val: string) => void;
+  onAddressChange: (val: string) => void;
+  bgClass?: string;
+}) {
+  return (
+    <div>
+      <label className="block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/35 mb-1.5">Sted</label>
+      <div className="flex gap-2 mb-1.5">
+        <button
+          type="button"
+          onClick={() => onLocationChange("online")}
+          className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${
+            location === "online"
+              ? "bg-orange text-white border-orange"
+              : "bg-white text-charcoal/60 border-[#e8e5e0] hover:border-orange/50"
+          }`}
+        >
+          💻 Online
+        </button>
+        <button
+          type="button"
+          onClick={() => onLocationChange("physical")}
+          className={`flex-1 py-2 rounded-xl text-xs font-bold border transition-all ${
+            location === "physical"
+              ? "bg-orange text-white border-orange"
+              : "bg-white text-charcoal/60 border-[#e8e5e0] hover:border-orange/50"
+          }`}
+        >
+          📍 Fysisk
+        </button>
+      </div>
+      {location === "physical" && (
+        <input
+          type="text"
+          placeholder="Adresse (f.eks. Østergade 12, 2100 København)"
+          className={`w-full rounded-xl border border-[#e8e5e0] ${bgClass} px-3 py-2 text-xs text-charcoal focus:outline-none focus:border-orange transition-all`}
+          value={address}
+          onChange={e => onAddressChange(e.target.value)}
+        />
+      )}
+    </div>
+  );
+}
+
+function fmtLocation(loc: string | null, addr: string | null) {
+  if (!loc) return null;
+  return loc === "online" ? "💻 Online" : `📍 ${addr || "Fysisk møde"}`;
+}
+
 function ConsultantCard({
   s,
   interviewDate,
   onDateChange,
+  interviewLocation,
+  onLocationChange,
+  interviewAddress,
+  onAddressChange,
   onDecision,
   deciding,
   counterDate,
   onCounterDateChange,
+  counterLocation,
+  onCounterLocationChange,
+  counterAddress,
+  onCounterAddressChange,
   onCustomerResponse,
 }: {
   s: Submission;
   interviewDate: string;
   onDateChange: (val: string) => void;
+  interviewLocation: string;
+  onLocationChange: (val: string) => void;
+  interviewAddress: string;
+  onAddressChange: (val: string) => void;
   onDecision: (decision: "interview" | "afvist") => void;
   deciding: boolean;
   counterDate: string;
   onCounterDateChange: (val: string) => void;
+  counterLocation: string;
+  onCounterLocationChange: (val: string) => void;
+  counterAddress: string;
+  onCounterAddressChange: (val: string) => void;
   onCustomerResponse: (action: "accept" | "counter", newDate?: string) => void;
 }) {
   const [showFullBio, setShowFullBio] = useState(false);
@@ -267,20 +343,28 @@ function ConsultantCard({
 
         {/* State 1: Ingen beslutning endnu */}
         {!s.customer_decision && (
-          <div className="space-y-2">
-            <label className="block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/35 mb-1">
-              Foreslå interviewtidspunkt
-            </label>
-            <input
-              type="datetime-local"
-              className="w-full rounded-xl border border-[#e8e5e0] bg-[#f8f6f3] px-3 py-2.5 text-xs text-charcoal focus:outline-none focus:border-orange transition-all"
-              value={interviewDate}
-              onChange={e => onDateChange(e.target.value)}
+          <div className="space-y-2.5">
+            <div>
+              <label className="block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/35 mb-1">
+                Foreslå interviewtidspunkt
+              </label>
+              <input
+                type="datetime-local"
+                className="w-full rounded-xl border border-[#e8e5e0] bg-[#f8f6f3] px-3 py-2.5 text-xs text-charcoal focus:outline-none focus:border-orange transition-all"
+                value={interviewDate}
+                onChange={e => onDateChange(e.target.value)}
+              />
+            </div>
+            <LocationPicker
+              location={interviewLocation}
+              address={interviewAddress}
+              onLocationChange={onLocationChange}
+              onAddressChange={onAddressChange}
             />
-            <div className="flex gap-2">
+            <div className="flex gap-2 pt-0.5">
               <button
                 onClick={() => onDecision("interview")}
-                disabled={deciding || !interviewDate}
+                disabled={deciding || !interviewDate || !interviewLocation || (interviewLocation === "physical" && !interviewAddress)}
                 className="flex-1 bg-green-500 text-white font-bold rounded-full py-2.5 text-xs hover:bg-green-600 transition-all disabled:opacity-40">
                 {deciding ? "Sender…" : "Interview →"}
               </button>
@@ -301,9 +385,10 @@ function ConsultantCard({
               ⏳ Foreslået — afventer leverandør
             </p>
             {s.interview_datetime && (
-              <p className="text-xs text-blue-700 font-semibold">
-                {fmtDate(s.interview_datetime)}
-              </p>
+              <p className="text-xs text-blue-700 font-semibold">{fmtDate(s.interview_datetime)}</p>
+            )}
+            {fmtLocation(s.interview_location, s.interview_address) && (
+              <p className="text-xs text-blue-600 font-semibold mt-0.5">{fmtLocation(s.interview_location, s.interview_address)}</p>
             )}
           </div>
         )}
@@ -315,9 +400,10 @@ function ConsultantCard({
               📅 Leverandør foreslår nyt tidspunkt
             </p>
             {s.interview_datetime && (
-              <p className="text-xs text-charcoal font-bold">
-                {fmtDate(s.interview_datetime)}
-              </p>
+              <p className="text-xs text-charcoal font-bold">{fmtDate(s.interview_datetime)}</p>
+            )}
+            {fmtLocation(s.interview_location, s.interview_address) && (
+              <p className="text-xs text-charcoal/60 font-semibold">{fmtLocation(s.interview_location, s.interview_address)}</p>
             )}
             <button
               onClick={() => onCustomerResponse("accept")}
@@ -325,20 +411,29 @@ function ConsultantCard({
               className="w-full bg-green-500 text-white font-bold rounded-full py-2.5 text-xs hover:bg-green-600 transition-all disabled:opacity-50">
               {deciding ? "Bekræfter…" : "✓ Acceptér tidspunkt"}
             </button>
-            <div className="pt-1">
-              <label className="block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/35 mb-1.5">
-                Foreslå andet tidspunkt
-              </label>
-              <input
-                type="datetime-local"
-                className="w-full rounded-xl border border-[#e8e5e0] bg-white px-3 py-2.5 text-xs text-charcoal focus:outline-none focus:border-orange transition-all"
-                value={counterDate}
-                onChange={e => onCounterDateChange(e.target.value)}
+            <div className="pt-1 space-y-2">
+              <div>
+                <label className="block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/35 mb-1.5">
+                  Foreslå andet tidspunkt
+                </label>
+                <input
+                  type="datetime-local"
+                  className="w-full rounded-xl border border-[#e8e5e0] bg-white px-3 py-2 text-xs text-charcoal focus:outline-none focus:border-orange transition-all"
+                  value={counterDate}
+                  onChange={e => onCounterDateChange(e.target.value)}
+                />
+              </div>
+              <LocationPicker
+                location={counterLocation}
+                address={counterAddress}
+                onLocationChange={onCounterLocationChange}
+                onAddressChange={onCounterAddressChange}
+                bgClass="bg-white"
               />
               <button
                 onClick={() => onCustomerResponse("counter", counterDate)}
-                disabled={deciding || !counterDate}
-                className="w-full mt-1.5 bg-charcoal text-white font-bold rounded-full py-2.5 text-xs hover:bg-charcoal/80 transition-all disabled:opacity-40">
+                disabled={deciding || !counterDate || !counterLocation || (counterLocation === "physical" && !counterAddress)}
+                className="w-full bg-charcoal text-white font-bold rounded-full py-2.5 text-xs hover:bg-charcoal/80 transition-all disabled:opacity-40">
                 Foreslå nyt tidspunkt →
               </button>
             </div>
@@ -352,9 +447,10 @@ function ConsultantCard({
               ✅ Interview bekræftet
             </p>
             {s.interview_datetime && (
-              <p className="text-xs text-green-700 font-bold">
-                {fmtDate(s.interview_datetime)}
-              </p>
+              <p className="text-xs text-green-700 font-bold">{fmtDate(s.interview_datetime)}</p>
+            )}
+            {fmtLocation(s.interview_location, s.interview_address) && (
+              <p className="text-xs text-green-600 font-semibold mt-0.5">{fmtLocation(s.interview_location, s.interview_address)}</p>
             )}
           </div>
         )}
@@ -377,7 +473,11 @@ export default function PortalPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [interviewDates, setInterviewDates] = useState<Record<string, string>>({});
+  const [interviewLocations, setInterviewLocations] = useState<Record<string, string>>({});
+  const [interviewAddresses, setInterviewAddresses] = useState<Record<string, string>>({});
   const [counterDateMap, setCounterDateMap] = useState<Record<string, string>>({});
+  const [counterLocations, setCounterLocations] = useState<Record<string, string>>({});
+  const [counterAddresses, setCounterAddresses] = useState<Record<string, string>>({});
   const [deciding, setDeciding] = useState<string | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [teamRequests, setTeamRequests] = useState<Request[]>([]);
@@ -452,10 +552,14 @@ export default function PortalPage() {
     const isoDate = decision === "interview" && interviewDates[submissionId]
       ? new Date(interviewDates[submissionId]).toISOString()
       : null;
+    const loc = interviewLocations[submissionId] ?? null;
+    const addr = loc === "physical" ? (interviewAddresses[submissionId] ?? null) : null;
     const updates: Record<string, unknown> = { customer_decision: decision };
     if (decision === "interview") {
       updates.interview_proposed_by = "customer";
       if (isoDate) updates.interview_datetime = isoDate;
+      if (loc) updates.interview_location = loc;
+      if (addr) updates.interview_address = addr;
     }
     await supabase.from("consultant_submissions").update(updates).eq("id", submissionId);
     await fetch("/api/notify-admin-interview", {
@@ -471,7 +575,7 @@ export default function PortalPage() {
       ...r,
       submissions: r.submissions?.map(s =>
         s.id === submissionId
-          ? { ...s, customer_decision: decision, interview_datetime: isoDate, interview_proposed_by: decision === "interview" ? "customer" : null }
+          ? { ...s, customer_decision: decision, interview_datetime: isoDate, interview_proposed_by: decision === "interview" ? "customer" : null, interview_location: loc, interview_address: addr }
           : s
       ),
     })));
@@ -481,6 +585,8 @@ export default function PortalPage() {
   const handleCustomerResponse = async (submissionId: string, action: "accept" | "counter", newDate?: string) => {
     setDeciding(submissionId);
     const isoDate = newDate ? new Date(newDate).toISOString() : null;
+    const loc = counterLocations[submissionId] ?? null;
+    const addr = loc === "physical" ? (counterAddresses[submissionId] ?? null) : null;
     const updates: Record<string, unknown> = {};
     if (action === "accept") {
       updates.interview_confirmed = true;
@@ -488,10 +594,11 @@ export default function PortalPage() {
       updates.interview_proposed_by = "customer";
       updates.interview_confirmed = false;
       if (isoDate) updates.interview_datetime = isoDate;
+      if (loc) updates.interview_location = loc;
+      if (addr) updates.interview_address = addr;
     }
     await supabase.from("consultant_submissions").update(updates).eq("id", submissionId);
 
-    // Notify supplier + admin
     const submission = requests.flatMap(r => r.submissions ?? []).find(s => s.id === submissionId);
     await fetch("/api/notify-customer-interview", {
       method: "POST",
@@ -512,6 +619,8 @@ export default function PortalPage() {
               interview_confirmed: action === "accept" ? true : false,
               interview_proposed_by: action === "accept" ? s.interview_proposed_by : "customer",
               interview_datetime: isoDate ?? s.interview_datetime,
+              interview_location: action === "accept" ? s.interview_location : (loc ?? s.interview_location),
+              interview_address: action === "accept" ? s.interview_address : (addr ?? s.interview_address),
             }
           : s
       ),
@@ -780,10 +889,18 @@ export default function PortalPage() {
                     s={s}
                     interviewDate={interviewDates[s.id] ?? ""}
                     onDateChange={val => setInterviewDates(prev => ({ ...prev, [s.id]: val }))}
+                    interviewLocation={interviewLocations[s.id] ?? ""}
+                    onLocationChange={val => setInterviewLocations(prev => ({ ...prev, [s.id]: val }))}
+                    interviewAddress={interviewAddresses[s.id] ?? ""}
+                    onAddressChange={val => setInterviewAddresses(prev => ({ ...prev, [s.id]: val }))}
                     onDecision={decision => handleDecision(s.id, decision)}
                     deciding={deciding === s.id}
                     counterDate={counterDateMap[s.id] ?? ""}
                     onCounterDateChange={val => setCounterDateMap(prev => ({ ...prev, [s.id]: val }))}
+                    counterLocation={counterLocations[s.id] ?? ""}
+                    onCounterLocationChange={val => setCounterLocations(prev => ({ ...prev, [s.id]: val }))}
+                    counterAddress={counterAddresses[s.id] ?? ""}
+                    onCounterAddressChange={val => setCounterAddresses(prev => ({ ...prev, [s.id]: val }))}
                     onCustomerResponse={(action, newDate) => handleCustomerResponse(s.id, action, newDate)}
                   />
                 ))}

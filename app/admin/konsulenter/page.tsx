@@ -169,12 +169,15 @@ function AdminConsultantCard({
           const fmtDate = (iso: string | null) => iso
             ? new Date(iso).toLocaleString("da-DK", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })
             : null;
+          const fmtLoc = (loc: string | null, addr: string | null) =>
+            loc === "online" ? "💻 Online" : `📍 ${addr || "Fysisk møde"}`;
 
           if (s.interview_confirmed) {
             return (
               <div className="bg-green-50 border border-green-200 rounded-xl p-2.5">
                 <p className="text-xs font-extrabold tracking-widest uppercase text-green-600 mb-1">✅ Interview bekræftet</p>
                 {s.interview_datetime && <p className="text-xs text-green-700 font-semibold">{fmtDate(s.interview_datetime)}</p>}
+                {s.interview_location && <p className="text-xs text-green-600/70 font-semibold">{fmtLoc(s.interview_location, s.interview_address ?? null)}</p>}
               </div>
             );
           }
@@ -183,6 +186,7 @@ function AdminConsultantCard({
               <div className="bg-orange/5 border border-orange/20 rounded-xl p-2.5">
                 <p className="text-xs font-extrabold tracking-widest uppercase text-orange mb-1">📅 Kunde foreslår interview</p>
                 {s.interview_datetime && <p className="text-xs text-charcoal font-semibold">{fmtDate(s.interview_datetime)}</p>}
+                {s.interview_location && <p className="text-xs text-charcoal/60 font-semibold">{fmtLoc(s.interview_location, s.interview_address ?? null)}</p>}
                 <p className="text-xs text-charcoal/45 font-bold mt-1">⏳ Afventer svar fra leverandør</p>
               </div>
             );
@@ -192,6 +196,7 @@ function AdminConsultantCard({
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-2.5">
                 <p className="text-xs font-extrabold tracking-widest uppercase text-blue-600 mb-1">📅 Leverandør foreslår nyt tidspunkt</p>
                 {s.interview_datetime && <p className="text-xs text-blue-700 font-semibold">{fmtDate(s.interview_datetime)}</p>}
+                {s.interview_location && <p className="text-xs text-blue-600/70 font-semibold">{fmtLoc(s.interview_location, s.interview_address ?? null)}</p>}
                 <p className="text-xs text-charcoal/45 font-bold mt-1">⏳ Afventer svar fra kunde</p>
               </div>
             );
