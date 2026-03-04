@@ -69,9 +69,11 @@ type PortalSidebarProps = {
   setTab: (t: Tab) => void;
   companyLabel: string;
   onLogout: () => void;
+  open: boolean;
+  onClose: () => void;
 };
 
-function PortalSidebar({ tab, setTab, companyLabel, onLogout }: PortalSidebarProps) {
+function PortalSidebar({ tab, setTab, companyLabel, onLogout, open, onClose }: PortalSidebarProps) {
   const navItems: { tab: Tab; label: string; icon: string }[] = [
     { tab: "requests",    label: "Forespørgsler", icon: "📋" },
     { tab: "submissions", label: "Konsulenter",   icon: "👤" },
@@ -79,8 +81,15 @@ function PortalSidebar({ tab, setTab, companyLabel, onLogout }: PortalSidebarPro
     { tab: "profile",     label: "Min profil",    icon: "⚙️" },
   ];
 
+  const handleTab = (t: Tab) => { setTab(t); onClose(); };
+
   return (
-    <aside className="w-56 bg-white border-r border-[#ede9e3] flex flex-col fixed h-full z-10">
+    <aside className={`
+      w-64 md:w-56 bg-white border-r border-[#ede9e3] flex flex-col fixed h-full z-50
+      transition-transform duration-300 ease-in-out
+      ${open ? "translate-x-0" : "-translate-x-full"}
+      md:translate-x-0
+    `}>
       {/* Logo */}
       <div className="px-5 py-5 border-b border-[#ede9e3]">
         <div className="flex items-center gap-2.5">
@@ -101,7 +110,7 @@ function PortalSidebar({ tab, setTab, companyLabel, onLogout }: PortalSidebarPro
         {navItems.map(item => (
           <button
             key={item.tab}
-            onClick={() => setTab(item.tab)}
+            onClick={() => handleTab(item.tab)}
             className={`w-[calc(100%-1rem)] flex items-center gap-3 px-3 py-2.5 mx-2 rounded-xl transition-all mb-0.5 text-left ${
               tab === item.tab
                 ? "bg-orange text-white shadow-sm"
@@ -383,6 +392,7 @@ export default function SupplierPage() {
   const [form, setForm] = useState({ name: "", title: "", experience_years: "", rate: "", skills: "", bio: "", availability: "" });
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [interviewDates, setInterviewDates] = useState<Record<string, string>>({});
   const [counterSupplierLocations, setCounterSupplierLocations] = useState<Record<string, string>>({});
   const [counterSupplierAddresses, setCounterSupplierAddresses] = useState<Record<string, string>>({});
@@ -611,6 +621,13 @@ export default function SupplierPage() {
     "Afsluttet": "bg-green-100 text-green-700",
   };
 
+  const tabLabels: Record<Tab, string> = {
+    requests: "Forespørgsler",
+    submissions: "Konsulenter",
+    messages: "Beskeder",
+    profile: "Min profil",
+  };
+
   if (loading) return (
     <div className="min-h-screen bg-[#f8f6f3] flex items-center justify-center">
       <p className="text-charcoal/50 font-semibold">Henter data…</p>
@@ -619,13 +636,45 @@ export default function SupplierPage() {
 
   return (
     <div className="flex h-screen bg-[#f8f6f3] overflow-hidden">
+
+      {/* ── Mobil backdrop ── */}
+      {sidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/40 z-40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       <PortalSidebar
         tab={tab}
         setTab={t => { setTab(t); }}
         companyLabel={profile.company_name || profile.email}
         onLogout={handleLogout}
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
-      <main className="flex-1 ml-56 overflow-y-auto p-8">
+
+      {/* ── Mobil topbar ── */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-[#ede9e3] z-30 flex items-center px-4 gap-3">
+        <button
+          onClick={() => setSidebarOpen(v => !v)}
+          className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-charcoal/8 transition-colors flex-shrink-0"
+          aria-label="Menu"
+        >
+          <span className="text-charcoal font-bold text-lg leading-none">{sidebarOpen ? "✕" : "☰"}</span>
+        </button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="w-7 h-7 bg-orange rounded-lg flex items-center justify-center">
+            <span className="text-white text-xs font-black">FI</span>
+          </div>
+          <span className="font-bold text-sm text-charcoal">FindITconsultants.com</span>
+        </div>
+        <span className="text-xs text-charcoal/45 font-semibold ml-auto truncate max-w-[120px]">
+          {tabLabels[tab]}
+        </span>
+      </div>
+
+      <main className="flex-1 md:ml-56 overflow-y-auto pt-14 md:pt-0 p-4 md:p-8">
 
         {/* ══════════════════════════════════════════════
             TAB: FORESPØRGSLER

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import type { BadgeCounts } from "./types";
 
-function Sidebar({ counts, onLogout }: { counts: BadgeCounts; onLogout: () => void }) {
+function Sidebar({ counts, onLogout, open, onClose }: { counts: BadgeCounts; onLogout: () => void; open: boolean; onClose: () => void }) {
   const pathname = usePathname();
 
   const navItems = [
@@ -21,7 +21,12 @@ function Sidebar({ counts, onLogout }: { counts: BadgeCounts; onLogout: () => vo
   ];
 
   return (
-    <aside className="w-56 bg-white border-r border-[#ede9e3] flex flex-col fixed h-full z-10">
+    <aside className={`
+      w-64 md:w-56 bg-white border-r border-[#ede9e3] flex flex-col fixed h-full z-50
+      transition-transform duration-300 ease-in-out
+      ${open ? "translate-x-0" : "-translate-x-full"}
+      md:translate-x-0
+    `}>
       {/* Logo */}
       <div className="px-5 py-5 border-b border-[#ede9e3]">
         <div className="flex items-center gap-2.5">
@@ -45,6 +50,7 @@ function Sidebar({ counts, onLogout }: { counts: BadgeCounts; onLogout: () => vo
             <Link
               key={item.href}
               href={item.href}
+              onClick={onClose}
               className={`flex items-center gap-3 px-3 py-2.5 mx-2 rounded-xl transition-all mb-0.5 ${
                 isActive
                   ? "bg-orange text-white shadow-sm"
@@ -78,6 +84,18 @@ function Sidebar({ counts, onLogout }: { counts: BadgeCounts; onLogout: () => vo
   );
 }
 
+const pageLabels: Record<string, string> = {
+  "/admin":               "Overblik",
+  "/admin/afventer":      "Afventer",
+  "/admin/forspørgsler":  "Forespørgsler",
+  "/admin/konsulenter":   "Konsulenter",
+  "/admin/kontrakter":    "Kontrakter",
+  "/admin/ansøgninger":   "Ansøgninger",
+  "/admin/brugere":       "Brugere",
+  "/admin/beskeder":      "Beskeder",
+  "/admin/profil":        "Min profil",
+};
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -86,6 +104,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [authChecked, setAuthChecked] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [counts, setCounts] = useState<BadgeCounts>({ pending: 0, applications: 0, messages: 0 });
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (isLoginPage) {
@@ -150,10 +169,42 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (!isAdmin) return null;
 
+  const currentPageLabel = pageLabels[pathname ?? ""] ?? "Admin";
+
   return (
     <div className="flex h-screen bg-[#f8f6f3] overflow-hidden">
-      <Sidebar counts={counts} onLogout={handleLogout} />
-      <main className="flex-1 ml-56 overflow-y-auto">
+
+      {/* ── Mobil backdrop ── */}
+      {sidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/40 z-40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      <Sidebar counts={counts} onLogout={handleLogout} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      {/* ── Mobil topbar ── */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-[#ede9e3] z-30 flex items-center px-4 gap-3">
+        <button
+          onClick={() => setSidebarOpen(v => !v)}
+          className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-charcoal/8 transition-colors flex-shrink-0"
+          aria-label="Menu"
+        >
+          <span className="text-charcoal font-bold text-lg leading-none">{sidebarOpen ? "✕" : "☰"}</span>
+        </button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="w-7 h-7 bg-orange rounded-lg flex items-center justify-center">
+            <span className="text-white text-xs font-black">FI</span>
+          </div>
+          <span className="font-bold text-sm text-charcoal">FindITconsultants.com</span>
+        </div>
+        <span className="text-xs text-charcoal/45 font-semibold ml-auto truncate max-w-[120px]">
+          {currentPageLabel}
+        </span>
+      </div>
+
+      <main className="flex-1 md:ml-56 overflow-y-auto pt-14 md:pt-0">
         {children}
       </main>
     </div>

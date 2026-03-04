@@ -701,7 +701,7 @@ export default function PortalPage() {
           <div className="w-7 h-7 bg-orange rounded-lg flex items-center justify-center">
             <span className="text-white text-xs font-black">FI</span>
           </div>
-          <span className="font-bold text-sm text-charcoal">FindIT</span>
+          <span className="font-bold text-sm text-charcoal">FindITconsultants.com</span>
         </div>
         <span className="text-xs text-charcoal/45 font-semibold ml-auto truncate max-w-[140px]">
           {tabLabels[tab]}
