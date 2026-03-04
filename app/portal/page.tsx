@@ -48,35 +48,48 @@ type TeamMember = {
 
 type Tab = "requests" | "profile" | "messages";
 
+/* ─── Sidebar ────────────────────────────────────────────────── */
 type PortalSidebarProps = {
   tab: Tab;
   setTab: (t: Tab) => void;
   companyLabel: string;
   onLogout: () => void;
+  open: boolean;
+  onClose: () => void;
 };
 
-function PortalSidebar({ tab, setTab, companyLabel, onLogout }: PortalSidebarProps) {
+function PortalSidebar({ tab, setTab, companyLabel, onLogout, open, onClose }: PortalSidebarProps) {
   const navItems: { tab: Tab; label: string; icon: string }[] = [
     { tab: "requests", label: "Forespørgsler", icon: "📋" },
     { tab: "messages", label: "Beskeder",      icon: "💬" },
     { tab: "profile",  label: "Min profil",    icon: "⚙️" },
   ];
 
+  const handleTab = (t: Tab) => {
+    setTab(t);
+    onClose();
+  };
+
   return (
-    <aside className="w-56 bg-[#2d2c2c] flex flex-col fixed h-full z-10">
+    <aside className={`
+      w-64 md:w-56 bg-white border-r border-[#ede9e3] flex flex-col fixed h-full z-50
+      transition-transform duration-300 ease-in-out
+      ${open ? "translate-x-0" : "-translate-x-full"}
+      md:translate-x-0
+    `}>
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-white/10">
+      <div className="px-5 py-5 border-b border-[#ede9e3]">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 bg-orange rounded-lg flex items-center justify-center flex-shrink-0">
             <span className="text-white text-xs font-black">FI</span>
           </div>
           <div>
-            <p className="text-white font-bold text-sm leading-tight">FindITconsultants</p>
-            <p className="text-white/40 text-[10px] font-semibold tracking-wide uppercase">Kundeportal</p>
+            <p className="text-charcoal font-bold text-sm leading-tight">FindITconsultants</p>
+            <p className="text-charcoal/40 text-[10px] font-semibold tracking-wide uppercase">Kundeportal</p>
           </div>
         </div>
         {companyLabel && (
-          <p className="text-white/30 text-[11px] font-semibold mt-2 truncate">{companyLabel}</p>
+          <p className="text-charcoal/40 text-[11px] font-semibold mt-2 truncate">{companyLabel}</p>
         )}
       </div>
       {/* Nav */}
@@ -84,11 +97,11 @@ function PortalSidebar({ tab, setTab, companyLabel, onLogout }: PortalSidebarPro
         {navItems.map(item => (
           <button
             key={item.tab}
-            onClick={() => setTab(item.tab)}
+            onClick={() => handleTab(item.tab)}
             className={`w-[calc(100%-1rem)] flex items-center gap-3 px-3 py-2.5 mx-2 rounded-xl transition-all mb-0.5 text-left ${
               tab === item.tab
                 ? "bg-orange text-white shadow-sm"
-                : "text-white/55 hover:text-white hover:bg-white/10"
+                : "text-charcoal/55 hover:text-charcoal hover:bg-orange/8"
             }`}
           >
             <span className="text-base w-5 text-center flex-shrink-0">{item.icon}</span>
@@ -97,10 +110,10 @@ function PortalSidebar({ tab, setTab, companyLabel, onLogout }: PortalSidebarPro
         ))}
       </nav>
       {/* Logout */}
-      <div className="px-4 py-4 border-t border-white/10">
+      <div className="px-4 py-4 border-t border-[#ede9e3]">
         <button
           onClick={onLogout}
-          className="w-full text-left text-white/40 hover:text-white/80 text-xs font-semibold transition-colors px-2 py-1.5 rounded-lg hover:bg-white/5"
+          className="w-full text-left text-charcoal/35 hover:text-charcoal/70 text-xs font-semibold transition-colors px-2 py-1.5 rounded-lg hover:bg-charcoal/5"
         >
           Log ud →
         </button>
@@ -109,6 +122,7 @@ function PortalSidebar({ tab, setTab, companyLabel, onLogout }: PortalSidebarPro
   );
 }
 
+/* ─── Skift password ─────────────────────────────────────────── */
 function ChangePassword() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
@@ -123,9 +137,7 @@ function ChangePassword() {
     const { error } = await supabase.auth.updateUser({ password });
     if (error) { setError(error.message); setSaving(false); return; }
     setSaved(true);
-    setPassword("");
-    setConfirm("");
-    setError("");
+    setPassword(""); setConfirm(""); setError("");
     setSaving(false);
     setTimeout(() => setSaved(false), 2000);
   };
@@ -170,7 +182,7 @@ function ConsultantCard({
   return (
     <div className="bg-white rounded-2xl border border-[#ede9e3] flex flex-col overflow-hidden hover:shadow-md hover:border-orange/20 transition-all">
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="p-4 border-b border-[#f5f2ee]">
         <div className="flex items-start justify-between gap-2 mb-2">
           <div className="flex-1 min-w-0">
@@ -184,8 +196,6 @@ function ConsultantCard({
             </a>
           )}
         </div>
-
-        {/* FindIT vurdering */}
         {s.ai_rating && (
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex gap-0.5">
@@ -199,23 +209,14 @@ function ConsultantCard({
         )}
       </div>
 
-      {/* ── Body ── */}
+      {/* Body */}
       <div className="p-4 flex-1 flex flex-col gap-3">
-
-        {/* Nøgletal */}
-        <div className="flex items-center gap-3 text-xs">
-          {s.rate && (
-            <span className="font-extrabold text-orange">{s.rate.toLocaleString("da-DK")} DKK/t</span>
-          )}
-          {s.experience_years && (
-            <span className="text-charcoal/40">{s.experience_years} års erfaring</span>
-          )}
-          {s.availability && (
-            <span className="text-charcoal/40 ml-auto">📅 {new Date(s.availability).toLocaleDateString("da-DK")}</span>
-          )}
+        <div className="flex items-center gap-3 text-xs flex-wrap">
+          {s.rate && <span className="font-extrabold text-orange">{s.rate.toLocaleString("da-DK")} DKK/t</span>}
+          {s.experience_years && <span className="text-charcoal/40">{s.experience_years} års erfaring</span>}
+          {s.availability && <span className="text-charcoal/40 ml-auto">📅 {new Date(s.availability).toLocaleDateString("da-DK")}</span>}
         </div>
 
-        {/* Skills */}
         {s.skills?.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {s.skills.map(skill => (
@@ -224,7 +225,6 @@ function ConsultantCard({
           </div>
         )}
 
-        {/* Bio */}
         {s.bio && (
           <div>
             <p className={`text-xs text-charcoal/60 leading-relaxed ${showFullBio ? "" : "line-clamp-3"}`}>{s.bio}</p>
@@ -236,7 +236,6 @@ function ConsultantCard({
           </div>
         )}
 
-        {/* AI summary */}
         {s.ai_summary && (
           <div className="bg-orange/5 border border-orange/15 rounded-xl p-3">
             <p className="text-[10px] font-extrabold tracking-widest uppercase text-orange/60 mb-1.5">FindIT vurdering</p>
@@ -250,7 +249,7 @@ function ConsultantCard({
         )}
       </div>
 
-      {/* ── Footer / Beslutning ── */}
+      {/* Footer */}
       <div className="p-4 border-t border-[#f5f2ee]">
         {s.customer_decision ? (
           <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold ${decisionColor[s.customer_decision] ?? "bg-gray-100 text-gray-600"}`}>
@@ -267,7 +266,7 @@ function ConsultantCard({
             <label className="block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/35 mb-1">Interviewtid (valgfrit)</label>
             <input
               type="datetime-local"
-              className="w-full rounded-xl border border-[#e8e5e0] bg-[#f8f6f3] px-3 py-1.5 text-xs text-charcoal focus:outline-none focus:border-orange transition-all"
+              className="w-full rounded-xl border border-[#e8e5e0] bg-[#f8f6f3] px-3 py-2 text-xs text-charcoal focus:outline-none focus:border-orange transition-all"
               value={interviewDate}
               onChange={e => onDateChange(e.target.value)}
             />
@@ -275,13 +274,13 @@ function ConsultantCard({
               <button
                 onClick={() => onDecision("interview")}
                 disabled={deciding}
-                className="flex-1 bg-green-500 text-white font-bold rounded-full py-2 text-xs hover:bg-green-600 transition-all disabled:opacity-50">
+                className="flex-1 bg-green-500 text-white font-bold rounded-full py-2.5 text-xs hover:bg-green-600 transition-all disabled:opacity-50">
                 Interview
               </button>
               <button
                 onClick={() => onDecision("afvist")}
                 disabled={deciding}
-                className="flex-1 bg-red-500 text-white font-bold rounded-full py-2 text-xs hover:bg-red-600 transition-all disabled:opacity-50">
+                className="flex-1 bg-red-500 text-white font-bold rounded-full py-2.5 text-xs hover:bg-red-600 transition-all disabled:opacity-50">
                 Afvis
               </button>
             </div>
@@ -299,6 +298,7 @@ export default function PortalPage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>("requests");
   const [userId, setUserId] = useState("");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile>({ company_name: "", contact_name: "", phone: "", email: "" });
   const [saving, setSaving] = useState(false);
@@ -335,20 +335,17 @@ export default function PortalPage() {
           if (teamData && teamData.length > 0) {
             setTeamMembers(teamData);
             const { data: teamReqAll } = await supabase
-              .from("requests")
-              .select("*")
+              .from("requests").select("*")
               .in("email", teamData.map((m: TeamMember) => m.email))
               .order("created_at", { ascending: false });
             const { data: teamSubData } = await supabase
-              .from("consultant_submissions")
-              .select("*")
+              .from("consultant_submissions").select("*")
               .eq("status", "Valgt")
               .in("request_id", (teamReqAll ?? []).map(r => r.id));
-            const teamMerged = (teamReqAll ?? []).map(r => ({
+            setTeamRequests((teamReqAll ?? []).map(r => ({
               ...r,
               submissions: (teamSubData ?? []).filter(s => s.request_id === r.id),
-            }));
-            setTeamRequests(teamMerged);
+            })));
           }
         }
       } else {
@@ -356,23 +353,19 @@ export default function PortalPage() {
       }
 
       const { data: reqDataAll } = await supabase
-        .from("requests")
-        .select("*")
+        .from("requests").select("*")
         .eq("email", user.email)
         .order("created_at", { ascending: false });
 
       const { data: subData } = await supabase
-        .from("consultant_submissions")
-        .select("*")
+        .from("consultant_submissions").select("*")
         .eq("status", "Valgt")
         .in("request_id", (reqDataAll ?? []).map(r => r.id));
 
-      const merged = (reqDataAll ?? []).map(r => ({
+      setRequests((reqDataAll ?? []).map(r => ({
         ...r,
         submissions: (subData ?? []).filter(s => s.request_id === r.id),
-      }));
-
-      setRequests(merged);
+      })));
       setLoading(false);
 
       if (!customerData?.company_name) setTab("profile");
@@ -387,18 +380,15 @@ export default function PortalPage() {
       updates.interview_datetime = new Date(interviewDates[submissionId]).toISOString();
     }
     await supabase.from("consultant_submissions").update(updates).eq("id", submissionId);
-
     await fetch("/api/notify-admin-interview", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        decision,
-        submission_id: submissionId,
+        decision, submission_id: submissionId,
         interview_datetime: interviewDates[submissionId] ?? null,
         customer_name: profile.company_name || profile.email,
       }),
     });
-
     setRequests(prev => prev.map(r => ({
       ...r,
       submissions: r.submissions?.map(s =>
@@ -411,14 +401,12 @@ export default function PortalPage() {
   const handleSaveProfile = async () => {
     setSaving(true);
     await supabase.from("customers").upsert({
-      id: userId,
-      email: profile.email,
+      id: userId, email: profile.email,
       company_name: profile.company_name,
       contact_name: profile.contact_name,
       phone: profile.phone,
     });
-    setSaving(false);
-    setSaved(true);
+    setSaving(false); setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
 
@@ -435,36 +423,80 @@ export default function PortalPage() {
   const inp = "w-full rounded-xl border border-[#e8e5e0] bg-[#f8f6f3] px-4 py-2.5 text-sm text-charcoal focus:outline-none focus:ring-2 focus:ring-orange/25 focus:border-orange transition-all";
   const lbl = "block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/45 mb-1.5";
 
+  const tabLabels: Record<Tab, string> = {
+    requests: selectedRequestId ? "← Kandidater" : "Forespørgsler",
+    messages: "Beskeder",
+    profile: "Min profil",
+  };
+
   if (loading) return (
     <div className="min-h-screen bg-[#f8f6f3] flex items-center justify-center">
       <p className="text-charcoal/50 font-semibold">Henter data…</p>
     </div>
   );
 
-  /* ── Find valgt forespørgsel ── */
   const selectedRequest = selectedRequestId ? requests.find(r => r.id === selectedRequestId) : null;
 
   return (
     <div className="flex h-screen bg-[#f8f6f3] overflow-hidden">
+
+      {/* ── Mobil backdrop ── */}
+      {sidebarOpen && (
+        <div
+          className="md:hidden fixed inset-0 bg-black/40 z-40"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* ── Sidebar ── */}
       <PortalSidebar
         tab={tab}
         setTab={t => { setTab(t); setSelectedRequestId(null); }}
         companyLabel={profile.company_name || profile.email}
         onLogout={handleLogout}
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
-      <main className="flex-1 ml-56 overflow-y-auto p-8">
 
-        {/* ══════════════════════════════════════════════
-            TAB: FORESPØRGSLER
-        ══════════════════════════════════════════════ */}
+      {/* ── Mobil topbar ── */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-[#ede9e3] z-30 flex items-center px-4 gap-3">
+        <button
+          onClick={() => setSidebarOpen(v => !v)}
+          className="w-9 h-9 flex items-center justify-center rounded-xl hover:bg-charcoal/8 transition-colors flex-shrink-0"
+          aria-label="Menu"
+        >
+          <span className="text-charcoal font-bold text-lg leading-none">{sidebarOpen ? "✕" : "☰"}</span>
+        </button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="w-7 h-7 bg-orange rounded-lg flex items-center justify-center">
+            <span className="text-white text-xs font-black">FI</span>
+          </div>
+          <span className="font-bold text-sm text-charcoal">FindIT</span>
+        </div>
+        <span className="text-xs text-charcoal/45 font-semibold ml-auto truncate max-w-[140px]">
+          {tabLabels[tab]}
+        </span>
+        {tab === "requests" && selectedRequestId && (
+          <button
+            onClick={() => setSelectedRequestId(null)}
+            className="text-xs font-bold text-orange ml-1 flex-shrink-0"
+          >
+            ← Tilbage
+          </button>
+        )}
+      </div>
+
+      {/* ── Hovedindhold ── */}
+      <main className="flex-1 md:ml-56 overflow-y-auto pt-14 md:pt-0 p-4 md:p-8">
+
+        {/* ══ TAB: FORESPØRGSLER — LISTE ══ */}
         {tab === "requests" && !selectedRequest && (
           <>
-            {/* Statistik */}
             {requests.length > 0 && (() => {
               const allSubs = requests.flatMap(r => r.submissions ?? []);
               const stats = [
                 { label: "Forespørgsler", value: requests.length, icon: "📋" },
-                { label: "Modtagne kandidater", value: allSubs.length, icon: "👤" },
+                { label: "Kandidater", value: allSubs.length, icon: "👤" },
                 { label: "Interviews", value: allSubs.filter(s => s.customer_decision === "interview").length, icon: "🗓️" },
                 { label: "Igangværende", value: requests.filter(r => r.status === "I gang").length, icon: "⚡" },
               ];
@@ -487,7 +519,6 @@ export default function PortalPage() {
               <div className="bg-white rounded-2xl border border-[#ede9e3] p-10 text-center">
                 <div className="text-4xl mb-3">📋</div>
                 <p className="text-charcoal/50 text-sm font-semibold">Du har ingen forespørgsler endnu.</p>
-                <p className="text-charcoal/35 text-xs mt-1">Indsend en forespørgsel på forsiden for at komme i gang.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -495,20 +526,15 @@ export default function PortalPage() {
                   const candidateCount = r.submissions?.length ?? 0;
                   const interviewCount = r.submissions?.filter(s => s.customer_decision === "interview").length ?? 0;
                   return (
-                    <div
-                      key={r.id}
-                      onClick={() => setSelectedRequestId(r.id)}
-                      className="bg-white rounded-2xl border border-[#ede9e3] p-5 cursor-pointer hover:border-orange/30 hover:shadow-md transition-all group"
-                    >
+                    <div key={r.id} onClick={() => setSelectedRequestId(r.id)}
+                      className="bg-white rounded-2xl border border-[#ede9e3] p-5 cursor-pointer hover:border-orange/30 hover:shadow-md transition-all group">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2 flex-wrap">
                             {r.reference_number && (
                               <span className="text-xs font-black text-orange bg-orange/10 px-2.5 py-0.5 rounded-full tracking-wide">{r.reference_number}</span>
                             )}
-                            <span className={`text-xs font-bold px-3 py-0.5 rounded-full ${statusColor[r.status] ?? "bg-gray-100 text-gray-600"}`}>
-                              {r.status}
-                            </span>
+                            <span className={`text-xs font-bold px-3 py-0.5 rounded-full ${statusColor[r.status] ?? "bg-gray-100 text-gray-600"}`}>{r.status}</span>
                             {candidateCount > 0 && (
                               <span className="text-xs font-bold bg-orange text-white px-2.5 py-0.5 rounded-full">
                                 {candidateCount} kandidat{candidateCount !== 1 ? "er" : ""}
@@ -529,9 +555,7 @@ export default function PortalPage() {
                         </div>
                         <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
                           <p className="text-charcoal/30 text-xs">{new Date(r.created_at).toLocaleDateString("da-DK")}</p>
-                          <span className="text-orange text-xs font-bold group-hover:translate-x-0.5 transition-transform">
-                            Se kandidater →
-                          </span>
+                          <span className="text-orange text-xs font-bold group-hover:translate-x-0.5 transition-transform">Se kandidater →</span>
                         </div>
                       </div>
                     </div>
@@ -540,34 +564,24 @@ export default function PortalPage() {
               </div>
             )}
 
-            {/* Team-forespørgsler */}
             {teamRequests.length > 0 && (
               <div className="mt-8">
                 <div className="flex items-center gap-2 mb-4">
-                  <h2 className="font-bold text-lg text-charcoal">Forespørgsler fra {profile.company_name}</h2>
-                  <span className="text-xs bg-charcoal/10 text-charcoal/50 font-bold px-2 py-0.5 rounded-full">{teamRequests.length} fra kollegaer</span>
+                  <h2 className="font-bold text-lg text-charcoal">Fra {profile.company_name}</h2>
+                  <span className="text-xs bg-charcoal/10 text-charcoal/50 font-bold px-2 py-0.5 rounded-full">{teamRequests.length} kollegaer</span>
                 </div>
                 <div className="space-y-3">
                   {teamRequests.map(r => {
                     const owner = teamMembers.find(m => m.email === r.email);
                     return (
                       <div key={r.id} className="bg-white rounded-2xl border border-[#ede9e3] p-4 opacity-80">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <p className="text-sm text-charcoal font-semibold line-clamp-2 mb-2">{r.description || "Ingen beskrivelse"}</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {r.competencies?.map(c => (
-                                <span key={c} className="bg-charcoal/8 text-charcoal/55 text-xs font-bold px-2 py-0.5 rounded-full">{c}</span>
-                              ))}
-                            </div>
-                            <p className="text-charcoal/35 text-xs mt-2">
-                              👤 {owner?.contact_name || owner?.email || "Kollega"} · {new Date(r.created_at).toLocaleDateString("da-DK")}
-                            </p>
-                          </div>
-                          <span className={`text-xs font-bold px-3 py-1 rounded-full whitespace-nowrap ${statusColor[r.status] ?? "bg-gray-100 text-gray-600"}`}>
-                            {r.status}
-                          </span>
+                        <p className="text-sm text-charcoal font-semibold line-clamp-2 mb-2">{r.description || "Ingen beskrivelse"}</p>
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                          {r.competencies?.map(c => (
+                            <span key={c} className="bg-charcoal/8 text-charcoal/55 text-xs font-bold px-2 py-0.5 rounded-full">{c}</span>
+                          ))}
                         </div>
+                        <p className="text-charcoal/35 text-xs">👤 {owner?.contact_name || owner?.email || "Kollega"} · {new Date(r.created_at).toLocaleDateString("da-DK")}</p>
                       </div>
                     );
                   })}
@@ -577,16 +591,12 @@ export default function PortalPage() {
           </>
         )}
 
-        {/* ══════════════════════════════════════════════
-            DETALJESIDE: VALGT FORESPØRGSEL
-        ══════════════════════════════════════════════ */}
+        {/* ══ TAB: FORESPØRGSLER — DETALJESIDE ══ */}
         {tab === "requests" && selectedRequest && (
           <div>
-            {/* Tilbage-knap */}
-            <button
-              onClick={() => setSelectedRequestId(null)}
-              className="flex items-center gap-1.5 text-sm font-semibold text-charcoal/45 hover:text-charcoal transition-colors mb-6 group"
-            >
+            {/* Tilbage (desktop) */}
+            <button onClick={() => setSelectedRequestId(null)}
+              className="hidden md:flex items-center gap-1.5 text-sm font-semibold text-charcoal/45 hover:text-charcoal transition-colors mb-6 group">
               <span className="group-hover:-translate-x-0.5 transition-transform">←</span>
               Tilbage til forespørgsler
             </button>
@@ -599,9 +609,7 @@ export default function PortalPage() {
                     {selectedRequest.reference_number && (
                       <span className="text-xs font-black text-orange bg-orange/10 px-2.5 py-0.5 rounded-full tracking-wide">{selectedRequest.reference_number}</span>
                     )}
-                    <span className={`text-xs font-bold px-3 py-0.5 rounded-full ${statusColor[selectedRequest.status] ?? "bg-gray-100 text-gray-600"}`}>
-                      {selectedRequest.status}
-                    </span>
+                    <span className={`text-xs font-bold px-3 py-0.5 rounded-full ${statusColor[selectedRequest.status] ?? "bg-gray-100 text-gray-600"}`}>{selectedRequest.status}</span>
                   </div>
                   <p className="text-sm text-charcoal font-semibold mb-3">{selectedRequest.description || "Ingen beskrivelse"}</p>
                   <div className="flex flex-wrap gap-1.5">
@@ -613,7 +621,6 @@ export default function PortalPage() {
                 <p className="text-charcoal/30 text-xs shrink-0">{new Date(selectedRequest.created_at).toLocaleDateString("da-DK")}</p>
               </div>
 
-              {/* Mini-stats for denne forespørgsel */}
               {(selectedRequest.submissions?.length ?? 0) > 0 && (() => {
                 const subs = selectedRequest.submissions ?? [];
                 const interviewCount = subs.filter(s => s.customer_decision === "interview").length;
@@ -625,32 +632,17 @@ export default function PortalPage() {
                       <span className="w-5 h-5 bg-orange text-white rounded-full flex items-center justify-center text-[10px] font-black">{subs.length}</span>
                       kandidater
                     </div>
-                    {afventerCount > 0 && (
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-charcoal/40">
-                        <span className="w-2 h-2 rounded-full bg-charcoal/20" />{afventerCount} afventer beslutning
-                      </div>
-                    )}
-                    {interviewCount > 0 && (
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-green-600">
-                        <span className="w-2 h-2 rounded-full bg-green-400" />{interviewCount} til interview
-                      </div>
-                    )}
-                    {afvistCount > 0 && (
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-red-400">
-                        <span className="w-2 h-2 rounded-full bg-red-300" />{afvistCount} afvist
-                      </div>
-                    )}
+                    {afventerCount > 0 && <div className="flex items-center gap-1.5 text-xs font-bold text-charcoal/40"><span className="w-2 h-2 rounded-full bg-charcoal/20" />{afventerCount} afventer</div>}
+                    {interviewCount > 0 && <div className="flex items-center gap-1.5 text-xs font-bold text-green-600"><span className="w-2 h-2 rounded-full bg-green-400" />{interviewCount} til interview</div>}
+                    {afvistCount > 0 && <div className="flex items-center gap-1.5 text-xs font-bold text-red-400"><span className="w-2 h-2 rounded-full bg-red-300" />{afvistCount} afvist</div>}
                   </div>
                 );
               })()}
             </div>
 
-            {/* Kandidatkort */}
             <h3 className="font-bold text-charcoal mb-4 flex items-center gap-2">
               Kandidater
-              <span className="text-xs bg-orange text-white font-bold px-2.5 py-1 rounded-full">
-                {selectedRequest.submissions?.length ?? 0}
-              </span>
+              <span className="text-xs bg-orange text-white font-bold px-2.5 py-1 rounded-full">{selectedRequest.submissions?.length ?? 0}</span>
             </h3>
 
             {(selectedRequest.submissions?.length ?? 0) === 0 ? (
@@ -660,7 +652,7 @@ export default function PortalPage() {
                 <p className="text-charcoal/35 text-xs mt-1">Vi arbejder på at finde de bedste profiler til dig.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {selectedRequest.submissions?.map(s => (
                   <ConsultantCard
                     key={s.id}
@@ -676,23 +668,16 @@ export default function PortalPage() {
           </div>
         )}
 
-        {/* ══════════════════════════════════════════════
-            TAB: BESKEDER
-        ══════════════════════════════════════════════ */}
+        {/* ══ TAB: BESKEDER ══ */}
         {tab === "messages" && (
           <div>
             <h2 className="font-bold text-lg text-charcoal mb-4">Beskeder</h2>
-            <ChatWindow
-              userId={userId}
-              userType="customer"
-              userName={profile.contact_name || profile.company_name || profile.email}
-            />
+            <ChatWindow userId={userId} userType="customer"
+              userName={profile.contact_name || profile.company_name || profile.email} />
           </div>
         )}
 
-        {/* ══════════════════════════════════════════════
-            TAB: MIN PROFIL
-        ══════════════════════════════════════════════ */}
+        {/* ══ TAB: MIN PROFIL ══ */}
         {tab === "profile" && (
           <div className="bg-white rounded-2xl border border-[#ede9e3] p-6 max-w-lg">
             <h2 className="font-bold text-lg text-charcoal mb-5">Min profil</h2>
@@ -705,8 +690,7 @@ export default function PortalPage() {
                 <div>
                   <label className={lbl}>Fornavn</label>
                   <input className={inp} placeholder="Fornavn" value={(profile.contact_name ?? "").split(" ")[0] ?? ""} onChange={e => {
-                    const parts = (profile.contact_name ?? "").split(" ");
-                    parts[0] = e.target.value;
+                    const parts = (profile.contact_name ?? "").split(" "); parts[0] = e.target.value;
                     setProfile(p => ({ ...p, contact_name: parts.join(" ").trim() }));
                   }} />
                 </div>
@@ -736,9 +720,7 @@ export default function PortalPage() {
               </button>
               {teamMembers.length > 0 && (
                 <div className="border-t border-[#f0ede8] pt-4 mt-2">
-                  <p className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mb-3">
-                    👥 Kollegaer fra {profile.company_name}
-                  </p>
+                  <p className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mb-3">👥 Kollegaer fra {profile.company_name}</p>
                   <div className="space-y-2">
                     {teamMembers.map(m => (
                       <div key={m.id} className="flex items-center justify-between bg-[#f8f6f3] rounded-xl px-4 py-2.5">

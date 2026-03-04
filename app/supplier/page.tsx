@@ -77,20 +77,20 @@ function PortalSidebar({ tab, setTab, companyLabel, onLogout }: PortalSidebarPro
   ];
 
   return (
-    <aside className="w-56 bg-[#2d2c2c] flex flex-col fixed h-full z-10">
+    <aside className="w-56 bg-white border-r border-[#ede9e3] flex flex-col fixed h-full z-10">
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-white/10">
+      <div className="px-5 py-5 border-b border-[#ede9e3]">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 bg-orange rounded-lg flex items-center justify-center flex-shrink-0">
             <span className="text-white text-xs font-black">FI</span>
           </div>
           <div>
-            <p className="text-white font-bold text-sm leading-tight">FindITconsultants</p>
-            <p className="text-white/40 text-[10px] font-semibold tracking-wide uppercase">Leverandørportal</p>
+            <p className="text-charcoal font-bold text-sm leading-tight">FindITconsultants</p>
+            <p className="text-charcoal/40 text-[10px] font-semibold tracking-wide uppercase">Leverandørportal</p>
           </div>
         </div>
         {companyLabel && (
-          <p className="text-white/30 text-[11px] font-semibold mt-2 truncate">{companyLabel}</p>
+          <p className="text-charcoal/30 text-[11px] font-semibold mt-2 truncate">{companyLabel}</p>
         )}
       </div>
       {/* Nav */}
@@ -102,7 +102,7 @@ function PortalSidebar({ tab, setTab, companyLabel, onLogout }: PortalSidebarPro
             className={`w-[calc(100%-1rem)] flex items-center gap-3 px-3 py-2.5 mx-2 rounded-xl transition-all mb-0.5 text-left ${
               tab === item.tab
                 ? "bg-orange text-white shadow-sm"
-                : "text-white/55 hover:text-white hover:bg-white/10"
+                : "text-charcoal/50 hover:text-charcoal hover:bg-orange/8"
             }`}
           >
             <span className="text-base w-5 text-center flex-shrink-0">{item.icon}</span>
@@ -111,10 +111,10 @@ function PortalSidebar({ tab, setTab, companyLabel, onLogout }: PortalSidebarPro
         ))}
       </nav>
       {/* Logout */}
-      <div className="px-4 py-4 border-t border-white/10">
+      <div className="px-4 py-4 border-t border-[#ede9e3]">
         <button
           onClick={onLogout}
-          className="w-full text-left text-white/40 hover:text-white/80 text-xs font-semibold transition-colors px-2 py-1.5 rounded-lg hover:bg-white/5"
+          className="w-full text-left text-charcoal/35 hover:text-charcoal/70 text-xs font-semibold transition-colors px-2 py-1.5 rounded-lg hover:bg-charcoal/5"
         >
           Log ud →
         </button>
