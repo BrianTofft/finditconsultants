@@ -743,12 +743,30 @@ export default function PortalPage() {
               );
             })()}
 
-            <h2 className="font-bold text-lg text-charcoal mb-4">Dine forespørgsler</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-bold text-lg text-charcoal">Dine forespørgsler</h2>
+              <a
+                href="https://finditconsultants.com/#hero-form"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 bg-orange text-white text-xs font-bold px-4 py-2 rounded-full hover:bg-orange/90 transition-colors shadow-sm"
+              >
+                + Ny opgave
+              </a>
+            </div>
 
             {requests.length === 0 ? (
               <div className="bg-white rounded-2xl border border-[#ede9e3] p-10 text-center">
                 <div className="text-4xl mb-3">📋</div>
-                <p className="text-charcoal/50 text-sm font-semibold">Du har ingen forespørgsler endnu.</p>
+                <p className="text-charcoal/50 text-sm font-semibold mb-4">Du har ingen forespørgsler endnu.</p>
+                <a
+                  href="https://finditconsultants.com/#hero-form"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 bg-orange text-white text-sm font-bold px-6 py-2.5 rounded-full hover:bg-orange/90 transition-colors shadow-sm"
+                >
+                  + Indsend din første opgave
+                </a>
               </div>
             ) : (
               <div className="space-y-3">
