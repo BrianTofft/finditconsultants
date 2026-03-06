@@ -104,6 +104,8 @@ export default function ImportPage() {
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<ImportResult[]>([]);
   const [dragging, setDragging] = useState(false);
+  const [existingEmails, setExistingEmails] = useState<Set<string>>(new Set());
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const FIELDS: { key: string; label: string; required: boolean }[] = [
@@ -128,6 +130,41 @@ export default function ImportPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows]);
+
+  // Tjek for dubletter når CSV indlæses, email-kolonne ændres eller mode skiftes
+  useEffect(() => {
+    const vr = rows
+      .map(r => buildUser(r, colMap, defaultCompanyType))
+      .filter(u => u.email.includes("@"));
+
+    if (vr.length === 0) {
+      setExistingEmails(new Set());
+      return;
+    }
+
+    setCheckingDuplicates(true);
+    const emails = vr.map(u => u.email);
+
+    fetch("/api/check-existing-users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ emails, role: mode === "kunder" ? "customer" : "supplier" }),
+    })
+      .then(r => r.json())
+      .then(({ existingEmails: found }: { existingEmails: string[] }) => {
+        const foundSet = new Set<string>(found);
+        setExistingEmails(foundSet);
+        // Auto-fravælg eksisterende brugere
+        setSelectedEmails(prev => {
+          const next = new Set(prev);
+          found.forEach(e => next.delete(e));
+          return next;
+        });
+      })
+      .catch(() => setExistingEmails(new Set()))
+      .finally(() => setCheckingDuplicates(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, colMap, mode]);
 
   const selectedValid = validRows.filter(u => selectedEmails.has(u.email));
   const allSelected = validRows.length > 0 && selectedValid.length === validRows.length;
@@ -236,7 +273,7 @@ export default function ImportPage() {
 
   const reset = () => {
     setHeaders([]); setRows([]); setColMap({}); setResults([]);
-    setProgress(0); setSelectedEmails(new Set());
+    setProgress(0); setSelectedEmails(new Set()); setExistingEmails(new Set());
     if (fileRef.current) fileRef.current.value = "";
   };
 
@@ -343,6 +380,16 @@ export default function ImportPage() {
                     {invalidCount} uden email — skippes
                   </span>
                 )}
+                {checkingDuplicates && (
+                  <span className="text-[10px] font-semibold text-charcoal/40 animate-pulse">
+                    Tjekker dubletter…
+                  </span>
+                )}
+                {!checkingDuplicates && existingEmails.size > 0 && (
+                  <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                    {existingEmails.size} eksisterer allerede — fravalgt
+                  </span>
+                )}
               </div>
               <div className="flex gap-2 text-xs font-bold text-charcoal/40">
                 <button onClick={() => setSelectedEmails(new Set(validRows.map(u => u.email)))} className="hover:text-orange transition-colors">Vælg alle</button>
@@ -365,22 +412,32 @@ export default function ImportPage() {
                 <tbody>
                   {validRows.map((u, i) => {
                     const selected = selectedEmails.has(u.email);
+                    const isExisting = existingEmails.has(u.email);
                     return (
                       <tr
                         key={i}
                         onClick={() => toggleRow(u.email)}
                         className={`border-b border-[#ede9e3]/60 last:border-0 cursor-pointer transition-colors ${
-                          selected ? "bg-orange/4 hover:bg-orange/6" : "hover:bg-[#faf9f7]"
+                          selected ? "bg-orange/4 hover:bg-orange/6" : isExisting ? "bg-amber-50/40 hover:bg-amber-50/60" : "hover:bg-[#faf9f7]"
                         }`}
                       >
                         <td className="px-5 py-2.5">
-                          <div className={`w-4.5 h-4.5 w-[18px] h-[18px] rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                          <div className={`w-[18px] h-[18px] rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
                             selected ? "bg-orange border-orange" : "border-[#d4cfc8]"
                           }`}>
                             {selected && <svg width="8" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
                           </div>
                         </td>
-                        <td className="py-2.5 pr-4 text-orange font-semibold">{u.email}</td>
+                        <td className="py-2.5 pr-4">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-orange font-semibold">{u.email}</span>
+                            {isExisting && (
+                              <span className="text-[9px] font-bold bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full whitespace-nowrap">
+                                Eksisterer allerede
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="py-2.5 pr-4 text-charcoal">{u.first_name || <span className="text-charcoal/25">—</span>}</td>
                         <td className="py-2.5 pr-4 text-charcoal">{u.last_name || <span className="text-charcoal/25">—</span>}</td>
                         <td className="py-2.5 pr-4 text-charcoal">{u.company_name || <span className="text-charcoal/25">—</span>}</td>
