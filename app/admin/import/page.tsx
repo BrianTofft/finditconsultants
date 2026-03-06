@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useCallback, useEffect } from "react";
+import { COMPETENCIES } from "@/app/data";
 
 type ImportMode = "kunder" | "leverandører";
 
@@ -14,6 +15,8 @@ interface MappedUser {
   company_name: string;
   phone: string;
   company_type: string;
+  competencies: string[];
+  extra_competencies: string;
 }
 
 interface ImportResult {
@@ -74,19 +77,22 @@ function autoDetect(headers: string[]): Record<string, string> {
     last_name:    find("last name", "lastname", "last_name", "efternavn", "surname"),
     company_name: find("company name", "company", "associated company", "virksomhed", "firma"),
     phone:        find("phone", "telefon", "mobil", "mobile", "tlf"),
-    company_type: find("company type", "type", "virksomhedstype"),
+    company_type:       find("company type", "type", "virksomhedstype"),
+    extra_competencies: find("extra competencies", "extra_competencies", "yderligere kompetencer", "yderligere", "other competencies"),
   };
 }
 
-function buildUser(row: ParsedRow, map: Record<string, string>, defaultCompanyType: string): MappedUser {
+function buildUser(row: ParsedRow, map: Record<string, string>, defaultCompanyType: string, defaultCompetencies: string[] = []): MappedUser {
   const g = (field: string) => (map[field] ? (row[map[field]] ?? "") : "").trim();
   return {
-    email:        g("email"),
-    first_name:   g("first_name"),
-    last_name:    g("last_name"),
-    company_name: g("company_name"),
-    phone:        g("phone"),
-    company_type: g("company_type") || defaultCompanyType,
+    email:              g("email"),
+    first_name:         g("first_name"),
+    last_name:          g("last_name"),
+    company_name:       g("company_name"),
+    phone:              g("phone"),
+    company_type:       g("company_type") || defaultCompanyType,
+    competencies:       defaultCompetencies,
+    extra_competencies: g("extra_competencies"),
   };
 }
 
@@ -98,6 +104,7 @@ export default function ImportPage() {
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [colMap, setColMap] = useState<Record<string, string>>({});
   const [defaultCompanyType, setDefaultCompanyType] = useState("Konsulenthus");
+  const [defaultCompetencies, setDefaultCompetencies] = useState<string[]>([]);
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
   const [sendEmail, setSendEmail] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -114,11 +121,14 @@ export default function ImportPage() {
     { key: "last_name",    label: "Efternavn",       required: false },
     { key: "company_name", label: "Virksomhedsnavn", required: false },
     { key: "phone",        label: "Telefon",         required: false },
-    ...(mode === "leverandører" ? [{ key: "company_type", label: "Virksomhedstype", required: false }] : []),
+    ...(mode === "leverandører" ? [
+      { key: "company_type",       label: "Virksomhedstype",        required: false },
+      { key: "extra_competencies", label: "Yderligere kompetencer",  required: false },
+    ] : []),
   ];
 
   const validRows = rows
-    .map(r => buildUser(r, colMap, defaultCompanyType))
+    .map(r => buildUser(r, colMap, defaultCompanyType, defaultCompetencies))
     .filter(u => u.email.includes("@"));
 
   const invalidCount = rows.length - validRows.length;
@@ -234,7 +244,9 @@ export default function ImportPage() {
             phone: u.phone,
             first_name: u.first_name,
             last_name: u.last_name,
-            company_type: mode === "leverandører" ? u.company_type : undefined,
+            company_type:       mode === "leverandører" ? u.company_type       : undefined,
+            competencies:       mode === "leverandører" ? u.competencies       : undefined,
+            extra_competencies: mode === "leverandører" ? u.extra_competencies : undefined,
           }),
         });
 
@@ -274,6 +286,7 @@ export default function ImportPage() {
   const reset = () => {
     setHeaders([]); setRows([]); setColMap({}); setResults([]);
     setProgress(0); setSelectedEmails(new Set()); setExistingEmails(new Set());
+    setDefaultCompetencies([]);
     if (fileRef.current) fileRef.current.value = "";
   };
 
@@ -356,6 +369,45 @@ export default function ImportPage() {
               )}
             </div>
           </div>
+
+          {/* Kompetencer (kun leverandører) */}
+          {mode === "leverandører" && (
+            <div className="bg-white rounded-2xl border border-[#ede9e3] p-5">
+              <div className="mb-3">
+                <h2 className="font-bold text-charcoal mb-0.5">Kompetencer</h2>
+                <p className="text-charcoal/40 text-xs">Vælg de kompetenceområder der gælder for alle importerede leverandører. Yderligere fritekst kan mappes via kolonnen ovenfor.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {COMPETENCIES.map(c => {
+                  const active = defaultCompetencies.includes(c);
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setDefaultCompetencies(prev =>
+                        active ? prev.filter(x => x !== c) : [...prev, c]
+                      )}
+                      className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
+                        active
+                          ? "bg-orange text-white border-orange"
+                          : "bg-white text-charcoal/60 border-[#e8e5e0] hover:border-orange/50 hover:text-charcoal"
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  );
+                })}
+              </div>
+              {defaultCompetencies.length > 0 && (
+                <button
+                  onClick={() => setDefaultCompetencies([])}
+                  className="mt-3 text-[10px] font-bold text-charcoal/35 hover:text-charcoal/70 transition-colors"
+                >
+                  Ryd valg
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Valgbar rækkeoversigt */}
           <div className="bg-white rounded-2xl border border-[#ede9e3] overflow-hidden">

@@ -7,7 +7,7 @@ const supabaseAdmin = createClient(
 );
 
 export async function POST(req: Request) {
-  const { email, password, role, company_name, contact_name, phone, first_name, last_name, company_type } = await req.json();
+  const { email, password, role, company_name, contact_name, phone, first_name, last_name, company_type, competencies, extra_competencies } = await req.json();
 
   // Opret bruger i Supabase Auth
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -38,6 +38,8 @@ export async function POST(req: Request) {
       last_name: last_name ?? "",
       contact_name: fullName,
       company_type: company_type ?? "",
+      competencies: competencies ?? [],
+      extra_competencies: extra_competencies ?? "",
     });
   } else if (role === "customer") {
     await supabaseAdmin.from("customers").insert({ id: userId, email, company_name, contact_name, phone });
