@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 
 type ImportMode = "kunder" | "leverandører";
 
@@ -29,9 +29,7 @@ interface ImportResult {
 function generatePassword(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
   let pwd = "FI-";
-  for (let i = 0; i < 8; i++) {
-    pwd += chars[Math.floor(Math.random() * chars.length)];
-  }
+  for (let i = 0; i < 8; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
   return pwd;
 }
 
@@ -96,11 +94,11 @@ function buildUser(row: ParsedRow, map: Record<string, string>, defaultCompanyTy
 
 export default function ImportPage() {
   const [mode, setMode] = useState<ImportMode>("kunder");
-  const [csvText, setCsvText] = useState<string>("");
   const [headers, setHeaders] = useState<string[]>([]);
   const [rows, setRows] = useState<ParsedRow[]>([]);
   const [colMap, setColMap] = useState<Record<string, string>>({});
   const [defaultCompanyType, setDefaultCompanyType] = useState("Konsulenthus");
+  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
   const [sendEmail, setSendEmail] = useState(false);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -117,21 +115,52 @@ export default function ImportPage() {
     ...(mode === "leverandører" ? [{ key: "company_type", label: "Virksomhedstype", required: false }] : []),
   ];
 
+  const validRows = rows
+    .map(r => buildUser(r, colMap, defaultCompanyType))
+    .filter(u => u.email.includes("@"));
+
+  const invalidCount = rows.length - validRows.length;
+
+  // Forvælg alle gyldige rækker når CSV indlæses
+  useEffect(() => {
+    if (rows.length > 0) {
+      setSelectedEmails(new Set(validRows.map(u => u.email)));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows]);
+
+  const selectedValid = validRows.filter(u => selectedEmails.has(u.email));
+  const allSelected = validRows.length > 0 && selectedValid.length === validRows.length;
+  const someSelected = selectedValid.length > 0 && !allSelected;
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelectedEmails(new Set());
+    } else {
+      setSelectedEmails(new Set(validRows.map(u => u.email)));
+    }
+  };
+
+  const toggleRow = (email: string) => {
+    setSelectedEmails(prev => {
+      const next = new Set(prev);
+      next.has(email) ? next.delete(email) : next.add(email);
+      return next;
+    });
+  };
+
   const loadCSV = (text: string) => {
     const { headers: h, rows: r } = parseCSV(text);
     setHeaders(h);
     setRows(r);
     setColMap(autoDetect(h));
     setResults([]);
+    setSelectedEmails(new Set());
   };
 
   const handleFile = (file: File) => {
     const reader = new FileReader();
-    reader.onload = e => {
-      const text = e.target?.result as string;
-      setCsvText(text);
-      loadCSV(text);
-    };
+    reader.onload = e => loadCSV(e.target?.result as string);
     reader.readAsText(file, "UTF-8");
   };
 
@@ -140,20 +169,18 @@ export default function ImportPage() {
     setDragging(false);
     const file = e.dataTransfer.files[0];
     if (file?.name.endsWith(".csv")) handleFile(file);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const validRows = rows.filter(r => {
-    const u = buildUser(r, colMap, defaultCompanyType);
-    return u.email.includes("@");
-  });
-
   const handleImport = async () => {
+    const toImport = selectedValid;
+    if (toImport.length === 0) return;
     setImporting(true);
     setProgress(0);
     const importResults: ImportResult[] = [];
 
-    for (let i = 0; i < validRows.length; i++) {
-      const u = buildUser(validRows[i], colMap, defaultCompanyType);
+    for (let i = 0; i < toImport.length; i++) {
+      const u = toImport[i];
       const password = generatePassword();
       const contact_name = [u.first_name, u.last_name].filter(Boolean).join(" ") || u.company_name;
 
@@ -179,7 +206,6 @@ export default function ImportPage() {
         if (data.error || !res.ok) {
           importResults.push({ email: u.email, company_name: u.company_name, password, status: "fejl", error: data.error ?? "Ukendt fejl" });
         } else {
-          // Send velkomstmail hvis toggle er slået til
           if (sendEmail) {
             const notifyRoute = mode === "kunder" ? "/api/notify-customer-approved" : "/api/notify-supplier-approved";
             await fetch(notifyRoute, {
@@ -209,29 +235,28 @@ export default function ImportPage() {
   };
 
   const reset = () => {
-    setCsvText(""); setHeaders([]); setRows([]); setColMap({}); setResults([]); setProgress(0);
+    setHeaders([]); setRows([]); setColMap({}); setResults([]);
+    setProgress(0); setSelectedEmails(new Set());
+    if (fileRef.current) fileRef.current.value = "";
   };
 
   const inp = "w-full rounded-xl border border-[#e8e5e0] bg-white px-3 py-2 text-sm text-charcoal focus:outline-none focus:border-orange transition-all";
   const lbl = "block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/45 mb-1.5";
 
   return (
-    <div className="p-6 md:p-8 max-w-4xl">
+    <div className="p-6 md:p-8 max-w-5xl">
       <div className="mb-6">
         <h1 className="font-bold text-2xl text-charcoal mb-1">Import</h1>
-        <p className="text-charcoal/45 text-sm">Importér kunder eller leverandører fra HubSpot CSV-eksport. Der sendes ingen velkomstmail medmindre du slår det til.</p>
+        <p className="text-charcoal/45 text-sm">Importér kunder eller leverandører fra HubSpot CSV-eksport. Vælg præcis hvilke rækker der skal importeres.</p>
       </div>
 
       {/* ── Mode-valg ── */}
       <div className="flex gap-2 mb-6">
         {(["kunder", "leverandører"] as ImportMode[]).map(m => (
-          <button
-            key={m}
-            onClick={() => { setMode(m); reset(); }}
+          <button key={m} onClick={() => { setMode(m); reset(); }}
             className={`text-sm font-bold px-5 py-2 rounded-full border transition-all ${
               mode === m ? "bg-charcoal text-white border-charcoal" : "bg-white text-charcoal/50 border-[#e8e5e0] hover:border-charcoal/30"
-            }`}
-          >
+            }`}>
             {m === "kunder" ? "👥 Kunder" : "🏢 Leverandører"}
           </button>
         ))}
@@ -248,37 +273,35 @@ export default function ImportPage() {
             dragging ? "border-orange bg-orange/5" : "border-[#e8e5e0] bg-white hover:border-orange/50 hover:bg-orange/3"
           }`}
         >
-          <input
-            ref={fileRef}
-            type="file"
-            accept=".csv"
-            className="hidden"
-            onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
-          />
+          <input ref={fileRef} type="file" accept=".csv" className="hidden"
+            onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
           <div className="text-4xl mb-3">📂</div>
           <p className="font-bold text-charcoal mb-1">Træk CSV-fil hertil eller klik for at vælge</p>
-          <p className="text-charcoal/40 text-sm">Understøtter HubSpot-eksport og generisk CSV · UTF-8 · komma eller semikolon separeret</p>
+          <p className="text-charcoal/40 text-sm">HubSpot-eksport og generisk CSV · UTF-8 · komma eller semikolon separeret</p>
         </div>
       )}
 
-      {/* ── Kolonne-tilknytning og preview ── */}
+      {/* ── Kolonne-tilknytning + valgbar tabel ── */}
       {rows.length > 0 && results.length === 0 && (
-        <div className="space-y-6">
+        <div className="space-y-5">
+
           {/* Kolonne-mapping */}
           <div className="bg-white rounded-2xl border border-[#ede9e3] p-5">
-            <h2 className="font-bold text-charcoal mb-1">Kolonne-tilknytning</h2>
-            <p className="text-charcoal/40 text-xs mb-4">Auto-detekteret fra kolonnenavne. Justér hvis nødvendigt.</p>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h2 className="font-bold text-charcoal mb-0.5">Kolonne-tilknytning</h2>
+                <p className="text-charcoal/40 text-xs">Auto-detekteret. Justér hvis nødvendigt.</p>
+              </div>
+              <button onClick={reset} className="text-xs font-bold text-charcoal/40 hover:text-charcoal px-3 py-1.5 rounded-full border border-[#e8e5e0] hover:border-charcoal/30 transition-all">
+                Nulstil
+              </button>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {FIELDS.map(f => (
                 <div key={f.key}>
-                  <label className={lbl}>
-                    {f.label}{f.required && <span className="text-orange ml-1">*</span>}
-                  </label>
-                  <select
-                    className={inp}
-                    value={colMap[f.key] ?? ""}
-                    onChange={e => setColMap(prev => ({ ...prev, [f.key]: e.target.value }))}
-                  >
+                  <label className={lbl}>{f.label}{f.required && <span className="text-orange ml-1">*</span>}</label>
+                  <select className={inp} value={colMap[f.key] ?? ""}
+                    onChange={e => setColMap(prev => ({ ...prev, [f.key]: e.target.value }))}>
                     <option value="">— Vælg kolonne —</option>
                     {headers.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
@@ -297,35 +320,71 @@ export default function ImportPage() {
             </div>
           </div>
 
-          {/* Preview */}
-          <div className="bg-white rounded-2xl border border-[#ede9e3] p-5">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-bold text-charcoal">
-                Preview <span className="text-charcoal/40 font-normal text-sm">— viser op til 5 rækker</span>
-              </h2>
-              <span className="text-xs font-bold text-charcoal/40 bg-[#f8f6f3] px-3 py-1 rounded-full">
-                {validRows.length} gyldige rækker af {rows.length} total
-              </span>
+          {/* Valgbar rækkeoversigt */}
+          <div className="bg-white rounded-2xl border border-[#ede9e3] overflow-hidden">
+            {/* Tabel-header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#ede9e3] bg-[#faf9f7]">
+              <div className="flex items-center gap-3">
+                {/* Select-all checkbox */}
+                <button
+                  onClick={toggleAll}
+                  className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                    allSelected ? "bg-orange border-orange" : someSelected ? "bg-orange/30 border-orange" : "border-[#d4cfc8] hover:border-orange/60"
+                  }`}
+                >
+                  {allSelected && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                  {someSelected && <span className="w-2 h-0.5 bg-white rounded-full" />}
+                </button>
+                <span className="text-sm font-bold text-charcoal">
+                  {selectedValid.length} af {validRows.length} valgt
+                </span>
+                {invalidCount > 0 && (
+                  <span className="text-[10px] font-semibold text-red-400 bg-red-50 px-2 py-0.5 rounded-full">
+                    {invalidCount} uden email — skippes
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2 text-xs font-bold text-charcoal/40">
+                <button onClick={() => setSelectedEmails(new Set(validRows.map(u => u.email)))} className="hover:text-orange transition-colors">Vælg alle</button>
+                <span>·</span>
+                <button onClick={() => setSelectedEmails(new Set())} className="hover:text-orange transition-colors">Fravælg alle</button>
+              </div>
             </div>
-            <div className="overflow-x-auto">
+
+            {/* Tabel */}
+            <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
               <table className="w-full text-xs">
-                <thead>
+                <thead className="sticky top-0 bg-white z-10">
                   <tr className="border-b border-[#ede9e3]">
+                    <th className="w-10 px-5 py-2.5" />
                     {["Email", "Fornavn", "Efternavn", "Virksomhed", "Telefon"].map(h => (
-                      <th key={h} className="text-left text-[10px] font-extrabold tracking-widest uppercase text-charcoal/35 pb-2 pr-4">{h}</th>
+                      <th key={h} className="text-left text-[10px] font-extrabold tracking-widest uppercase text-charcoal/35 py-2.5 pr-4">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {validRows.slice(0, 5).map((r, i) => {
-                    const u = buildUser(r, colMap, defaultCompanyType);
+                  {validRows.map((u, i) => {
+                    const selected = selectedEmails.has(u.email);
                     return (
-                      <tr key={i} className="border-b border-[#ede9e3]/50 last:border-0">
-                        <td className="py-2 pr-4 text-orange font-semibold">{u.email || <span className="text-red-400">mangler</span>}</td>
-                        <td className="py-2 pr-4 text-charcoal">{u.first_name || "—"}</td>
-                        <td className="py-2 pr-4 text-charcoal">{u.last_name || "—"}</td>
-                        <td className="py-2 pr-4 text-charcoal">{u.company_name || "—"}</td>
-                        <td className="py-2 text-charcoal">{u.phone || "—"}</td>
+                      <tr
+                        key={i}
+                        onClick={() => toggleRow(u.email)}
+                        className={`border-b border-[#ede9e3]/60 last:border-0 cursor-pointer transition-colors ${
+                          selected ? "bg-orange/4 hover:bg-orange/6" : "hover:bg-[#faf9f7]"
+                        }`}
+                      >
+                        <td className="px-5 py-2.5">
+                          <div className={`w-4.5 h-4.5 w-[18px] h-[18px] rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                            selected ? "bg-orange border-orange" : "border-[#d4cfc8]"
+                          }`}>
+                            {selected && <svg width="8" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                          </div>
+                        </td>
+                        <td className="py-2.5 pr-4 text-orange font-semibold">{u.email}</td>
+                        <td className="py-2.5 pr-4 text-charcoal">{u.first_name || <span className="text-charcoal/25">—</span>}</td>
+                        <td className="py-2.5 pr-4 text-charcoal">{u.last_name || <span className="text-charcoal/25">—</span>}</td>
+                        <td className="py-2.5 pr-4 text-charcoal">{u.company_name || <span className="text-charcoal/25">—</span>}</td>
+                        <td className="py-2.5 text-charcoal">{u.phone || <span className="text-charcoal/25">—</span>}</td>
                       </tr>
                     );
                   })}
@@ -334,45 +393,35 @@ export default function ImportPage() {
             </div>
           </div>
 
-          {/* Indstillinger + knap */}
+          {/* Indstillinger + import-knap */}
           <div className="bg-white rounded-2xl border border-[#ede9e3] p-5">
-            <div className="flex items-center justify-between mb-4 flex-wrap gap-4">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <div
-                  onClick={() => setSendEmail(v => !v)}
-                  className={`relative w-10 h-6 rounded-full transition-colors ${sendEmail ? "bg-orange" : "bg-charcoal/15"}`}
-                >
+            <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
+              <label className="flex items-center gap-3 cursor-pointer" onClick={() => setSendEmail(v => !v)}>
+                <div className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 ${sendEmail ? "bg-orange" : "bg-charcoal/15"}`}>
                   <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${sendEmail ? "translate-x-5" : "translate-x-1"}`} />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-charcoal">Send velkomstmail</p>
-                  <p className="text-xs text-charcoal/40">{sendEmail ? "Brugerne modtager email med login-info" : "Ingen email sendes — du deler adgangskoder manuelt"}</p>
+                  <p className="text-xs text-charcoal/40">{sendEmail ? "Brugerne modtager email med login-info" : "Ingen email — del adgangskoder manuelt via resultatlisten"}</p>
                 </div>
               </label>
 
-              <div className="flex gap-2">
-                <button onClick={reset} className="text-sm font-bold text-charcoal/40 hover:text-charcoal px-4 py-2 rounded-full border border-[#e8e5e0] hover:border-charcoal/30 transition-all">
-                  Nulstil
-                </button>
-                <button
-                  onClick={handleImport}
-                  disabled={importing || validRows.length === 0}
-                  className="bg-orange text-white font-bold rounded-full px-6 py-2 text-sm hover:bg-orange/90 transition-all disabled:opacity-40 flex items-center gap-2"
-                >
-                  {importing
-                    ? <><span className="animate-spin inline-block">⟳</span> {progress}/{validRows.length} oprettet…</>
-                    : `Importér ${validRows.length} ${mode}`
-                  }
-                </button>
-              </div>
+              <button
+                onClick={handleImport}
+                disabled={importing || selectedValid.length === 0}
+                className="bg-orange text-white font-bold rounded-full px-6 py-2.5 text-sm hover:bg-orange/90 transition-all disabled:opacity-40 flex items-center gap-2 flex-shrink-0"
+              >
+                {importing
+                  ? <><span className="animate-spin inline-block">⟳</span> {progress}/{selectedValid.length} oprettet…</>
+                  : `Importér ${selectedValid.length} ${mode}`
+                }
+              </button>
             </div>
 
             {importing && (
               <div className="w-full bg-[#f8f6f3] rounded-full h-2 overflow-hidden">
-                <div
-                  className="h-2 bg-orange rounded-full transition-all duration-300"
-                  style={{ width: `${validRows.length > 0 ? (progress / validRows.length) * 100 : 0}%` }}
-                />
+                <div className="h-2 bg-orange rounded-full transition-all duration-300"
+                  style={{ width: `${selectedValid.length > 0 ? (progress / selectedValid.length) * 100 : 0}%` }} />
               </div>
             )}
           </div>
