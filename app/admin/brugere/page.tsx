@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { COMPETENCIES } from "@/app/data";
 import type { User } from "../types";
 
 const rolleColor: Record<string, string> = {
@@ -21,6 +22,8 @@ type EditData = {
   phone: string;
   company_type: string;
   company_name: string;
+  competencies: string[];
+  extra_competencies: string;
 };
 
 export default function BrugerePage() {
@@ -36,7 +39,7 @@ export default function BrugerePage() {
 
   // Edit state — kun én bruger kan være expanded ad gangen
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
-  const [editData, setEditData] = useState<EditData>({ contact_name: "", first_name: "", last_name: "", phone: "", company_type: "", company_name: "" });
+  const [editData, setEditData] = useState<EditData>({ contact_name: "", first_name: "", last_name: "", phone: "", company_type: "", company_name: "", competencies: [], extra_competencies: "" });
   const [loadingEdit, setLoadingEdit] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
   const [savedEdit, setSavedEdit] = useState(false);
@@ -106,6 +109,8 @@ export default function BrugerePage() {
         phone: data?.phone ?? u.phone ?? "",
         company_type: "",
         company_name: data?.company_name ?? u.company_name ?? "",
+        competencies: [],
+        extra_competencies: "",
       });
     } else if (u.rolle === "Leverandør") {
       const { data } = await supabase.from("suppliers").select("*").eq("id", u.id).single();
@@ -116,6 +121,8 @@ export default function BrugerePage() {
         phone: data?.phone ?? u.phone ?? "",
         company_type: data?.company_type ?? "",
         company_name: data?.company_name ?? u.supplier_company ?? u.company_name ?? "",
+        competencies: data?.competencies ?? [],
+        extra_competencies: data?.extra_competencies ?? "",
       });
     } else if (u.rolle === "Admin") {
       const { data } = await supabase.from("admins").select("*").eq("id", u.id).single();
@@ -126,9 +133,11 @@ export default function BrugerePage() {
         phone: data?.phone ?? u.phone ?? "",
         company_type: "",
         company_name: "",
+        competencies: [],
+        extra_competencies: "",
       });
     } else {
-      setEditData({ contact_name: "", first_name: "", last_name: "", phone: u.phone ?? "", company_type: "", company_name: "" });
+      setEditData({ contact_name: "", first_name: "", last_name: "", phone: u.phone ?? "", company_type: "", company_name: "", competencies: [], extra_competencies: "" });
     }
 
     setLoadingEdit(false);
@@ -150,6 +159,8 @@ export default function BrugerePage() {
         phone: editData.phone,
         company_type: editData.company_type,
         company_name: editData.company_name,
+        competencies: editData.competencies,
+        extra_competencies: editData.extra_competencies,
       }).eq("id", u.id);
     } else if (u.rolle === "Admin") {
       await supabase.from("admins").update({
@@ -481,6 +492,47 @@ export default function BrugerePage() {
                               <option>Selvstændig (freelancer)</option>
                             </select>
                           </div>
+                        </div>
+
+                        {/* Kompetencer */}
+                        <div>
+                          <label className={lbl}>Kompetencer</label>
+                          <div className="flex flex-wrap gap-1.5 p-3 bg-white border border-[#e8e5e0] rounded-xl">
+                            {COMPETENCIES.map(c => {
+                              const active = editData.competencies.includes(c);
+                              return (
+                                <button
+                                  key={c}
+                                  type="button"
+                                  onClick={() => setEditData(d => ({
+                                    ...d,
+                                    competencies: active
+                                      ? d.competencies.filter(x => x !== c)
+                                      : [...d.competencies, c],
+                                  }))}
+                                  className={`text-xs font-semibold px-2.5 py-1 rounded-full border transition-all ${
+                                    active
+                                      ? "bg-orange text-white border-orange"
+                                      : "bg-white text-charcoal/55 border-[#e8e5e0] hover:border-orange/50 hover:text-charcoal"
+                                  }`}
+                                >
+                                  {c}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Yderligere kompetencer */}
+                        <div>
+                          <label className={lbl}>Yderligere kompetencer (fritekst)</label>
+                          <textarea
+                            className={`${inp} resize-none`}
+                            rows={2}
+                            placeholder="F.eks. specifikke teknologier, certificeringer eller niche-kompetencer…"
+                            value={editData.extra_competencies}
+                            onChange={e => setEditData(d => ({ ...d, extra_competencies: e.target.value }))}
+                          />
                         </div>
                       </>
                     )}
