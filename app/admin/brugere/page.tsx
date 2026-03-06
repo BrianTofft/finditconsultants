@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import type { User } from "../types";
 
 const rolleColor: Record<string, string> = {
-  "Admin": "bg-purple-100 text-purple-700",
+  "Admin": "bg-yellow-100 text-yellow-700",
   "Leverandør": "bg-blue-100 text-blue-700",
   "Kunde": "bg-green-100 text-green-700",
   "Ingen rolle": "bg-gray-100 text-gray-500",
