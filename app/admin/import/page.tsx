@@ -2,7 +2,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { COMPETENCIES } from "@/app/data";
 
-type ImportMode = "kunder" | "leverandører";
+type ImportMode = "kunder" | "leverandører" | "opdater";
 
 interface ParsedRow {
   [key: string]: string;
@@ -19,11 +19,25 @@ interface MappedUser {
   extra_competencies: string;
 }
 
+interface MappedUpdate {
+  company_name: string;
+  competencies: string[];
+  extra_competencies: string;
+  company_type: string;
+  phone: string;
+}
+
 interface ImportResult {
   email: string;
   company_name: string;
   password: string;
   status: "ok" | "fejl";
+  error?: string;
+}
+
+interface UpdateResult {
+  company_name: string;
+  status: "opdateret" | "ikke fundet" | "fejl";
   error?: string;
 }
 
@@ -72,13 +86,14 @@ function autoDetect(headers: string[]): Record<string, string> {
   const find = (...candidates: string[]) =>
     headers.find(h => candidates.some(c => h.toLowerCase().includes(c.toLowerCase()))) ?? "";
   return {
-    email:        find("email", "e-mail", "mail"),
-    first_name:   find("first name", "firstname", "first_name", "fornavn"),
-    last_name:    find("last name", "lastname", "last_name", "efternavn", "surname"),
-    company_name: find("company name", "company", "associated company", "virksomhed", "firma"),
-    phone:        find("phone", "telefon", "mobil", "mobile", "tlf"),
+    email:              find("email", "e-mail", "mail"),
+    first_name:         find("first name", "firstname", "first_name", "fornavn"),
+    last_name:          find("last name", "lastname", "last_name", "efternavn", "surname"),
+    company_name:       find("company name", "company", "associated company", "virksomhed", "firma"),
+    phone:              find("phone", "telefon", "mobil", "mobile", "tlf"),
     company_type:       find("company type", "type", "virksomhedstype"),
     extra_competencies: find("extra competencies", "extra_competencies", "yderligere kompetencer", "yderligere", "other competencies"),
+    competencies:       find("competencies", "kompetencer", "tags", "services", "specialer"),
   };
 }
 
@@ -96,6 +111,18 @@ function buildUser(row: ParsedRow, map: Record<string, string>, defaultCompanyTy
   };
 }
 
+function buildUpdate(row: ParsedRow, map: Record<string, string>): MappedUpdate {
+  const g = (field: string) => (map[field] ? (row[map[field]] ?? "") : "").trim();
+  const compStr = g("competencies");
+  return {
+    company_name:       g("company_name"),
+    competencies:       compStr ? compStr.split(/[,;|]/).map(s => s.trim()).filter(Boolean) : [],
+    extra_competencies: g("extra_competencies"),
+    company_type:       g("company_type"),
+    phone:              g("phone"),
+  };
+}
+
 /* ── Komponent ── */
 
 export default function ImportPage() {
@@ -105,66 +132,99 @@ export default function ImportPage() {
   const [colMap, setColMap] = useState<Record<string, string>>({});
   const [defaultCompanyType, setDefaultCompanyType] = useState("Konsulenthus");
   const [defaultCompetencies, setDefaultCompetencies] = useState<string[]>([]);
+
+  // Create-mode selection
   const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
+  const [existingEmails, setExistingEmails] = useState<Set<string>>(new Set());
+  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+
+  // Opdater-mode selection
+  const [selectedCompanies, setSelectedCompanies] = useState<Set<string>>(new Set());
+  const [matchedCompanies, setMatchedCompanies] = useState<Set<string>>(new Set()); // lowercase keys
+  const [checkingMatches, setCheckingMatches] = useState(false);
+
   const [sendEmail, setSendEmail] = useState(false);
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [results, setResults] = useState<ImportResult[]>([]);
+  const [updateResults, setUpdateResults] = useState<UpdateResult[]>([]);
   const [dragging, setDragging] = useState(false);
-  const [existingEmails, setExistingEmails] = useState<Set<string>>(new Set());
-  const [checkingDuplicates, setCheckingDuplicates] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const FIELDS: { key: string; label: string; required: boolean }[] = [
-    { key: "email",        label: "Email",           required: true },
-    { key: "first_name",   label: "Fornavn",         required: false },
-    { key: "last_name",    label: "Efternavn",       required: false },
-    { key: "company_name", label: "Virksomhedsnavn", required: false },
-    { key: "phone",        label: "Telefon",         required: false },
+  // ── Fields per mode ──
+  const FIELDS = mode === "opdater" ? [
+    { key: "company_name",       label: "Virksomhedsnavn",               required: true  },
+    { key: "competencies",       label: "Kompetencer (kommasepareret)",   required: false },
+    { key: "extra_competencies", label: "Yderligere kompetencer",         required: false },
+    { key: "company_type",       label: "Virksomhedstype",                required: false },
+    { key: "phone",              label: "Telefon",                        required: false },
+  ] : [
+    { key: "email",              label: "Email",                          required: true  },
+    { key: "first_name",         label: "Fornavn",                        required: false },
+    { key: "last_name",          label: "Efternavn",                      required: false },
+    { key: "company_name",       label: "Virksomhedsnavn",                required: false },
+    { key: "phone",              label: "Telefon",                        required: false },
     ...(mode === "leverandører" ? [
-      { key: "company_type",       label: "Virksomhedstype",        required: false },
-      { key: "extra_competencies", label: "Yderligere kompetencer",  required: false },
+      { key: "company_type",       label: "Virksomhedstype",              required: false },
+      { key: "extra_competencies", label: "Yderligere kompetencer",       required: false },
     ] : []),
   ];
 
+  // ── Derived rows ──
   const validRows = rows
     .map(r => buildUser(r, colMap, defaultCompanyType, defaultCompetencies))
     .filter(u => u.email.includes("@"));
-
   const invalidCount = rows.length - validRows.length;
 
-  // Forvælg alle gyldige rækker når CSV indlæses
+  const validUpdateRows = rows
+    .map(r => buildUpdate(r, colMap))
+    .filter(u => u.company_name.length > 0);
+  const invalidUpdateCount = rows.length - validUpdateRows.length;
+
+  const matchedCount = validUpdateRows.filter(u => matchedCompanies.has(u.company_name.toLowerCase())).length;
+
+  // ── Selection derived ──
+  const selectedValid = validRows.filter(u => selectedEmails.has(u.email));
+  const allSelected = validRows.length > 0 && selectedValid.length === validRows.length;
+  const someSelected = selectedValid.length > 0 && !allSelected;
+
+  const selectedUpdateValid = validUpdateRows.filter(u => selectedCompanies.has(u.company_name));
+  const allUpdateSelected = validUpdateRows.length > 0 && selectedUpdateValid.length === validUpdateRows.length;
+  const someUpdateSelected = selectedUpdateValid.length > 0 && !allUpdateSelected;
+
+  // ── Pre-select all valid rows on CSV load (create modes) ──
   useEffect(() => {
-    if (rows.length > 0) {
+    if (rows.length > 0 && mode !== "opdater") {
       setSelectedEmails(new Set(validRows.map(u => u.email)));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows]);
 
-  // Tjek for dubletter når CSV indlæses, email-kolonne ændres eller mode skiftes
+  // ── Pre-select all companies on CSV load (opdater mode) ──
   useEffect(() => {
+    if (rows.length > 0 && mode === "opdater") {
+      setSelectedCompanies(new Set(validUpdateRows.map(u => u.company_name)));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows]);
+
+  // ── Duplicate check (create modes) ──
+  useEffect(() => {
+    if (mode === "opdater") return;
     const vr = rows
       .map(r => buildUser(r, colMap, defaultCompanyType))
       .filter(u => u.email.includes("@"));
-
-    if (vr.length === 0) {
-      setExistingEmails(new Set());
-      return;
-    }
+    if (vr.length === 0) { setExistingEmails(new Set()); return; }
 
     setCheckingDuplicates(true);
-    const emails = vr.map(u => u.email);
-
     fetch("/api/check-existing-users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ emails, role: mode === "kunder" ? "customer" : "supplier" }),
+      body: JSON.stringify({ emails: vr.map(u => u.email), role: mode === "kunder" ? "customer" : "supplier" }),
     })
       .then(r => r.json())
       .then(({ existingEmails: found }: { existingEmails: string[] }) => {
-        const foundSet = new Set<string>(found);
-        setExistingEmails(foundSet);
-        // Auto-fravælg eksisterende brugere
+        setExistingEmails(new Set<string>(found));
         setSelectedEmails(prev => {
           const next = new Set(prev);
           found.forEach(e => next.delete(e));
@@ -176,33 +236,67 @@ export default function ImportPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows, colMap, mode]);
 
-  const selectedValid = validRows.filter(u => selectedEmails.has(u.email));
-  const allSelected = validRows.length > 0 && selectedValid.length === validRows.length;
-  const someSelected = selectedValid.length > 0 && !allSelected;
+  // ── Company match check (opdater mode) ──
+  useEffect(() => {
+    if (mode !== "opdater") return;
+    const vu = rows
+      .map(r => buildUpdate(r, colMap))
+      .filter(u => u.company_name.length > 0);
+    if (vu.length === 0) { setMatchedCompanies(new Set()); return; }
 
-  const toggleAll = () => {
-    if (allSelected) {
-      setSelectedEmails(new Set());
-    } else {
-      setSelectedEmails(new Set(validRows.map(u => u.email)));
-    }
-  };
+    setCheckingMatches(true);
+    fetch("/api/check-supplier-companies", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ company_names: vu.map(u => u.company_name) }),
+    })
+      .then(r => r.json())
+      .then(({ matchedNames }: { matchedNames: string[] }) => {
+        const matchedSet = new Set<string>(matchedNames.map(n => n.toLowerCase()));
+        setMatchedCompanies(matchedSet);
+        // Auto-deselect companies not found in DB
+        setSelectedCompanies(prev => {
+          const next = new Set(prev);
+          vu.forEach(u => { if (!matchedSet.has(u.company_name.toLowerCase())) next.delete(u.company_name); });
+          return next;
+        });
+      })
+      .catch(() => setMatchedCompanies(new Set()))
+      .finally(() => setCheckingMatches(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, colMap, mode]);
 
-  const toggleRow = (email: string) => {
-    setSelectedEmails(prev => {
-      const next = new Set(prev);
-      next.has(email) ? next.delete(email) : next.add(email);
-      return next;
-    });
-  };
+  // ── Toggle helpers ──
+  const toggleAll = () => allSelected
+    ? setSelectedEmails(new Set())
+    : setSelectedEmails(new Set(validRows.map(u => u.email)));
 
+  const toggleRow = (email: string) => setSelectedEmails(prev => {
+    const next = new Set(prev);
+    next.has(email) ? next.delete(email) : next.add(email);
+    return next;
+  });
+
+  const toggleAllUpdate = () => allUpdateSelected
+    ? setSelectedCompanies(new Set())
+    : setSelectedCompanies(new Set(validUpdateRows.map(u => u.company_name)));
+
+  const toggleUpdateRow = (name: string) => setSelectedCompanies(prev => {
+    const next = new Set(prev);
+    next.has(name) ? next.delete(name) : next.add(name);
+    return next;
+  });
+
+  // ── CSV load ──
   const loadCSV = (text: string) => {
     const { headers: h, rows: r } = parseCSV(text);
     setHeaders(h);
     setRows(r);
     setColMap(autoDetect(h));
     setResults([]);
+    setUpdateResults([]);
     setSelectedEmails(new Set());
+    setSelectedCompanies(new Set());
   };
 
   const handleFile = (file: File) => {
@@ -219,6 +313,7 @@ export default function ImportPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Import (create) ──
   const handleImport = async () => {
     const toImport = selectedValid;
     if (toImport.length === 0) return;
@@ -230,52 +325,54 @@ export default function ImportPage() {
       const u = toImport[i];
       const password = generatePassword();
       const contact_name = [u.first_name, u.last_name].filter(Boolean).join(" ") || u.company_name;
-
       try {
         const res = await fetch("/api/create-user", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            email: u.email,
-            password,
+            email: u.email, password,
             role: mode === "kunder" ? "customer" : "supplier",
-            company_name: u.company_name,
-            contact_name,
-            phone: u.phone,
-            first_name: u.first_name,
-            last_name: u.last_name,
+            company_name: u.company_name, contact_name, phone: u.phone,
+            first_name: u.first_name, last_name: u.last_name,
             company_type:       mode === "leverandører" ? u.company_type       : undefined,
             competencies:       mode === "leverandører" ? u.competencies       : undefined,
             extra_competencies: mode === "leverandører" ? u.extra_competencies : undefined,
           }),
         });
-
         const data = await res.json() as { userId?: string; error?: string };
-
         if (data.error || !res.ok) {
           importResults.push({ email: u.email, company_name: u.company_name, password, status: "fejl", error: data.error ?? "Ukendt fejl" });
         } else {
           if (sendEmail) {
             const notifyRoute = mode === "kunder" ? "/api/notify-customer-approved" : "/api/notify-supplier-approved";
-            await fetch(notifyRoute, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email: u.email, password }),
-            });
+            await fetch(notifyRoute, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: u.email, password }) });
           }
           importResults.push({ email: u.email, company_name: u.company_name, password, status: "ok" });
         }
       } catch (err) {
         importResults.push({ email: u.email, company_name: u.company_name, password, status: "fejl", error: String(err) });
       }
-
       setProgress(i + 1);
     }
-
     setResults(importResults);
     setImporting(false);
   };
 
+  // ── Import (opdater) ──
+  const handleUpdateImport = async () => {
+    if (selectedUpdateValid.length === 0) return;
+    setImporting(true);
+    const res = await fetch("/api/update-suppliers-by-company", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ updates: selectedUpdateValid }),
+    });
+    const data = await res.json() as { results: UpdateResult[] };
+    setUpdateResults(data.results ?? []);
+    setImporting(false);
+  };
+
+  // ── Clipboard ──
   const copyResults = () => {
     const lines = ["Email\tVirksomhed\tMidlertidigt password\tStatus",
       ...results.map(r => `${r.email}\t${r.company_name}\t${r.password}\t${r.status}`)
@@ -283,34 +380,56 @@ export default function ImportPage() {
     navigator.clipboard.writeText(lines);
   };
 
+  const copyUpdateResults = () => {
+    const lines = ["Virksomhed\tStatus",
+      ...updateResults.map(r => `${r.company_name}\t${r.status}`)
+    ].join("\n");
+    navigator.clipboard.writeText(lines);
+  };
+
+  // ── Reset ──
   const reset = () => {
-    setHeaders([]); setRows([]); setColMap({}); setResults([]);
+    setHeaders([]); setRows([]); setColMap({}); setResults([]); setUpdateResults([]);
     setProgress(0); setSelectedEmails(new Set()); setExistingEmails(new Set());
+    setSelectedCompanies(new Set()); setMatchedCompanies(new Set());
     setDefaultCompetencies([]);
     if (fileRef.current) fileRef.current.value = "";
   };
 
   const inp = "w-full rounded-xl border border-[#e8e5e0] bg-white px-3 py-2 text-sm text-charcoal focus:outline-none focus:border-orange transition-all";
   const lbl = "block text-[10px] font-extrabold tracking-widest uppercase text-charcoal/45 mb-1.5";
+  const hasResults = results.length > 0 || updateResults.length > 0;
 
   return (
     <div className="p-6 md:p-8 max-w-5xl">
       <div className="mb-6">
         <h1 className="font-bold text-2xl text-charcoal mb-1">Import</h1>
-        <p className="text-charcoal/45 text-sm">Importér kunder eller leverandører fra HubSpot CSV-eksport. Vælg præcis hvilke rækker der skal importeres.</p>
+        <p className="text-charcoal/45 text-sm">Importér kunder eller leverandører fra HubSpot CSV-eksport, eller opdater eksisterende leverandører via virksomhedsnavn.</p>
       </div>
 
       {/* ── Mode-valg ── */}
-      <div className="flex gap-2 mb-6">
-        {(["kunder", "leverandører"] as ImportMode[]).map(m => (
-          <button key={m} onClick={() => { setMode(m); reset(); }}
+      <div className="flex gap-2 mb-6 flex-wrap">
+        {([
+          { id: "kunder",       label: "👥 Kunder" },
+          { id: "leverandører", label: "🏢 Leverandører" },
+          { id: "opdater",      label: "🔄 Opdater leverandører" },
+        ] as { id: ImportMode; label: string }[]).map(m => (
+          <button key={m.id} onClick={() => { setMode(m.id); reset(); }}
             className={`text-sm font-bold px-5 py-2 rounded-full border transition-all ${
-              mode === m ? "bg-charcoal text-white border-charcoal" : "bg-white text-charcoal/50 border-[#e8e5e0] hover:border-charcoal/30"
+              mode === m.id ? "bg-charcoal text-white border-charcoal" : "bg-white text-charcoal/50 border-[#e8e5e0] hover:border-charcoal/30"
             }`}>
-            {m === "kunder" ? "👥 Kunder" : "🏢 Leverandører"}
+            {m.label}
           </button>
         ))}
       </div>
+
+      {/* Opdater-info */}
+      {mode === "opdater" && rows.length === 0 && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 mb-5">
+          <p className="text-sm font-semibold text-blue-800 mb-1">Opdater eksisterende leverandører via virksomhedsnavn</p>
+          <p className="text-xs text-blue-600">Brug denne funktion til at tilføje kompetencer m.m. fra en HubSpot virksomheds-eksport — uden at oprette nye brugere. Rækker matches på virksomhedsnavn (ikke case-sensitiv). Kun felter med værdier i CSV overskrives.</p>
+        </div>
+      )}
 
       {/* ── CSV-upload ── */}
       {rows.length === 0 && (
@@ -331,8 +450,8 @@ export default function ImportPage() {
         </div>
       )}
 
-      {/* ── Kolonne-tilknytning + valgbar tabel ── */}
-      {rows.length > 0 && results.length === 0 && (
+      {/* ── Kolonne-tilknytning + tabeller ── */}
+      {rows.length > 0 && !hasResults && (
         <div className="space-y-5">
 
           {/* Kolonne-mapping */}
@@ -370,174 +489,233 @@ export default function ImportPage() {
             </div>
           </div>
 
-          {/* Kompetencer (kun leverandører) */}
+          {/* Kompetencer multi-select (kun leverandører create mode) */}
           {mode === "leverandører" && (
             <div className="bg-white rounded-2xl border border-[#ede9e3] p-5">
               <div className="mb-3">
                 <h2 className="font-bold text-charcoal mb-0.5">Kompetencer</h2>
-                <p className="text-charcoal/40 text-xs">Vælg de kompetenceområder der gælder for alle importerede leverandører. Yderligere fritekst kan mappes via kolonnen ovenfor.</p>
+                <p className="text-charcoal/40 text-xs">Vælg de kompetenceområder der gælder for alle importerede leverandører.</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {COMPETENCIES.map(c => {
                   const active = defaultCompetencies.includes(c);
                   return (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => setDefaultCompetencies(prev =>
-                        active ? prev.filter(x => x !== c) : [...prev, c]
-                      )}
+                    <button key={c} type="button"
+                      onClick={() => setDefaultCompetencies(prev => active ? prev.filter(x => x !== c) : [...prev, c])}
                       className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
-                        active
-                          ? "bg-orange text-white border-orange"
-                          : "bg-white text-charcoal/60 border-[#e8e5e0] hover:border-orange/50 hover:text-charcoal"
-                      }`}
-                    >
+                        active ? "bg-orange text-white border-orange" : "bg-white text-charcoal/60 border-[#e8e5e0] hover:border-orange/50 hover:text-charcoal"
+                      }`}>
                       {c}
                     </button>
                   );
                 })}
               </div>
               {defaultCompetencies.length > 0 && (
-                <button
-                  onClick={() => setDefaultCompetencies([])}
-                  className="mt-3 text-[10px] font-bold text-charcoal/35 hover:text-charcoal/70 transition-colors"
-                >
+                <button onClick={() => setDefaultCompetencies([])} className="mt-3 text-[10px] font-bold text-charcoal/35 hover:text-charcoal/70 transition-colors">
                   Ryd valg
                 </button>
               )}
             </div>
           )}
 
-          {/* Valgbar rækkeoversigt */}
-          <div className="bg-white rounded-2xl border border-[#ede9e3] overflow-hidden">
-            {/* Tabel-header */}
-            <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#ede9e3] bg-[#faf9f7]">
-              <div className="flex items-center gap-3">
-                {/* Select-all checkbox */}
-                <button
-                  onClick={toggleAll}
-                  className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                    allSelected ? "bg-orange border-orange" : someSelected ? "bg-orange/30 border-orange" : "border-[#d4cfc8] hover:border-orange/60"
-                  }`}
-                >
-                  {allSelected && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                  {someSelected && <span className="w-2 h-0.5 bg-white rounded-full" />}
-                </button>
-                <span className="text-sm font-bold text-charcoal">
-                  {selectedValid.length} af {validRows.length} valgt
-                </span>
-                {invalidCount > 0 && (
-                  <span className="text-[10px] font-semibold text-red-400 bg-red-50 px-2 py-0.5 rounded-full">
-                    {invalidCount} uden email — skippes
-                  </span>
-                )}
-                {checkingDuplicates && (
-                  <span className="text-[10px] font-semibold text-charcoal/40 animate-pulse">
-                    Tjekker dubletter…
-                  </span>
-                )}
-                {!checkingDuplicates && existingEmails.size > 0 && (
-                  <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-                    {existingEmails.size} eksisterer allerede — fravalgt
-                  </span>
-                )}
+          {/* ── Tabel: CREATE modes ── */}
+          {mode !== "opdater" && (
+            <div className="bg-white rounded-2xl border border-[#ede9e3] overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#ede9e3] bg-[#faf9f7]">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <button onClick={toggleAll}
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                      allSelected ? "bg-orange border-orange" : someSelected ? "bg-orange/30 border-orange" : "border-[#d4cfc8] hover:border-orange/60"
+                    }`}>
+                    {allSelected && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    {someSelected && <span className="w-2 h-0.5 bg-white rounded-full" />}
+                  </button>
+                  <span className="text-sm font-bold text-charcoal">{selectedValid.length} af {validRows.length} valgt</span>
+                  {invalidCount > 0 && <span className="text-[10px] font-semibold text-red-400 bg-red-50 px-2 py-0.5 rounded-full">{invalidCount} uden email — skippes</span>}
+                  {checkingDuplicates && <span className="text-[10px] font-semibold text-charcoal/40 animate-pulse">Tjekker dubletter…</span>}
+                  {!checkingDuplicates && existingEmails.size > 0 && (
+                    <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">{existingEmails.size} eksisterer allerede — fravalgt</span>
+                  )}
+                </div>
+                <div className="flex gap-2 text-xs font-bold text-charcoal/40">
+                  <button onClick={() => setSelectedEmails(new Set(validRows.map(u => u.email)))} className="hover:text-orange transition-colors">Vælg alle</button>
+                  <span>·</span>
+                  <button onClick={() => setSelectedEmails(new Set())} className="hover:text-orange transition-colors">Fravælg alle</button>
+                </div>
               </div>
-              <div className="flex gap-2 text-xs font-bold text-charcoal/40">
-                <button onClick={() => setSelectedEmails(new Set(validRows.map(u => u.email)))} className="hover:text-orange transition-colors">Vælg alle</button>
-                <span>·</span>
-                <button onClick={() => setSelectedEmails(new Set())} className="hover:text-orange transition-colors">Fravælg alle</button>
-              </div>
-            </div>
-
-            {/* Tabel */}
-            <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 bg-white z-10">
-                  <tr className="border-b border-[#ede9e3]">
-                    <th className="w-10 px-5 py-2.5" />
-                    {["Email", "Fornavn", "Efternavn", "Virksomhed", "Telefon"].map(h => (
-                      <th key={h} className="text-left text-[10px] font-extrabold tracking-widest uppercase text-charcoal/35 py-2.5 pr-4">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {validRows.map((u, i) => {
-                    const selected = selectedEmails.has(u.email);
-                    const isExisting = existingEmails.has(u.email);
-                    return (
-                      <tr
-                        key={i}
-                        onClick={() => toggleRow(u.email)}
-                        className={`border-b border-[#ede9e3]/60 last:border-0 cursor-pointer transition-colors ${
-                          selected ? "bg-orange/4 hover:bg-orange/6" : isExisting ? "bg-amber-50/40 hover:bg-amber-50/60" : "hover:bg-[#faf9f7]"
-                        }`}
-                      >
-                        <td className="px-5 py-2.5">
-                          <div className={`w-[18px] h-[18px] rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                            selected ? "bg-orange border-orange" : "border-[#d4cfc8]"
+              <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-white z-10">
+                    <tr className="border-b border-[#ede9e3]">
+                      <th className="w-10 px-5 py-2.5" />
+                      {["Email", "Fornavn", "Efternavn", "Virksomhed", "Telefon"].map(h => (
+                        <th key={h} className="text-left text-[10px] font-extrabold tracking-widest uppercase text-charcoal/35 py-2.5 pr-4">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {validRows.map((u, i) => {
+                      const selected = selectedEmails.has(u.email);
+                      const isExisting = existingEmails.has(u.email);
+                      return (
+                        <tr key={i} onClick={() => toggleRow(u.email)}
+                          className={`border-b border-[#ede9e3]/60 last:border-0 cursor-pointer transition-colors ${
+                            selected ? "bg-orange/4 hover:bg-orange/6" : isExisting ? "bg-amber-50/40 hover:bg-amber-50/60" : "hover:bg-[#faf9f7]"
                           }`}>
-                            {selected && <svg width="8" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
-                          </div>
-                        </td>
-                        <td className="py-2.5 pr-4">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-orange font-semibold">{u.email}</span>
-                            {isExisting && (
-                              <span className="text-[9px] font-bold bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full whitespace-nowrap">
-                                Eksisterer allerede
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-2.5 pr-4 text-charcoal">{u.first_name || <span className="text-charcoal/25">—</span>}</td>
-                        <td className="py-2.5 pr-4 text-charcoal">{u.last_name || <span className="text-charcoal/25">—</span>}</td>
-                        <td className="py-2.5 pr-4 text-charcoal">{u.company_name || <span className="text-charcoal/25">—</span>}</td>
-                        <td className="py-2.5 text-charcoal">{u.phone || <span className="text-charcoal/25">—</span>}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          {/* Indstillinger + import-knap */}
-          <div className="bg-white rounded-2xl border border-[#ede9e3] p-5">
-            <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
-              <label className="flex items-center gap-3 cursor-pointer" onClick={() => setSendEmail(v => !v)}>
-                <div className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 ${sendEmail ? "bg-orange" : "bg-charcoal/15"}`}>
-                  <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${sendEmail ? "translate-x-5" : "translate-x-1"}`} />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-charcoal">Send velkomstmail</p>
-                  <p className="text-xs text-charcoal/40">{sendEmail ? "Brugerne modtager email med login-info" : "Ingen email — del adgangskoder manuelt via resultatlisten"}</p>
-                </div>
-              </label>
-
-              <button
-                onClick={handleImport}
-                disabled={importing || selectedValid.length === 0}
-                className="bg-orange text-white font-bold rounded-full px-6 py-2.5 text-sm hover:bg-orange/90 transition-all disabled:opacity-40 flex items-center gap-2 flex-shrink-0"
-              >
-                {importing
-                  ? <><span className="animate-spin inline-block">⟳</span> {progress}/{selectedValid.length} oprettet…</>
-                  : `Importér ${selectedValid.length} ${mode}`
-                }
-              </button>
-            </div>
-
-            {importing && (
-              <div className="w-full bg-[#f8f6f3] rounded-full h-2 overflow-hidden">
-                <div className="h-2 bg-orange rounded-full transition-all duration-300"
-                  style={{ width: `${selectedValid.length > 0 ? (progress / selectedValid.length) * 100 : 0}%` }} />
+                          <td className="px-5 py-2.5">
+                            <div className={`w-[18px] h-[18px] rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${selected ? "bg-orange border-orange" : "border-[#d4cfc8]"}`}>
+                              {selected && <svg width="8" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            </div>
+                          </td>
+                          <td className="py-2.5 pr-4">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-orange font-semibold">{u.email}</span>
+                              {isExisting && <span className="text-[9px] font-bold bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full whitespace-nowrap">Eksisterer allerede</span>}
+                            </div>
+                          </td>
+                          <td className="py-2.5 pr-4 text-charcoal">{u.first_name || <span className="text-charcoal/25">—</span>}</td>
+                          <td className="py-2.5 pr-4 text-charcoal">{u.last_name || <span className="text-charcoal/25">—</span>}</td>
+                          <td className="py-2.5 pr-4 text-charcoal">{u.company_name || <span className="text-charcoal/25">—</span>}</td>
+                          <td className="py-2.5 text-charcoal">{u.phone || <span className="text-charcoal/25">—</span>}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* ── Tabel: OPDATER mode ── */}
+          {mode === "opdater" && (
+            <div className="bg-white rounded-2xl border border-[#ede9e3] overflow-hidden">
+              <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#ede9e3] bg-[#faf9f7]">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <button onClick={toggleAllUpdate}
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+                      allUpdateSelected ? "bg-orange border-orange" : someUpdateSelected ? "bg-orange/30 border-orange" : "border-[#d4cfc8] hover:border-orange/60"
+                    }`}>
+                    {allUpdateSelected && <svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    {someUpdateSelected && <span className="w-2 h-0.5 bg-white rounded-full" />}
+                  </button>
+                  <span className="text-sm font-bold text-charcoal">{selectedUpdateValid.length} af {validUpdateRows.length} valgt</span>
+                  {invalidUpdateCount > 0 && <span className="text-[10px] font-semibold text-red-400 bg-red-50 px-2 py-0.5 rounded-full">{invalidUpdateCount} uden virksomhedsnavn — skippes</span>}
+                  {checkingMatches && <span className="text-[10px] font-semibold text-charcoal/40 animate-pulse">Matcher virksomheder…</span>}
+                  {!checkingMatches && matchedCount > 0 && (
+                    <span className="text-[10px] font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full">{matchedCount} fundet i systemet</span>
+                  )}
+                  {!checkingMatches && validUpdateRows.length > 0 && matchedCount < validUpdateRows.length && (
+                    <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">{validUpdateRows.length - matchedCount} ikke fundet — fravalgt</span>
+                  )}
+                </div>
+                <div className="flex gap-2 text-xs font-bold text-charcoal/40">
+                  <button onClick={() => setSelectedCompanies(new Set(validUpdateRows.map(u => u.company_name)))} className="hover:text-orange transition-colors">Vælg alle</button>
+                  <span>·</span>
+                  <button onClick={() => setSelectedCompanies(new Set())} className="hover:text-orange transition-colors">Fravælg alle</button>
+                </div>
+              </div>
+              <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-white z-10">
+                    <tr className="border-b border-[#ede9e3]">
+                      <th className="w-10 px-5 py-2.5" />
+                      {["Virksomhed", "Kompetencer (CSV)", "Yderligere kompetencer", "Match"].map(h => (
+                        <th key={h} className="text-left text-[10px] font-extrabold tracking-widest uppercase text-charcoal/35 py-2.5 pr-4">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {validUpdateRows.map((u, i) => {
+                      const selected = selectedCompanies.has(u.company_name);
+                      const isMatched = matchedCompanies.has(u.company_name.toLowerCase());
+                      const stillChecking = checkingMatches || (matchedCompanies.size === 0 && rows.length > 0);
+                      return (
+                        <tr key={i} onClick={() => toggleUpdateRow(u.company_name)}
+                          className={`border-b border-[#ede9e3]/60 last:border-0 cursor-pointer transition-colors ${
+                            selected ? "bg-orange/4 hover:bg-orange/6" : !isMatched && !stillChecking ? "bg-amber-50/40 hover:bg-amber-50/60" : "hover:bg-[#faf9f7]"
+                          }`}>
+                          <td className="px-5 py-2.5">
+                            <div className={`w-[18px] h-[18px] rounded border-2 flex items-center justify-center flex-shrink-0 transition-all ${selected ? "bg-orange border-orange" : "border-[#d4cfc8]"}`}>
+                              {selected && <svg width="8" height="7" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#fff" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                            </div>
+                          </td>
+                          <td className="py-2.5 pr-4 font-semibold text-charcoal">{u.company_name}</td>
+                          <td className="py-2.5 pr-4">
+                            {u.competencies.length > 0
+                              ? <div className="flex flex-wrap gap-1">{u.competencies.map(c => <span key={c} className="bg-orange/10 text-orange font-semibold px-1.5 py-0.5 rounded-full text-[9px]">{c}</span>)}</div>
+                              : <span className="text-charcoal/25">—</span>
+                            }
+                          </td>
+                          <td className="py-2.5 pr-4 text-charcoal/70 max-w-[160px] truncate">{u.extra_competencies || <span className="text-charcoal/25">—</span>}</td>
+                          <td className="py-2.5">
+                            {stillChecking
+                              ? <span className="text-charcoal/25 text-[10px]">—</span>
+                              : isMatched
+                                ? <span className="text-[10px] font-bold bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">✓ Fundet</span>
+                                : <span className="text-[10px] font-bold bg-amber-100 text-amber-600 px-1.5 py-0.5 rounded-full">Ikke fundet</span>
+                            }
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ── Indstillinger + knap (CREATE) ── */}
+          {mode !== "opdater" && (
+            <div className="bg-white rounded-2xl border border-[#ede9e3] p-5">
+              <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
+                <label className="flex items-center gap-3 cursor-pointer" onClick={() => setSendEmail(v => !v)}>
+                  <div className={`relative w-10 h-6 rounded-full transition-colors flex-shrink-0 ${sendEmail ? "bg-orange" : "bg-charcoal/15"}`}>
+                    <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${sendEmail ? "translate-x-5" : "translate-x-1"}`} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-charcoal">Send velkomstmail</p>
+                    <p className="text-xs text-charcoal/40">{sendEmail ? "Brugerne modtager email med login-info" : "Ingen email — del adgangskoder manuelt via resultatlisten"}</p>
+                  </div>
+                </label>
+                <button onClick={handleImport} disabled={importing || selectedValid.length === 0}
+                  className="bg-orange text-white font-bold rounded-full px-6 py-2.5 text-sm hover:bg-orange/90 transition-all disabled:opacity-40 flex items-center gap-2 flex-shrink-0">
+                  {importing
+                    ? <><span className="animate-spin inline-block">⟳</span> {progress}/{selectedValid.length} oprettet…</>
+                    : `Importér ${selectedValid.length} ${mode}`
+                  }
+                </button>
+              </div>
+              {importing && (
+                <div className="w-full bg-[#f8f6f3] rounded-full h-2 overflow-hidden">
+                  <div className="h-2 bg-orange rounded-full transition-all duration-300"
+                    style={{ width: `${selectedValid.length > 0 ? (progress / selectedValid.length) * 100 : 0}%` }} />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Knap (OPDATER) ── */}
+          {mode === "opdater" && (
+            <div className="bg-white rounded-2xl border border-[#ede9e3] p-5">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                  <p className="text-sm font-bold text-charcoal">Opdater valgte leverandører</p>
+                  <p className="text-xs text-charcoal/40">Overskriver kun felter der har værdier i CSV'en.</p>
+                </div>
+                <button onClick={handleUpdateImport} disabled={importing || selectedUpdateValid.length === 0}
+                  className="bg-orange text-white font-bold rounded-full px-6 py-2.5 text-sm hover:bg-orange/90 transition-all disabled:opacity-40 flex items-center gap-2 flex-shrink-0">
+                  {importing
+                    ? <><span className="animate-spin inline-block">⟳</span> Opdaterer…</>
+                    : `Opdater ${selectedUpdateValid.length} leverandør${selectedUpdateValid.length !== 1 ? "er" : ""}`
+                  }
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* ── Resultater ── */}
+      {/* ── Resultater (CREATE) ── */}
       {results.length > 0 && (
         <div className="bg-white rounded-2xl border border-[#ede9e3] p-5">
           <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
@@ -545,29 +723,19 @@ export default function ImportPage() {
               <h2 className="font-bold text-charcoal mb-0.5">Import fuldført</h2>
               <p className="text-xs text-charcoal/45">
                 <span className="text-green font-bold">{results.filter(r => r.status === "ok").length} oprettet</span>
-                {results.filter(r => r.status === "fejl").length > 0 && (
-                  <span className="text-red-500 font-bold ml-2">{results.filter(r => r.status === "fejl").length} fejlet</span>
-                )}
+                {results.filter(r => r.status === "fejl").length > 0 && <span className="text-red-500 font-bold ml-2">{results.filter(r => r.status === "fejl").length} fejlet</span>}
               </p>
             </div>
             <div className="flex gap-2">
-              <button onClick={copyResults} className="text-xs font-bold text-charcoal/50 hover:text-charcoal px-3 py-1.5 rounded-full border border-[#e8e5e0] hover:border-charcoal/30 transition-all">
-                📋 Kopiér til udklipsholder
-              </button>
-              <button onClick={reset} className="text-xs font-bold bg-orange text-white px-4 py-1.5 rounded-full hover:bg-orange/90 transition-all">
-                Ny import
-              </button>
+              <button onClick={copyResults} className="text-xs font-bold text-charcoal/50 hover:text-charcoal px-3 py-1.5 rounded-full border border-[#e8e5e0] hover:border-charcoal/30 transition-all">📋 Kopiér</button>
+              <button onClick={reset} className="text-xs font-bold bg-orange text-white px-4 py-1.5 rounded-full hover:bg-orange/90 transition-all">Ny import</button>
             </div>
           </div>
-
           {!sendEmail && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4">
-              <p className="text-xs font-semibold text-amber-700">
-                ⚠ Velkomstmail er ikke sendt. Nedenfor er de midlertidige adgangskoder — gem dem og del med brugerne manuelt.
-              </p>
+              <p className="text-xs font-semibold text-amber-700">⚠ Velkomstmail er ikke sendt. Nedenfor er de midlertidige adgangskoder — gem dem og del manuelt.</p>
             </div>
           )}
-
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
@@ -592,6 +760,56 @@ export default function ImportPage() {
                         ? <code className="bg-[#f8f6f3] text-charcoal font-mono px-2 py-0.5 rounded text-[11px] select-all">{r.password}</code>
                         : <span className="text-red-500 text-[11px]">{r.error}</span>
                       }
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Resultater (OPDATER) ── */}
+      {updateResults.length > 0 && (
+        <div className="bg-white rounded-2xl border border-[#ede9e3] p-5">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+            <div>
+              <h2 className="font-bold text-charcoal mb-0.5">Opdatering fuldført</h2>
+              <p className="text-xs text-charcoal/45">
+                <span className="text-green font-bold">{updateResults.filter(r => r.status === "opdateret").length} opdateret</span>
+                {updateResults.filter(r => r.status === "ikke fundet").length > 0 && <span className="text-amber-600 font-bold ml-2">{updateResults.filter(r => r.status === "ikke fundet").length} ikke fundet</span>}
+                {updateResults.filter(r => r.status === "fejl").length > 0 && <span className="text-red-500 font-bold ml-2">{updateResults.filter(r => r.status === "fejl").length} fejlet</span>}
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={copyUpdateResults} className="text-xs font-bold text-charcoal/50 hover:text-charcoal px-3 py-1.5 rounded-full border border-[#e8e5e0] hover:border-charcoal/30 transition-all">📋 Kopiér</button>
+              <button onClick={reset} className="text-xs font-bold bg-orange text-white px-4 py-1.5 rounded-full hover:bg-orange/90 transition-all">Ny import</button>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-[#ede9e3]">
+                  {["Status", "Virksomhed"].map(h => (
+                    <th key={h} className="text-left text-[10px] font-extrabold tracking-widest uppercase text-charcoal/35 pb-2 pr-4">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {updateResults.map((r, i) => (
+                  <tr key={i} className="border-b border-[#ede9e3]/50 last:border-0">
+                    <td className="py-2 pr-4">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        r.status === "opdateret" ? "bg-green-100 text-green-700" :
+                        r.status === "ikke fundet" ? "bg-amber-100 text-amber-600" :
+                        "bg-red-100 text-red-600"
+                      }`}>
+                        {r.status === "opdateret" ? "✓ Opdateret" : r.status === "ikke fundet" ? "Ikke fundet" : "✗ Fejl"}
+                      </span>
+                    </td>
+                    <td className="py-2 text-charcoal font-semibold">
+                      {r.company_name}
+                      {r.error && <span className="text-red-500 ml-2 font-normal">{r.error}</span>}
                     </td>
                   </tr>
                 ))}
