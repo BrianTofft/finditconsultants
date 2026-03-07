@@ -10,10 +10,9 @@ type ChatUser = {
   unread: number;
 };
 
-type RequestGroup = {
-  request_id: string;
+type RequestDetails = {
   description: string;
-  users: ChatUser[];
+  reference_number: string | null;
 };
 
 type Message = {
@@ -23,14 +22,18 @@ type Message = {
   sender_name: string;
   content: string;
   created_at: string;
+  request_id: string | null;
   read_by_admin: boolean;
 };
 
 export default function BeskederPage() {
-  const [requestGroups, setRequestGroups] = useState<RequestGroup[]>([]);
+  const [requestGroups, setRequestGroups] = useState<{ request_id: string; details: RequestDetails; users: ChatUser[] }[]>([]);
   const [ungroupedUsers, setUngroupedUsers] = useState<ChatUser[]>([]);
   const [chatUsers, setChatUsers] = useState<ChatUser[]>([]);
+  const [userRequestMap, setUserRequestMap] = useState<Record<string, string[]>>({});
+  const [requestDetailsMap, setRequestDetailsMap] = useState<Record<string, RequestDetails>>({});
   const [selectedUser, setSelectedUser] = useState<ChatUser | null>(null);
+  const [selectedThread, setSelectedThread] = useState<string | null>(null); // null = Generel
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [adminId, setAdminId] = useState("");
@@ -84,7 +87,7 @@ export default function BeskederPage() {
       const { data: customerRequests } = customerEmails.length > 0
         ? await supabase
             .from("requests")
-            .select("id, description, email")
+            .select("id, description, reference_number, email")
             .in("email", customerEmails)
             .eq("admin_status", "accepted")
         : { data: [] };
@@ -94,41 +97,41 @@ export default function BeskederPage() {
         ? await supabase.from("request_suppliers").select("request_id, supplier_id").in("supplier_id", supplierIds)
         : { data: [] };
 
-      // 6. Hent request-beskrivelser for leverandørernes opgaver
+      // 6. Hent request-detaljer for leverandørernes opgaver
       const supplierRequestIds = [...new Set((rsData ?? []).map(rs => rs.request_id))];
       const { data: supplierRequests } = supplierRequestIds.length > 0
-        ? await supabase.from("requests").select("id, description").in("id", supplierRequestIds)
+        ? await supabase.from("requests").select("id, description, reference_number").in("id", supplierRequestIds)
         : { data: [] };
 
-      // 7. Byg request-beskrivelsesmap
-      const requestDescMap: Record<string, string> = {};
+      // 7. Byg request-detaljer-map
+      const detailsMap: Record<string, RequestDetails> = {};
       for (const r of [...(customerRequests ?? []), ...(supplierRequests ?? [])]) {
-        requestDescMap[r.id] = r.description;
+        detailsMap[r.id] = { description: r.description, reference_number: r.reference_number ?? null };
       }
 
       // 8. Map bruger → hvilke requests de er tilknyttet
-      const userRequestMap: Record<string, string[]> = {};
+      const reqMap: Record<string, string[]> = {};
       for (const r of customerRequests ?? []) {
         const cId = Object.entries(customerEmailMap).find(([, email]) => email === r.email)?.[0];
         if (cId) {
-          if (!userRequestMap[cId]) userRequestMap[cId] = [];
-          userRequestMap[cId].push(r.id);
+          if (!reqMap[cId]) reqMap[cId] = [];
+          reqMap[cId].push(r.id);
         }
       }
       for (const rs of rsData ?? []) {
-        if (!userRequestMap[rs.supplier_id]) userRequestMap[rs.supplier_id] = [];
-        userRequestMap[rs.supplier_id].push(rs.request_id);
+        if (!reqMap[rs.supplier_id]) reqMap[rs.supplier_id] = [];
+        reqMap[rs.supplier_id].push(rs.request_id);
       }
 
       // 9. Byg gruppestruktur
-      const groupMap: Record<string, RequestGroup> = {};
+      const groupMap: Record<string, { request_id: string; details: RequestDetails; users: ChatUser[] }> = {};
       const groupedIds = new Set<string>();
 
       for (const u of chatUserList) {
-        const rids = userRequestMap[u.sender_id] ?? [];
+        const rids = reqMap[u.sender_id] ?? [];
         for (const rid of rids) {
           if (!groupMap[rid]) {
-            groupMap[rid] = { request_id: rid, description: requestDescMap[rid] ?? "Ukendt opgave", users: [] };
+            groupMap[rid] = { request_id: rid, details: detailsMap[rid] ?? { description: "Ukendt opgave", reference_number: null }, users: [] };
           }
           if (!groupMap[rid].users.find(x => x.sender_id === u.sender_id)) {
             groupMap[rid].users.push(u);
@@ -140,17 +143,28 @@ export default function BeskederPage() {
       setRequestGroups(Object.values(groupMap));
       setUngroupedUsers(chatUserList.filter(u => !groupedIds.has(u.sender_id)));
       setChatUsers(chatUserList);
+      setUserRequestMap(reqMap);
+      setRequestDetailsMap(detailsMap);
       setLoading(false);
     };
     init();
   }, []);
 
-  const loadChat = async (senderId: string) => {
-    const { data } = await supabase
+  const loadChat = async (senderId: string, threadId: string | null) => {
+    let query = supabase
       .from("chat_messages")
       .select("*")
-      .or(`sender_id.eq.${senderId},and(sender_type.eq.admin,request_id.is.null)`)
       .order("created_at", { ascending: true });
+
+    if (threadId) {
+      // Forespørgselstråd: beskeder fra bruger + admin-svar med samme request_id
+      query = query.or(`sender_id.eq.${senderId},recipient_id.eq.${senderId}`).eq("request_id", threadId);
+    } else {
+      // Generel tråd: beskeder med request_id = null
+      query = query.or(`sender_id.eq.${senderId},recipient_id.eq.${senderId}`).is("request_id", null);
+    }
+
+    const { data } = await query;
     setMessages(data ?? []);
     await supabase.from("chat_messages").update({ read_by_admin: true }).eq("sender_id", senderId);
     // Opdater ulæste i alle lister
@@ -161,6 +175,18 @@ export default function BeskederPage() {
     setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
   };
 
+  const selectUser = (u: ChatUser) => {
+    setSelectedUser(u);
+    setSelectedThread(null);
+    loadChat(u.sender_id, null);
+  };
+
+  const selectThread = (threadId: string | null) => {
+    if (!selectedUser) return;
+    setSelectedThread(threadId);
+    loadChat(selectedUser.sender_id, threadId);
+  };
+
   const sendMessage = async () => {
     if (!input.trim() || !selectedUser) return;
     const content = input.trim();
@@ -169,11 +195,13 @@ export default function BeskederPage() {
       sender_type: "admin",
       sender_id: adminId,
       sender_name: "FindITconsultants.com Teamet",
+      recipient_id: selectedUser.sender_id,
+      request_id: selectedThread,
       content,
       read_by_admin: true,
       read_by_user: false,
     });
-    loadChat(selectedUser.sender_id);
+    loadChat(selectedUser.sender_id, selectedThread);
   };
 
   const handleDeleteConversation = async (senderId: string, senderName: string) => {
@@ -188,13 +216,11 @@ export default function BeskederPage() {
   };
 
   const totalUnread = chatUsers.reduce((sum, u) => sum + u.unread, 0);
-
-  // Samlet antal samtaler på tværs af alle grupper
   const totalConversations = chatUsers.length;
 
   const UserRow = ({ u }: { u: ChatUser }) => (
     <div
-      onClick={() => { setSelectedUser(u); loadChat(u.sender_id); }}
+      onClick={() => selectUser(u)}
       className={`px-4 py-3 cursor-pointer border-b border-[#f8f6f3] transition-colors flex items-center gap-3 ${
         selectedUser?.sender_id === u.sender_id
           ? "bg-orange/10 border-l-2 border-l-orange"
@@ -252,7 +278,11 @@ export default function BeskederPage() {
               <div key={group.request_id}>
                 <div className="px-4 py-2 bg-[#f8f6f3] border-b border-[#f0ede8]">
                   <p className="text-[9px] font-extrabold tracking-widest uppercase text-charcoal/35">Opgave</p>
-                  <p className="text-xs font-bold text-charcoal/70 line-clamp-1 mt-0.5">{group.description}</p>
+                  <p className="text-xs font-bold text-charcoal/70 line-clamp-1 mt-0.5">
+                    {group.details.reference_number
+                      ? `${group.details.reference_number} — ${group.details.description}`
+                      : group.details.description}
+                  </p>
                 </div>
                 {group.users.map(u => <UserRow key={u.sender_id} u={u} />)}
               </div>
@@ -292,8 +322,44 @@ export default function BeskederPage() {
               </button>
             </div>
 
+            {/* Tråd-faner */}
+            <div className="flex gap-1 px-5 pt-3 pb-0 border-b border-[#f0ede8] flex-shrink-0 flex-wrap">
+              <button
+                onClick={() => selectThread(null)}
+                className={`text-xs font-bold px-3 py-1.5 rounded-t-lg border-b-2 transition-all -mb-px ${
+                  selectedThread === null
+                    ? "border-orange text-orange"
+                    : "border-transparent text-charcoal/40 hover:text-charcoal"
+                }`}
+              >
+                💬 Generel
+              </button>
+              {(userRequestMap[selectedUser.sender_id] ?? []).map(rid => {
+                const details = requestDetailsMap[rid];
+                return (
+                  <button
+                    key={rid}
+                    onClick={() => selectThread(rid)}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-t-lg border-b-2 transition-all -mb-px ${
+                      selectedThread === rid
+                        ? "border-orange text-orange"
+                        : "border-transparent text-charcoal/40 hover:text-charcoal"
+                    }`}
+                  >
+                    📋 {details?.reference_number || rid.slice(0, 8)}
+                  </button>
+                );
+              })}
+            </div>
+
             {/* Beskeder */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              {messages.length === 0 && (
+                <div className="text-center py-12">
+                  <div className="text-4xl mb-3">💬</div>
+                  <p className="text-charcoal/40 text-sm font-semibold">Ingen beskeder i denne tråd</p>
+                </div>
+              )}
               {messages.map(msg => {
                 const isAdmin = msg.sender_type === "admin";
                 return (
@@ -327,7 +393,9 @@ export default function BeskederPage() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
-                placeholder="Skriv svar til bruger…"
+                placeholder={selectedThread
+                  ? `Svar i tråd ${requestDetailsMap[selectedThread]?.reference_number || selectedThread.slice(0, 8)}…`
+                  : "Skriv svar i Generel tråd…"}
                 className="flex-1 border border-[#e8e5e0] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-orange transition-all bg-[#f8f6f3]"
               />
               <button

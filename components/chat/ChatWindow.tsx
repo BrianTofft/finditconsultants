@@ -6,6 +6,7 @@ interface Message {
   id: string;
   created_at: string;
   request_id: string | null;
+  recipient_id: string | null;
   sender_type: string;
   sender_id: string;
   sender_name: string;
@@ -35,9 +36,11 @@ export default function ChatWindow({ requestId, userId, userType, userName, titl
         .order("created_at", { ascending: true });
 
       if (requestId) {
+        // Forespørgselstråd: alle beskeder med dette request_id (bruger + admin-svar)
         query = query.eq("request_id", requestId);
       } else {
-        query = query.eq("sender_id", userId).is("request_id", null);
+        // Generel tråd: egne beskeder + admin-svar adresseret til mig, begge med request_id = null
+        query = query.or(`sender_id.eq.${userId},recipient_id.eq.${userId}`).is("request_id", null);
       }
 
       const { data } = await query;
@@ -55,9 +58,13 @@ export default function ChatWindow({ requestId, userId, userType, userName, titl
         table: "chat_messages",
       }, (payload) => {
         const msg = payload.new as Message;
-        // Vis kun beskeder der er relevante for denne chat
-        if (requestId && msg.request_id !== requestId) return;
-        if (!requestId && msg.sender_id !== userId && msg.sender_type !== "admin") return;
+        // Vis kun beskeder der er relevante for denne tråd
+        if (requestId) {
+          if (msg.request_id !== requestId) return;
+        } else {
+          if (msg.request_id !== null) return;
+          if (msg.sender_id !== userId && msg.recipient_id !== userId) return;
+        }
         setMessages(prev => [...prev, msg]);
       })
       .subscribe();

@@ -524,6 +524,7 @@ export default function PortalPage() {
   const [teamRequests, setTeamRequests] = useState<Request[]>([]);
   const [contracts, setContracts] = useState<ContractData[]>([]);
   const [deliveryHours, setDeliveryHours] = useState<DeliveryHoursData[]>([]);
+  const [msgThread, setMsgThread] = useState<string | null>(null); // null = Generel
 
   useEffect(() => {
     const init = async () => {
@@ -1121,8 +1122,45 @@ export default function PortalPage() {
         {tab === "messages" && (
           <div>
             <h2 className="font-bold text-lg text-charcoal mb-4">Beskeder</h2>
-            <ChatWindow userId={userId} userType="customer"
-              userName={profile.contact_name || profile.company_name || profile.email} />
+            {/* Tråd-faner */}
+            <div className="flex gap-2 mb-4 flex-wrap">
+              <button
+                onClick={() => setMsgThread(null)}
+                className={`text-xs font-bold px-4 py-1.5 rounded-full border transition-all ${
+                  msgThread === null
+                    ? "bg-charcoal text-white border-charcoal"
+                    : "bg-white text-charcoal/50 border-[#e8e5e0] hover:border-charcoal/30"
+                }`}
+              >
+                💬 Generel
+              </button>
+              {myRequests.map(r => (
+                <button
+                  key={r.id}
+                  onClick={() => setMsgThread(r.id)}
+                  className={`text-xs font-bold px-4 py-1.5 rounded-full border transition-all ${
+                    msgThread === r.id
+                      ? "bg-orange text-white border-orange"
+                      : "bg-white text-charcoal/50 border-[#e8e5e0] hover:border-orange/30"
+                  }`}
+                >
+                  📋 {r.reference_number || r.id.slice(0, 8)}
+                </button>
+              ))}
+            </div>
+            {/* ChatWindow for valgt tråd */}
+            <ChatWindow
+              userId={userId}
+              userType="customer"
+              userName={profile.contact_name || profile.company_name || profile.email}
+              requestId={msgThread ?? undefined}
+              title={msgThread
+                ? (myRequests.find(r => r.id === msgThread)?.reference_number ?? "Forespørgsel")
+                : undefined}
+              subtitle={msgThread
+                ? myRequests.find(r => r.id === msgThread)?.description?.slice(0, 60)
+                : undefined}
+            />
           </div>
         )}
 
