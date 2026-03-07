@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { NextResponse } from "next/server";
+import { emailHtml, infoBox } from "@/lib/email-template";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -10,14 +11,19 @@ export async function POST(req: Request) {
     from: "FindITconsultants <noreply@finditconsultants.com>",
     to: "hej@finditkonsulenter.dk",
     subject: `Ny kandidat indsendt: ${consultant_name}`,
-    html: `
-      <h2>Ny kandidat indsendt</h2>
-      <p><strong>Leverandør:</strong> ${supplier_name}</p>
-      <p><strong>Kandidat:</strong> ${consultant_name}</p>
-      <p><strong>Opgave:</strong> ${request_description}</p>
-      <hr/>
-      <p>Log ind på <a href="https://finditconsultants.com/admin">admin panelet</a> for at godkende eller afvise kandidaten.</p>
-    `,
+    html: emailHtml({
+      title: "Ny kandidat indsendt",
+      body: `
+        <p>En leverandør har indsendt en ny kandidat til gennemgang.</p>
+        ${infoBox([
+          { label: "Leverandør",  value: supplier_name },
+          { label: "Kandidat",    value: consultant_name },
+          { label: "Opgave",      value: request_description },
+        ])}
+      `,
+      ctaLabel: "Åbn admin panel",
+      ctaUrl: "https://finditconsultants.com/admin/konsulenter",
+    }),
   });
 
   return NextResponse.json({ success: true });

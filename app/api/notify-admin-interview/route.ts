@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
+import { emailHtml, infoBox } from "@/lib/email-template";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -22,33 +23,57 @@ export async function POST(req: Request) {
     .eq("id", submission.supplier_id)
     .single();
 
+  const formattedDatetime = interview_datetime
+    ? new Date(interview_datetime).toLocaleString("da-DK", {
+        weekday: "long", year: "numeric", month: "long",
+        day: "numeric", hour: "2-digit", minute: "2-digit",
+      })
+    : null;
+
   // Send til leverandør
   if (supplier && decision === "interview") {
     await resend.emails.send({
       from: "FindITconsultants <noreply@finditconsultants.com>",
       to: supplier.email,
       subject: `Interview ønsket: ${submission.name}`,
-      html: `
-        <h2>Hej ${supplier.company_name ?? supplier.email}</h2>
-        <p><strong>${customer_name}</strong> ønsker at invitere <strong>${submission.name}</strong> til interview.</p>
-        ${interview_datetime ? `<p><strong>Foreslået tidspunkt:</strong> ${new Date(interview_datetime).toLocaleString("da-DK")}</p>` : "<p>Kunden har ikke foreslået et tidspunkt endnu.</p>"}
-        <hr/>
-        <p>Log ind på <a href="https://finditconsultants.com/supplier">leverandørportalen</a> for at bekræfte eller foreslå nyt tidspunkt.</p>
-      `,
+      html: emailHtml({
+        title: `Interview ønsket: ${submission.name}`,
+        body: `
+          <p>Hej ${supplier.company_name ?? supplier.email},</p>
+          <p><strong>${customer_name}</strong> ønsker at invitere <strong>${submission.name}</strong> til interview.</p>
+          ${formattedDatetime
+            ? infoBox([{ label: "Foreslået tidspunkt", value: formattedDatetime }])
+            : `<p style="color:#888;font-size:13px;">Kunden har ikke foreslået et tidspunkt endnu.</p>`
+          }
+        `,
+        ctaLabel: "Bekræft i leverandørportalen",
+        ctaUrl: "https://finditconsultants.com/supplier",
+      }),
     });
   }
 
-  // Send også advisering til admin
+  // Advisering til admin
+  const adminRows = [
+    { label: "Kandidat",   value: `${submission.name}${submission.title ? ` — ${submission.title}` : ""}` },
+    { label: "Beslutning", value: decision === "interview" ? "Interview ønsket" : "Afvist" },
+    { label: "Kunde",      value: customer_name },
+  ];
+  if (formattedDatetime) {
+    adminRows.push({ label: "Foreslået tidspunkt", value: formattedDatetime });
+  }
+
   await resend.emails.send({
     from: "FindITconsultants <noreply@finditconsultants.com>",
     to: "hej@finditkonsulenter.dk",
-    subject: decision === "interview" ? `Interview ønsket: ${submission.name}` : `Kandidat afvist: ${submission.name}`,
-    html: `
-      <h2>Beslutning fra ${customer_name}</h2>
-      <p><strong>Kandidat:</strong> ${submission.name} — ${submission.title}</p>
-      <p><strong>Beslutning:</strong> ${decision === "interview" ? "Interview ønsket" : "Afvist"}</p>
-      ${interview_datetime ? `<p><strong>Foreslået tidspunkt:</strong> ${new Date(interview_datetime).toLocaleString("da-DK")}</p>` : ""}
-    `,
+    subject: decision === "interview"
+      ? `Interview ønsket: ${submission.name}`
+      : `Kandidat afvist: ${submission.name}`,
+    html: emailHtml({
+      title: `Beslutning fra ${customer_name}`,
+      body: infoBox(adminRows),
+      ctaLabel: "Se i admin panel",
+      ctaUrl: "https://finditconsultants.com/admin/konsulenter",
+    }),
   });
 
   return NextResponse.json({ success: true });

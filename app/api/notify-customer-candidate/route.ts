@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { emailHtml, infoBox, quoteBlock } from "@/lib/email-template";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -24,28 +25,36 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Submission ikke fundet" }, { status: 400 });
   }
 
-  const customerEmail = submission.requests.email;
-  const requestSnippet = submission.requests.description?.slice(0, 120) ?? "";
+  const customerEmail  = submission.requests.email;
+  const requestSnippet = submission.requests.description?.slice(0, 150) ?? "";
+
+  // Byg kandidat-info rækker
+  const rows = [
+    { label: "Konsulent", value: submission.name },
+    { label: "Titel",     value: submission.title ?? "—" },
+  ];
+  if (submission.rate)              rows.push({ label: "Timepris",       value: `${submission.rate} DKK/t` });
+  if (submission.availability)      rows.push({ label: "Tilgængelighed", value: submission.availability });
+  if (submission.skills?.length)    rows.push({ label: "Kompetencer",    value: submission.skills.join(", ") });
 
   // Send email til kunden
   await resend.emails.send({
     from: "FindITconsultants <noreply@finditconsultants.com>",
     to: customerEmail,
-    subject: `Vi har fundet en kandidat til din opgave`,
-    html: `
-      <h2>Vi har fundet en kandidat til dig 🎯</h2>
-      <p>Vi har matchet en konsulentprofil til din forespørgsel:</p>
-      <p style="color:#888;font-size:13px;font-style:italic;">"${requestSnippet}…"</p>
-      <hr/>
-      <h3 style="margin-bottom:4px;">${submission.name}</h3>
-      <p style="margin:0;color:#555;">${submission.title ?? ""}</p>
-      ${submission.rate ? `<p><strong>Timepris:</strong> ${submission.rate} DKK/t</p>` : ""}
-      ${submission.availability ? `<p><strong>Tilgængelighed:</strong> ${submission.availability}</p>` : ""}
-      ${submission.skills?.length ? `<p><strong>Kompetencer:</strong> ${submission.skills.join(", ")}</p>` : ""}
-      ${submission.bio ? `<p><strong>Profil:</strong> ${submission.bio}</p>` : ""}
-      <hr/>
-      <p>Log ind på <a href="https://finditconsultants.com/portal">kundeportalen</a> for at se den fulde profil og tage stilling til kandidaten.</p>
-    `,
+    subject: "Vi har fundet en kandidat til din opgave",
+    html: emailHtml({
+      title: "Vi har fundet en kandidat til dig 🎯",
+      body: `
+        <p>Vi har matchet en konsulentprofil til din forespørgsel:</p>
+        ${quoteBlock(`"${requestSnippet}…"`)}
+        ${infoBox(rows)}
+        ${submission.bio
+          ? `<p style="font-size:13px;color:#555;margin-top:8px;"><strong>Profil:</strong> ${submission.bio}</p>`
+          : ""}
+      `,
+      ctaLabel: "Se kandidaten i kundeportalen",
+      ctaUrl: "https://finditconsultants.com/portal",
+    }),
   });
 
   // Kopi til admin
@@ -53,12 +62,14 @@ export async function POST(req: Request) {
     from: "FindITconsultants <noreply@finditconsultants.com>",
     to: "hej@finditkonsulenter.dk",
     subject: `Kandidat præsenteret: ${submission.name} → ${customerEmail}`,
-    html: `
-      <p><strong>Kandidat præsenteret for kunde</strong></p>
-      <p><strong>Kandidat:</strong> ${submission.name} — ${submission.title}</p>
-      <p><strong>Kunde:</strong> ${customerEmail}</p>
-      <p><strong>Opgave:</strong> ${requestSnippet}…</p>
-    `,
+    html: emailHtml({
+      title: "Kandidat præsenteret for kunde",
+      body: infoBox([
+        { label: "Kandidat", value: `${submission.name}${submission.title ? ` — ${submission.title}` : ""}` },
+        { label: "Kunde",    value: customerEmail },
+        { label: "Opgave",   value: `${requestSnippet}…` },
+      ]),
+    }),
   });
 
   return NextResponse.json({ success: true });

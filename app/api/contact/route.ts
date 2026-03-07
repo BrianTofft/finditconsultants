@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import { emailHtml, infoBox, quoteBlock } from "@/lib/email-template";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -37,28 +38,36 @@ export async function POST(req: Request) {
     max_rate: maxRate || null,
   });
 
-  // Send email
+  // Byg info-rækker
+  const rows = [
+    { label: "Email",               value: email },
+    { label: "Opstart",             value: startDate      ?? "—" },
+    { label: "Varighed",            value: duration       ?? "—" },
+    { label: "Arbejdsform",         value: workMode       ?? "—" },
+    { label: "Omfang",              value: scope          ?? "—" },
+    { label: "Sprog",               value: language       ?? "—" },
+    { label: "Nearshore/Offshore",  value: nearshore      ?? "—" },
+    { label: "Kompetencer",         value: competencies?.join(", ") ?? "—" },
+  ];
+  if (maxRate) rows.push({ label: "Maks. timepris", value: `${maxRate}/time` });
+
   try {
     await resend.emails.send({
       from: "FindITconsultants <noreply@finditconsultants.com>",
       to: "hej@finditkonsulenter.dk",
       subject: `Ny IT-konsulent forespørgsel fra ${email}`,
-      html: `
-        <h2>Ny forespørgsel via finditconsultants.com</h2>
-        <p><strong>Email:</strong> ${email}</p>
-        <hr />
-        <p><strong>Opgavebeskrivelse:</strong><br/>${description}</p>
-        <p><strong>Kompetencer:</strong> ${competencies?.join(", ")}</p>
-        <hr />
-        <p><strong>Opstart:</strong> ${startDate}</p>
-        <p><strong>Varighed:</strong> ${duration}</p>
-        <p><strong>Arbejdsform:</strong> ${workMode}</p>
-        <p><strong>Omfang:</strong> ${scope}</p>
-        <p><strong>Sprog:</strong> ${language}</p>
-        <p><strong>Nearshore/Offshore:</strong> ${nearshore}</p>
-        ${maxRate ? `<p><strong>Maks. timepris:</strong> ${maxRate} DKK/time</p>` : ""}
-        ${fileUrl ? `<hr /><p><strong>📎 Vedhæftet fil:</strong> <a href="${fileUrl}">${fileUrl}</a></p>` : ""}
-      `,
+      html: emailHtml({
+        title: `Ny forespørgsel fra ${email}`,
+        body: `
+          ${quoteBlock(description)}
+          ${infoBox(rows)}
+          ${fileUrl
+            ? `<p style="font-size:13px;"><strong>📎 Vedhæftet fil:</strong> <a href="${fileUrl}" style="color:#e8632a;">${fileUrl}</a></p>`
+            : ""}
+        `,
+        ctaLabel: "Åbn i admin panel",
+        ctaUrl: "https://finditconsultants.com/admin/afventer",
+      }),
     });
 
     return NextResponse.json({ success: true });

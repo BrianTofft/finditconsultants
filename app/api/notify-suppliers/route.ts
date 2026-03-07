@@ -1,6 +1,7 @@
 import { Resend } from "resend";
 import { NextResponse } from "next/server";
 import { supabaseAdmin as supabase } from "@/lib/supabase-admin";
+import { emailHtml, infoBox, quoteBlock } from "@/lib/email-template";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -35,23 +36,31 @@ export async function POST(req: Request) {
 
   // Send email til hver leverandør
   for (const supplier of suppliers) {
+    const rows = [
+      { label: "Varighed",    value: request.duration   ?? "—" },
+      { label: "Arbejdsform", value: request.work_mode  ?? "—" },
+      { label: "Opstart",     value: request.start_date ?? "—" },
+      { label: "Kompetencer", value: request.competencies?.join(", ") ?? "—" },
+    ];
+    if (request.admin_note) {
+      rows.push({ label: "Note fra FindITconsultants", value: request.admin_note });
+    }
+
     await resend.emails.send({
       from: "FindITconsultants <noreply@finditconsultants.com>",
       to: supplier.email,
-      subject: `Ny IT-opgave tilgængelig`,
-      html: `
-        <h2>Hej ${supplier.company_name ?? supplier.email}</h2>
-        <p>Der er en ny IT-opgave som matcher jeres profil.</p>
-        <h3>Opgavebeskrivelse:</h3>
-        <p>${request.description}</p>
-        <p><strong>Kompetencer:</strong> ${request.competencies?.join(", ")}</p>
-        <p><strong>Varighed:</strong> ${request.duration}</p>
-        <p><strong>Arbejdsform:</strong> ${request.work_mode}</p>
-        <p><strong>Opstart:</strong> ${request.start_date}</p>
-        ${request.admin_note ? `<h3>Note fra FindITconsultants:</h3><p>${request.admin_note}</p>` : ""}
-        <hr/>
-        <p>Log ind på <a href="https://finditconsultants.com/supplier">leverandørportalen</a> for at indsende kandidater.</p>
-      `,
+      subject: "Ny IT-opgave tilgængelig",
+      html: emailHtml({
+        title: "Ny IT-opgave tilgængelig",
+        body: `
+          <p>Hej ${supplier.company_name ?? supplier.email},</p>
+          <p>Der er en ny IT-opgave som matcher jeres profil.</p>
+          ${quoteBlock(request.description)}
+          ${infoBox(rows)}
+        `,
+        ctaLabel: "Log ind og indsend kandidater",
+        ctaUrl: "https://finditconsultants.com/supplier",
+      }),
     });
   }
 

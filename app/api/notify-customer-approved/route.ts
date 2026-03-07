@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Resend } from "resend";
+import { emailHtml, infoBox } from "@/lib/email-template";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -10,22 +11,20 @@ export async function POST(req: NextRequest) {
     from: "FindITconsultants <noreply@finditconsultants.com>",
     to: email,
     subject: "Velkommen til FindITconsultants — din opgave er godkendt",
-    html: `
-      <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto;">
-        <h2 style="color: #2d2c2c;">Din opgave er godkendt ✓</h2>
+    html: emailHtml({
+      title: "Din opgave er godkendt ✓",
+      body: `
         <p>Vi har gennemgået din forespørgsel og er klar til at gå i gang med at finde den rette konsulent til dig.</p>
         <p>Du har fået adgang til vores kundeportal, hvor du kan følge processen:</p>
-        <div style="background: #f8f6f3; border-radius: 12px; padding: 16px; margin: 20px 0;">
-          <p style="margin: 0;"><strong>Login:</strong> ${email}</p>
-          <p style="margin: 8px 0 0;"><strong>Midlertidigt password:</strong> ${password}</p>
-        </div>
-        <a href="https://finditconsultants.com/portal/login" 
-          style="display: inline-block; background: #e8632a; color: white; font-weight: bold; padding: 12px 24px; border-radius: 99px; text-decoration: none;">
-          Log ind på kundeportalen →
-        </a>
-        <p style="color: #999; font-size: 12px; margin-top: 24px;">Vi anbefaler at du skifter dit password første gang du logger ind.</p>
-      </div>
-    `,
+        ${infoBox([
+          { label: "Login",                value: email },
+          { label: "Midlertidigt password", value: `<code style="background:#fff;padding:2px 6px;border-radius:4px;border:1px solid #ddd;">${password}</code>` },
+        ])}
+      `,
+      ctaLabel: "Log ind på kundeportalen",
+      ctaUrl: "https://finditconsultants.com/portal/login",
+      note: "Vi anbefaler at du skifter dit password første gang du logger ind.",
+    }),
   });
 
   return NextResponse.json({ success: true });
