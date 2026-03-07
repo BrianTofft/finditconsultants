@@ -19,6 +19,7 @@ function Sidebar({ counts, onLogout, open, onClose }: { counts: BadgeCounts; onL
     { href: "/admin/brugere", label: "Brugere", icon: "👥" },
     { href: "/admin/import", label: "Import", icon: "⬆️" },
     { href: "/admin/beskeder", label: "Beskeder", icon: "💬", badge: counts.messages },
+    { href: "/admin/analytics", label: "Analytics", icon: "📈" },
     { href: "/admin/profil", label: "Min profil", icon: "⚙️" },
   ];
 
@@ -97,6 +98,7 @@ const pageLabels: Record<string, string> = {
   "/admin/brugere":       "Brugere",
   "/admin/import":        "Import",
   "/admin/beskeder":      "Beskeder",
+  "/admin/analytics":     "Analytics",
   "/admin/profil":        "Min profil",
 };
 
