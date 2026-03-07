@@ -23,7 +23,13 @@ function ContractCard({ contract: c, onUpdateScore }: { contract: Contract; onUp
           {c.rate && <p className="font-bold text-orange">{c.rate} DKK/t</p>}
           {c.duration && <p className="text-xs text-charcoal/50">{c.duration}</p>}
           {c.start_date && (
-            <p className="text-xs text-charcoal/40 mt-0.5">📅 {new Date(c.start_date).toLocaleDateString("da-DK")}</p>
+            <p className="text-xs text-charcoal/40 mt-0.5">📅 {new Date(c.start_date).toLocaleDateString("da-DK")}{c.end_date ? ` → ${new Date(c.end_date).toLocaleDateString("da-DK")}` : ""}</p>
+          )}
+          {(c.consultant_email || c.consultant_phone) && (
+            <div className="mt-1 text-xs text-charcoal/40">
+              {c.consultant_email && <p>{c.consultant_email}</p>}
+              {c.consultant_phone && <p>{c.consultant_phone}</p>}
+            </div>
           )}
         </div>
       </div>

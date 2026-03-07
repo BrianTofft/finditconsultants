@@ -49,7 +49,39 @@ type TeamMember = {
   phone: string;
 };
 
-type Tab = "requests" | "profile" | "messages";
+type Tab = "requests" | "profile" | "messages" | "leverance";
+
+type ContractData = {
+  id: string;
+  request_id: string;
+  consultant_name: string;
+  consultant_email: string | null;
+  consultant_phone: string | null;
+  rate: number;
+  start_date: string | null;
+  end_date: string | null;
+  suppliers: { company_name: string; contact_name: string | null; email: string; phone: string | null } | null;
+  requests: { description: string; reference_number?: string | null } | null;
+};
+
+type DeliveryHoursData = {
+  contract_id: string; year: number; month: number; hours: number;
+};
+
+function generateMonths(startDate: string, endDate: string | null) {
+  const months: { year: number; month: number }[] = [];
+  const start = new Date(startDate); start.setDate(1);
+  const end = endDate ? new Date(endDate) : new Date(); end.setDate(1);
+  const cur = new Date(start);
+  while (cur <= end) {
+    months.push({ year: cur.getFullYear(), month: cur.getMonth() + 1 });
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return months;
+}
+
+const MONTH_NAMES = ["Januar","Februar","Marts","April","Maj","Juni",
+                     "Juli","August","September","Oktober","November","December"];
 
 /* ─── Sidebar ────────────────────────────────────────────────── */
 type PortalSidebarProps = {
@@ -63,9 +95,10 @@ type PortalSidebarProps = {
 
 function PortalSidebar({ tab, setTab, companyLabel, onLogout, open, onClose }: PortalSidebarProps) {
   const navItems: { tab: Tab; label: string; icon: string }[] = [
-    { tab: "requests", label: "Forespørgsler", icon: "📋" },
-    { tab: "messages", label: "Beskeder",      icon: "💬" },
-    { tab: "profile",  label: "Min profil",    icon: "⚙️" },
+    { tab: "requests",  label: "Forespørgsler", icon: "📋" },
+    { tab: "leverance", label: "Leverance",     icon: "📦" },
+    { tab: "messages",  label: "Beskeder",      icon: "💬" },
+    { tab: "profile",   label: "Min profil",    icon: "⚙️" },
   ];
 
   const handleTab = (t: Tab) => {
@@ -481,6 +514,8 @@ export default function PortalPage() {
   const [deciding, setDeciding] = useState<string | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [teamRequests, setTeamRequests] = useState<Request[]>([]);
+  const [contracts, setContracts] = useState<ContractData[]>([]);
+  const [deliveryHours, setDeliveryHours] = useState<DeliveryHoursData[]>([]);
 
   useEffect(() => {
     const init = async () => {
@@ -536,10 +571,28 @@ export default function PortalPage() {
         .eq("status", "Valgt")
         .in("request_id", (reqDataAll ?? []).map(r => r.id));
 
-      setRequests((reqDataAll ?? []).map(r => ({
+      const allReqs = reqDataAll ?? [];
+      setRequests(allReqs.map(r => ({
         ...r,
         submissions: (subData ?? []).filter(s => s.request_id === r.id),
       })));
+
+      // Hent kontrakter + leverancetimer
+      if (allReqs.length > 0) {
+        const { data: contractData } = await supabase
+          .from("contracts")
+          .select("id, request_id, consultant_name, consultant_email, consultant_phone, rate, start_date, end_date, suppliers(company_name, contact_name, email, phone), requests(description, reference_number)")
+          .in("request_id", allReqs.map(r => r.id));
+        const ctrs = contractData ?? [];
+        setContracts(ctrs);
+        if (ctrs.length > 0) {
+          const { data: hoursData } = await supabase
+            .from("delivery_hours").select("*")
+            .in("contract_id", ctrs.map(c => c.id));
+          setDeliveryHours(hoursData ?? []);
+        }
+      }
+
       setLoading(false);
 
       if (!customerData?.company_name) setTab("profile");
@@ -655,6 +708,7 @@ export default function PortalPage() {
 
   const tabLabels: Record<Tab, string> = {
     requests: selectedRequestId ? "← Kandidater" : "Forespørgsler",
+    leverance: "Leverance",
     messages: "Beskeder",
     profile: "Min profil",
   };
@@ -922,6 +976,103 @@ export default function PortalPage() {
                     onCustomerResponse={(action, newDate) => handleCustomerResponse(s.id, action, newDate)}
                   />
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══ TAB: LEVERANCE ══ */}
+        {tab === "leverance" && (
+          <div>
+            <h2 className="font-bold text-lg text-charcoal mb-4">Leverance</h2>
+            {contracts.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-[#ede9e3] p-12 text-center">
+                <div className="text-5xl mb-4">📦</div>
+                <p className="text-charcoal/40 text-sm">Ingen aktive leverancer endnu</p>
+                <p className="text-charcoal/30 text-xs mt-1">Leverancer vises her, når en kontrakt er oprettet</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {contracts.map(c => {
+                  const hours = deliveryHours.filter(h => h.contract_id === c.id);
+                  const months = c.start_date ? generateMonths(c.start_date, c.end_date) : [];
+                  const total = hours.reduce((sum, h) => sum + Number(h.hours), 0);
+                  return (
+                    <div key={c.id} className="bg-white rounded-2xl border border-[#ede9e3] p-5 space-y-4">
+                      {/* Header */}
+                      <div className="flex items-start justify-between gap-4 flex-wrap">
+                        <div>
+                          <p className="font-bold text-charcoal">{c.consultant_name}</p>
+                          {c.requests?.reference_number && (
+                            <span className="text-xs font-black text-orange bg-orange/10 px-2 py-0.5 rounded-full tracking-wide mr-2">{c.requests.reference_number}</span>
+                          )}
+                          {c.requests?.description && (
+                            <p className="text-xs text-charcoal/45 mt-1 line-clamp-1">{c.requests.description}</p>
+                          )}
+                        </div>
+                        <div className="text-right text-xs">
+                          {c.rate && <p className="font-bold text-orange">{c.rate.toLocaleString("da-DK")} DKK/t</p>}
+                          {c.start_date && <p className="text-charcoal/45 mt-0.5">📅 {new Date(c.start_date).toLocaleDateString("da-DK")}{c.end_date ? ` → ${new Date(c.end_date).toLocaleDateString("da-DK")}` : ""}</p>}
+                        </div>
+                      </div>
+
+                      {/* Supplier + consultant contact */}
+                      <div className="bg-[#f8f6f3] rounded-xl p-3 grid grid-cols-2 gap-3 text-xs">
+                        <div>
+                          <p className="font-extrabold tracking-widest uppercase text-charcoal/35 mb-1.5">Leverandør</p>
+                          {c.suppliers?.company_name && <p className="font-semibold text-charcoal">{c.suppliers.company_name}</p>}
+                          {c.suppliers?.contact_name && <p className="text-charcoal/60 mt-0.5">{c.suppliers.contact_name}</p>}
+                          {c.suppliers?.email && <p className="text-charcoal/60">{c.suppliers.email}</p>}
+                          {c.suppliers?.phone && <p className="text-charcoal/60">{c.suppliers.phone}</p>}
+                        </div>
+                        <div>
+                          <p className="font-extrabold tracking-widest uppercase text-charcoal/35 mb-1.5">Konsulent</p>
+                          <p className="font-semibold text-charcoal">{c.consultant_name}</p>
+                          {c.consultant_email && <p className="text-charcoal/60 mt-0.5">{c.consultant_email}</p>}
+                          {c.consultant_phone && <p className="text-charcoal/60">{c.consultant_phone}</p>}
+                        </div>
+                      </div>
+
+                      {/* Hours table — read-only */}
+                      {months.length > 0 ? (
+                        <div>
+                          <p className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mb-2">Timer per måned</p>
+                          <div className="border border-[#ede9e3] rounded-xl overflow-hidden">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="bg-[#f8f6f3] border-b border-[#ede9e3]">
+                                  <th className="text-left px-4 py-2 font-extrabold tracking-widest uppercase text-charcoal/40">Måned</th>
+                                  <th className="text-right px-4 py-2 font-extrabold tracking-widest uppercase text-charcoal/40">Timer</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {months.map(({ year, month }) => {
+                                  const row = hours.find(h => h.year === year && h.month === month);
+                                  return (
+                                    <tr key={`${year}-${month}`} className="border-b border-[#f5f2ee] last:border-0">
+                                      <td className="px-4 py-2.5 text-charcoal/70 font-semibold">{MONTH_NAMES[month-1]} {year}</td>
+                                      <td className="px-4 py-2.5 text-right font-bold text-charcoal">
+                                        {row && Number(row.hours) > 0 ? Number(row.hours).toLocaleString("da-DK") : <span className="text-charcoal/25">—</span>}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                              <tfoot>
+                                <tr className="bg-[#f8f6f3] border-t border-[#ede9e3]">
+                                  <td className="px-4 py-2.5 font-extrabold text-charcoal/60 uppercase tracking-widest text-[10px]">Total</td>
+                                  <td className="px-4 py-2.5 text-right font-black text-charcoal">{total.toLocaleString("da-DK")} t</td>
+                                </tr>
+                              </tfoot>
+                            </table>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-charcoal/35 italic">Månedsoversigt vises, når start- og slutdato er angivet</p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

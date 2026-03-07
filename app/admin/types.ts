@@ -27,9 +27,14 @@ export type User = {
 export type Contract = {
   id: string; created_at: string; request_id: string; supplier_id: string;
   consultant_name: string; rate: number; duration: string; start_date: string;
+  end_date: string | null; consultant_email: string | null; consultant_phone: string | null;
   score: number | null; score_comment: string | null;
   requests: { description: string; email: string } | null;
-  suppliers: { company_name: string; email: string } | null;
+  suppliers: { company_name: string; email: string; contact_name?: string; phone?: string } | null;
+};
+
+export type DeliveryHours = {
+  id: string; contract_id: string; year: number; month: number; hours: number;
 };
 
 export type SupplierApplication = {

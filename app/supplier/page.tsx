@@ -62,7 +62,38 @@ type SupplierTeamMember = {
   phone: string;
 };
 
-type Tab = "requests" | "submissions" | "messages" | "profile";
+type Tab = "requests" | "submissions" | "messages" | "profile" | "leverance";
+
+type ContractData = {
+  id: string;
+  request_id: string;
+  consultant_name: string;
+  consultant_email: string | null;
+  consultant_phone: string | null;
+  rate: number;
+  start_date: string | null;
+  end_date: string | null;
+  requests: { description: string; reference_number?: string | null } | null;
+};
+
+type DeliveryHoursData = {
+  contract_id: string; year: number; month: number; hours: number;
+};
+
+function generateMonths(startDate: string, endDate: string | null) {
+  const months: { year: number; month: number }[] = [];
+  const start = new Date(startDate); start.setDate(1);
+  const end = endDate ? new Date(endDate) : new Date(); end.setDate(1);
+  const cur = new Date(start);
+  while (cur <= end) {
+    months.push({ year: cur.getFullYear(), month: cur.getMonth() + 1 });
+    cur.setMonth(cur.getMonth() + 1);
+  }
+  return months;
+}
+
+const MONTH_NAMES = ["Januar","Februar","Marts","April","Maj","Juni",
+                     "Juli","August","September","Oktober","November","December"];
 
 type PortalSidebarProps = {
   tab: Tab;
@@ -77,6 +108,7 @@ function PortalSidebar({ tab, setTab, companyLabel, onLogout, open, onClose }: P
   const navItems: { tab: Tab; label: string; icon: string }[] = [
     { tab: "requests",    label: "Forespørgsler", icon: "📋" },
     { tab: "submissions", label: "Konsulenter",   icon: "👤" },
+    { tab: "leverance",   label: "Leverance",     icon: "📦" },
     { tab: "messages",    label: "Beskeder",      icon: "💬" },
     { tab: "profile",     label: "Min profil",    icon: "⚙️" },
   ];
@@ -403,6 +435,9 @@ export default function SupplierPage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [teamMembers, setTeamMembers] = useState<SupplierTeamMember[]>([]);
+  const [contracts, setContracts] = useState<ContractData[]>([]);
+  const [deliveryHours, setDeliveryHours] = useState<DeliveryHoursData[]>([]);
+  const [localHoursMap, setLocalHoursMap] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const init = async () => {
@@ -449,6 +484,28 @@ export default function SupplierPage() {
 
       setRequests(reqData ?? []);
       setSubmissions(subData ?? []);
+
+      // Hent kontrakter for denne leverandør + leverancetimer
+      const { data: contractData } = await supabase
+        .from("contracts")
+        .select("id, request_id, consultant_name, consultant_email, consultant_phone, rate, start_date, end_date, requests(description, reference_number)")
+        .eq("supplier_id", user.id)
+        .order("created_at", { ascending: false });
+      const ctrs = contractData ?? [];
+      setContracts(ctrs);
+      if (ctrs.length > 0) {
+        const { data: hoursData } = await supabase
+          .from("delivery_hours").select("*")
+          .in("contract_id", ctrs.map(c => c.id));
+        const hrs = hoursData ?? [];
+        setDeliveryHours(hrs);
+        const initMap: Record<string, string> = {};
+        for (const h of hrs) {
+          initMap[`${h.contract_id}-${h.year}-${h.month}`] = String(h.hours);
+        }
+        setLocalHoursMap(initMap);
+      }
+
       setLoading(false);
 
       if (supplierData.company_name) {
@@ -584,6 +641,14 @@ export default function SupplierPage() {
     supabase.auth.signOut().then(() => { window.location.href = "https://finditconsultants.com"; });
   };
 
+  const handleUpsertHours = async (contractId: string, year: number, month: number, value: string) => {
+    const hours = parseFloat(value) || 0;
+    await supabase.from("delivery_hours").upsert(
+      { contract_id: contractId, year, month, hours, updated_at: new Date().toISOString() },
+      { onConflict: "contract_id,year,month" }
+    );
+  };
+
   /* ── Gruppér indsendte konsulenter per forespørgsel ── */
   type SubGroup = {
     request_id: string;
@@ -624,6 +689,7 @@ export default function SupplierPage() {
   const tabLabels: Record<Tab, string> = {
     requests: "Forespørgsler",
     submissions: "Konsulenter",
+    leverance: "Leverance",
     messages: "Beskeder",
     profile: "Min profil",
   };
@@ -969,6 +1035,109 @@ export default function SupplierPage() {
               </div>
             )}
           </>
+        )}
+
+        {/* ══════════════════════════════════════════════
+            TAB: LEVERANCE
+        ══════════════════════════════════════════════ */}
+        {tab === "leverance" && (
+          <div>
+            <h2 className="font-bold text-lg text-charcoal mb-4">Leverance</h2>
+            {contracts.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-[#ede9e3] p-12 text-center">
+                <div className="text-5xl mb-4">📦</div>
+                <p className="text-charcoal/40 text-sm">Ingen aktive leverancer endnu</p>
+                <p className="text-charcoal/30 text-xs mt-1">Leverancer vises her, når en kontrakt er oprettet</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {contracts.map(c => {
+                  const months = c.start_date ? generateMonths(c.start_date, c.end_date) : [];
+                  const total = months.reduce((sum, { year, month }) => {
+                    return sum + (parseFloat(localHoursMap[`${c.id}-${year}-${month}`] ?? "0") || 0);
+                  }, 0);
+                  return (
+                    <div key={c.id} className="bg-white rounded-2xl border border-[#ede9e3] p-5 space-y-4">
+                      {/* Header */}
+                      <div className="flex items-start justify-between gap-4 flex-wrap">
+                        <div>
+                          <p className="font-bold text-charcoal">{c.consultant_name}</p>
+                          {c.requests?.reference_number && (
+                            <span className="text-xs font-black text-orange bg-orange/10 px-2 py-0.5 rounded-full tracking-wide mr-2">{c.requests.reference_number}</span>
+                          )}
+                          {c.requests?.description && (
+                            <p className="text-xs text-charcoal/45 mt-1 line-clamp-1">{c.requests.description}</p>
+                          )}
+                        </div>
+                        <div className="text-right text-xs">
+                          {c.rate && <p className="font-bold text-orange">{c.rate.toLocaleString("da-DK")} DKK/t</p>}
+                          {c.start_date && <p className="text-charcoal/45 mt-0.5">📅 {new Date(c.start_date).toLocaleDateString("da-DK")}{c.end_date ? ` → ${new Date(c.end_date).toLocaleDateString("da-DK")}` : ""}</p>}
+                        </div>
+                      </div>
+
+                      {/* Consultant contact */}
+                      {(c.consultant_email || c.consultant_phone) && (
+                        <div className="bg-[#f8f6f3] rounded-xl p-3 text-xs">
+                          <p className="font-extrabold tracking-widest uppercase text-charcoal/35 mb-1.5">Konsulent</p>
+                          <p className="font-semibold text-charcoal">{c.consultant_name}</p>
+                          {c.consultant_email && <p className="text-charcoal/60 mt-0.5">{c.consultant_email}</p>}
+                          {c.consultant_phone && <p className="text-charcoal/60">{c.consultant_phone}</p>}
+                        </div>
+                      )}
+
+                      {/* Hours table — editable */}
+                      {months.length > 0 ? (
+                        <div>
+                          <p className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40 mb-2">Timer per måned — registrér faktiske timer</p>
+                          <div className="border border-[#ede9e3] rounded-xl overflow-hidden">
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="bg-[#f8f6f3] border-b border-[#ede9e3]">
+                                  <th className="text-left px-4 py-2 font-extrabold tracking-widest uppercase text-charcoal/40">Måned</th>
+                                  <th className="text-right px-4 py-2 font-extrabold tracking-widest uppercase text-charcoal/40 w-32">Timer</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {months.map(({ year, month }) => {
+                                  const key = `${c.id}-${year}-${month}`;
+                                  return (
+                                    <tr key={key} className="border-b border-[#f5f2ee] last:border-0">
+                                      <td className="px-4 py-2 text-charcoal/70 font-semibold">{MONTH_NAMES[month-1]} {year}</td>
+                                      <td className="px-2 py-1.5 text-right">
+                                        <input
+                                          type="number"
+                                          step="0.5"
+                                          min="0"
+                                          className="w-24 rounded-lg border border-[#e8e5e0] bg-white px-2 py-1 text-xs text-right text-charcoal focus:outline-none focus:border-orange transition-all"
+                                          value={localHoursMap[key] ?? ""}
+                                          placeholder="0"
+                                          onChange={e => setLocalHoursMap(prev => ({ ...prev, [key]: e.target.value }))}
+                                          onBlur={e => handleUpsertHours(c.id, year, month, e.target.value)}
+                                        />
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                              <tfoot>
+                                <tr className="bg-[#f8f6f3] border-t border-[#ede9e3]">
+                                  <td className="px-4 py-2.5 font-extrabold text-charcoal/60 uppercase tracking-widest text-[10px]">Total</td>
+                                  <td className="px-4 py-2.5 text-right font-black text-charcoal">{total.toLocaleString("da-DK")} t</td>
+                                </tr>
+                              </tfoot>
+                            </table>
+                          </div>
+                          <p className="text-[10px] text-charcoal/35 mt-1.5">Timer gemmes automatisk, når du klikker uden for feltet</p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-charcoal/35 italic">Månedsoversigt vises, når start- og slutdato er angivet af admin</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         )}
 
         {/* ══════════════════════════════════════════════

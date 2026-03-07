@@ -23,7 +23,7 @@ export default function ForspørgslerPage() {
   const [rankingError, setRankingError] = useState<Record<string, string>>({});
   const [statusFilter, setStatusFilter] = useState<"aktive" | "afsluttet">("aktive");
   const [showContractForm, setShowContractForm] = useState<string | null>(null);
-  const [contractForm, setContractForm] = useState({ consultant_name: "", rate: "", duration: "", start_date: "", supplier_id: "" });
+  const [contractForm, setContractForm] = useState({ consultant_name: "", rate: "", duration: "", start_date: "", end_date: "", consultant_email: "", consultant_phone: "", supplier_id: "" });
   const [savingContract, setSavingContract] = useState(false);
 
   useEffect(() => {
@@ -144,13 +144,16 @@ export default function ForspørgslerPage() {
       rate: parseInt(contractForm.rate),
       duration: contractForm.duration,
       start_date: contractForm.start_date || null,
+      end_date: contractForm.end_date || null,
+      consultant_email: contractForm.consultant_email || null,
+      consultant_phone: contractForm.consultant_phone || null,
     }).select().single();
     if (data) {
       await supabase.from("requests").update({ status: "Afsluttet" }).eq("id", requestId);
       setRequests(prev => prev.map(r => r.id === requestId ? { ...r, status: "Afsluttet" } : r));
     }
     setShowContractForm(null);
-    setContractForm({ consultant_name: "", rate: "", duration: "", start_date: "", supplier_id: "" });
+    setContractForm({ consultant_name: "", rate: "", duration: "", start_date: "", end_date: "", consultant_email: "", consultant_phone: "", supplier_id: "" });
     setSavingContract(false);
   };
 
@@ -264,7 +267,7 @@ export default function ForspørgslerPage() {
                       {STATUSES.map(s => <option key={s}>{s}</option>)}
                     </select>
                     <button
-                      onClick={() => { setShowContractForm(showContractForm === r.id ? null : r.id); setContractForm({ consultant_name: "", rate: "", duration: "", start_date: "", supplier_id: "" }); }}
+                      onClick={() => { setShowContractForm(showContractForm === r.id ? null : r.id); setContractForm({ consultant_name: "", rate: "", duration: "", start_date: "", end_date: "", consultant_email: "", consultant_phone: "", supplier_id: "" }); }}
                       className="text-xs bg-purple-100 text-purple-700 font-bold px-3 py-1 rounded-full hover:bg-purple-200 transition-colors"
                     >
                       + Kontrakt
@@ -427,6 +430,9 @@ export default function ForspørgslerPage() {
                     <div><label className={lbl}>Timepris (DKK)</label><input type="number" className={inp} placeholder="1200" value={contractForm.rate} onChange={e => setContractForm(f => ({ ...f, rate: e.target.value }))} /></div>
                     <div><label className={lbl}>Varighed</label><input className={inp} placeholder="6 mdr." value={contractForm.duration} onChange={e => setContractForm(f => ({ ...f, duration: e.target.value }))} /></div>
                     <div><label className={lbl}>Startdato</label><input type="date" className={inp} value={contractForm.start_date} onChange={e => setContractForm(f => ({ ...f, start_date: e.target.value }))} /></div>
+                    <div><label className={lbl}>Slutdato</label><input type="date" className={inp} value={contractForm.end_date} onChange={e => setContractForm(f => ({ ...f, end_date: e.target.value }))} /></div>
+                    <div><label className={lbl}>Konsulent email</label><input type="email" className={inp} placeholder="konsulent@firma.dk" value={contractForm.consultant_email} onChange={e => setContractForm(f => ({ ...f, consultant_email: e.target.value }))} /></div>
+                    <div><label className={lbl}>Konsulent telefon</label><input className={inp} placeholder="+45 12 34 56 78" value={contractForm.consultant_phone} onChange={e => setContractForm(f => ({ ...f, consultant_phone: e.target.value }))} /></div>
                   </div>
                   <button
                     onClick={() => createContract(r.id)}
