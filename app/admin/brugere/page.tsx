@@ -36,6 +36,7 @@ export default function BrugerePage() {
   const [createSuccess, setCreateSuccess] = useState(false);
   const [search, setSearch] = useState("");
   const [groupByCompany, setGroupByCompany] = useState(false);
+  const [roleFilter, setRoleFilter] = useState<"alle" | "Leverandør" | "Kunde" | "Admin">("alle");
 
   // Edit state — kun én bruger kan være expanded ad gangen
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
@@ -184,7 +185,14 @@ export default function BrugerePage() {
     </div>
   );
 
+  const roleCounts = {
+    Leverandør: users.filter(u => u.rolle === "Leverandør").length,
+    Kunde:      users.filter(u => u.rolle === "Kunde").length,
+    Admin:      users.filter(u => u.rolle === "Admin").length,
+  };
+
   const filtered = users.filter(u => {
+    if (roleFilter !== "alle" && u.rolle !== roleFilter) return false;
     if (!search) return true;
     const q = search.toLowerCase();
     return u.email?.toLowerCase().includes(q)
@@ -207,7 +215,11 @@ export default function BrugerePage() {
       <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
         <div>
           <h1 className="font-bold text-2xl text-charcoal mb-1">Brugere</h1>
-          <p className="text-charcoal/45 text-sm">{users.length} bruger{users.length !== 1 ? "e" : ""} i alt</p>
+          <p className="text-charcoal/45 text-sm">
+            {filtered.length !== users.length
+              ? `${filtered.length} af ${users.length} brugere`
+              : `${users.length} bruger${users.length !== 1 ? "e" : ""} i alt`}
+          </p>
         </div>
         <div className="flex gap-2">
           <button
@@ -299,13 +311,44 @@ export default function BrugerePage() {
       )}
 
       {/* Search */}
-      <div className="mb-4">
+      <div className="mb-3">
         <input
           className="w-full rounded-xl border border-[#e8e5e0] bg-white px-4 py-2.5 text-sm text-charcoal focus:outline-none focus:border-orange transition-all"
           placeholder="Søg på email, firma eller kontaktperson…"
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
+      </div>
+
+      {/* Role filter tabs */}
+      <div className="flex gap-1.5 mb-5 flex-wrap">
+        {(["alle", "Leverandør", "Kunde", "Admin"] as const).map(r => {
+          const count = r === "alle" ? users.length : roleCounts[r];
+          const active = roleFilter === r;
+          return (
+            <button
+              key={r}
+              onClick={() => setRoleFilter(r)}
+              className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-bold transition-all border ${
+                active
+                  ? "bg-charcoal text-white border-charcoal"
+                  : "bg-white text-charcoal/55 border-[#e8e5e0] hover:border-charcoal/30 hover:text-charcoal"
+              }`}
+            >
+              {r === "alle" ? "Alle" : r === "Leverandør" ? "Leverandører" : r === "Kunde" ? "Kunder" : "Admin"}
+              <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${
+                active
+                  ? "bg-white/20 text-white"
+                  : r === "Leverandør" ? "bg-blue-100 text-blue-600"
+                  : r === "Kunde" ? "bg-green-100 text-green-600"
+                  : r === "Admin" ? "bg-yellow-100 text-yellow-600"
+                  : "bg-charcoal/10 text-charcoal/50"
+              }`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Firma-gruperet visning */}
