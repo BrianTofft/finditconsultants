@@ -492,7 +492,7 @@ export default function SupplierPage() {
         .eq("supplier_id", user.id)
         .order("created_at", { ascending: false });
       const ctrs = contractData ?? [];
-      setContracts(ctrs);
+      setContracts(ctrs as unknown as ContractData[]);
       if (ctrs.length > 0) {
         const { data: hoursData } = await supabase
           .from("delivery_hours").select("*")

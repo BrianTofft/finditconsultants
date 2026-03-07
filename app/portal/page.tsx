@@ -584,7 +584,7 @@ export default function PortalPage() {
           .select("id, request_id, consultant_name, consultant_email, consultant_phone, rate, start_date, end_date, suppliers(company_name, contact_name, email, phone), requests(description, reference_number)")
           .in("request_id", allReqs.map(r => r.id));
         const ctrs = contractData ?? [];
-        setContracts(ctrs);
+        setContracts(ctrs as unknown as ContractData[]);
         if (ctrs.length > 0) {
           const { data: hoursData } = await supabase
             .from("delivery_hours").select("*")
