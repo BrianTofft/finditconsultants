@@ -14,6 +14,9 @@ type Request = {
   duration: string;
   work_mode: string;
   start_date: string;
+  scope?: string | null;
+  language?: string | null;
+  nearshore?: string | null;
   file_url?: string | null;
   max_rate?: number | null;
   admin_note?: string | null;
@@ -812,8 +815,12 @@ export default function SupplierPage() {
                               ))}
                             </div>
                             <div className="flex flex-wrap gap-3 text-xs text-charcoal/40 font-semibold">
+                              {r.start_date && <span>📅 {r.start_date}</span>}
                               {r.duration && <span>⏱ {r.duration}</span>}
                               {r.work_mode && <span>📍 {r.work_mode}</span>}
+                              {r.scope && <span>🕐 {r.scope}</span>}
+                              {r.language && <span>🌐 {r.language}</span>}
+                              {r.nearshore && <span>🌍 Nearshore: {r.nearshore}</span>}
                               {r.max_rate && <span className={isCompleted ? "" : "text-green font-bold"}>💰 Maks. {r.max_rate} DKK/t</span>}
                             </div>
                             {r.file_url && (
@@ -852,11 +859,15 @@ export default function SupplierPage() {
                       {/* Opgave-context */}
                       <div className="bg-[#f8f6f3] rounded-xl p-3 mb-1 space-y-2">
                         <div className="flex flex-wrap gap-3 text-xs font-semibold text-charcoal/55">
+                          {selectedRequest.start_date && <span>📅 {selectedRequest.start_date}</span>}
+                          {selectedRequest.duration && <span>⏱ {selectedRequest.duration}</span>}
+                          {selectedRequest.work_mode && <span>📍 {selectedRequest.work_mode}</span>}
+                          {selectedRequest.scope && <span>🕐 {selectedRequest.scope}</span>}
+                          {selectedRequest.language && <span>🌐 {selectedRequest.language}</span>}
+                          {selectedRequest.nearshore && <span>🌍 Nearshore: {selectedRequest.nearshore}</span>}
                           {selectedRequest.max_rate && (
                             <span className="text-green font-bold">💰 Maks. {selectedRequest.max_rate} DKK/time</span>
                           )}
-                          {selectedRequest.duration && <span>⏱ {selectedRequest.duration}</span>}
-                          {selectedRequest.work_mode && <span>📍 {selectedRequest.work_mode}</span>}
                           {selectedRequest.file_url && (
                             <a href={selectedRequest.file_url} target="_blank" rel="noopener noreferrer"
                               className="text-orange font-bold hover:underline">

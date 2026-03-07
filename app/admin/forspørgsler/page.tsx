@@ -240,9 +240,12 @@ export default function ForspørgslerPage() {
                       ))}
                     </div>
                     <div className="flex flex-wrap gap-4 mt-2 text-xs text-charcoal/40 font-semibold">
+                      {r.start_date && <span>📅 {r.start_date}</span>}
                       {r.duration && <span>⏱ {r.duration}</span>}
                       {r.work_mode && <span>📍 {r.work_mode}</span>}
-                      {r.start_date && <span>📅 {r.start_date}</span>}
+                      {r.scope && <span>🕐 {r.scope}</span>}
+                      {r.language && <span>🌐 {r.language}</span>}
+                      {r.nearshore && <span>🌍 Nearshore: {r.nearshore}</span>}
                       {r.max_rate && <span>💰 Maks. {r.max_rate} DKK/time</span>}
                     </div>
                     {r.file_url && (

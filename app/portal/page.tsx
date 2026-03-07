@@ -32,6 +32,14 @@ type Request = {
   status: string;
   email: string;
   reference_number?: string | null;
+  start_date?: string | null;
+  duration?: string | null;
+  work_mode?: string | null;
+  scope?: string | null;
+  language?: string | null;
+  nearshore?: string | null;
+  max_rate?: number | null;
+  file_url?: string | null;
   submissions?: Submission[];
 };
 
@@ -849,10 +857,19 @@ export default function PortalPage() {
                             )}
                           </div>
                           <p className="text-sm text-charcoal font-semibold line-clamp-2 mb-2">{r.description || "Ingen beskrivelse"}</p>
-                          <div className="flex flex-wrap gap-1.5">
+                          <div className="flex flex-wrap gap-1.5 mb-2">
                             {r.competencies?.map(c => (
                               <span key={c} className="bg-charcoal/8 text-charcoal/55 text-xs font-bold px-2 py-0.5 rounded-full">{c}</span>
                             ))}
+                          </div>
+                          <div className="flex flex-wrap gap-3 text-xs text-charcoal/40 font-semibold">
+                            {r.start_date && <span>📅 {r.start_date}</span>}
+                            {r.duration && <span>⏱ {r.duration}</span>}
+                            {r.work_mode && <span>📍 {r.work_mode}</span>}
+                            {r.scope && <span>🕐 {r.scope}</span>}
+                            {r.language && <span>🌐 {r.language}</span>}
+                            {r.nearshore && <span>🌍 Nearshore: {r.nearshore}</span>}
+                            {r.max_rate && <span>💰 Maks. {r.max_rate} DKK/t</span>}
                           </div>
                         </div>
                         <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
@@ -882,6 +899,13 @@ export default function PortalPage() {
                           {r.competencies?.map(c => (
                             <span key={c} className="bg-charcoal/8 text-charcoal/55 text-xs font-bold px-2 py-0.5 rounded-full">{c}</span>
                           ))}
+                        </div>
+                        <div className="flex flex-wrap gap-3 text-xs text-charcoal/35 font-semibold mb-1.5">
+                          {r.start_date && <span>📅 {r.start_date}</span>}
+                          {r.duration && <span>⏱ {r.duration}</span>}
+                          {r.work_mode && <span>📍 {r.work_mode}</span>}
+                          {r.scope && <span>🕐 {r.scope}</span>}
+                          {r.language && <span>🌐 {r.language}</span>}
                         </div>
                         <p className="text-charcoal/35 text-xs">👤 {owner?.contact_name || owner?.email || "Kollega"} · {new Date(r.created_at).toLocaleDateString("da-DK")}</p>
                       </div>
@@ -914,10 +938,25 @@ export default function PortalPage() {
                     <span className={`text-xs font-bold px-3 py-0.5 rounded-full ${statusColor[selectedRequest.status] ?? "bg-gray-100 text-gray-600"}`}>{selectedRequest.status}</span>
                   </div>
                   <p className="text-sm text-charcoal font-semibold mb-3">{selectedRequest.description || "Ingen beskrivelse"}</p>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-1.5 mb-3">
                     {selectedRequest.competencies?.map(c => (
                       <span key={c} className="bg-orange/10 text-orange text-xs font-bold px-2.5 py-0.5 rounded-full">{c}</span>
                     ))}
+                  </div>
+                  <div className="flex flex-wrap gap-4 text-xs text-charcoal/45 font-semibold">
+                    {selectedRequest.start_date && <span>📅 {selectedRequest.start_date}</span>}
+                    {selectedRequest.duration && <span>⏱ {selectedRequest.duration}</span>}
+                    {selectedRequest.work_mode && <span>📍 {selectedRequest.work_mode}</span>}
+                    {selectedRequest.scope && <span>🕐 {selectedRequest.scope}</span>}
+                    {selectedRequest.language && <span>🌐 {selectedRequest.language}</span>}
+                    {selectedRequest.nearshore && <span>🌍 Nearshore: {selectedRequest.nearshore}</span>}
+                    {selectedRequest.max_rate && <span>💰 Maks. {selectedRequest.max_rate} DKK/t</span>}
+                    {selectedRequest.file_url && (
+                      <a href={selectedRequest.file_url} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-orange hover:underline">
+                        📎 Se vedhæftet fil
+                      </a>
+                    )}
                   </div>
                 </div>
                 <p className="text-charcoal/30 text-xs shrink-0">{new Date(selectedRequest.created_at).toLocaleDateString("da-DK")}</p>
