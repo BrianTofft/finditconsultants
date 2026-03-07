@@ -42,6 +42,7 @@ export default function AfventerPage() {
       .from("customers").select("id").eq("email", email).single();
 
     if (!existingCustomer) {
+      // Ny kunde — opret bruger og send velkomstmail med midlertidigt password
       const tempPassword = Math.random().toString(36).slice(-10);
       const res = await fetch("/api/create-user", {
         method: "POST",
@@ -56,6 +57,14 @@ export default function AfventerPage() {
           body: JSON.stringify({ email, password: tempPassword }),
         });
       }
+    } else {
+      // Eksisterende kunde — send "vi er gået i gang"-notifikation uden password
+      const req = requests.find(r => r.id === requestId);
+      await fetch("/api/notify-customer-request-accepted", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, description: req?.description ?? "" }),
+      });
     }
 
     await supabase.from("requests").update({ admin_status: "accepted", status: "Ny" }).eq("id", requestId);
