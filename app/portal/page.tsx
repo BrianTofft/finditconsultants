@@ -1134,7 +1134,7 @@ export default function PortalPage() {
               >
                 💬 Generel
               </button>
-              {myRequests.map(r => (
+              {requests.map(r => (
                 <button
                   key={r.id}
                   onClick={() => setMsgThread(r.id)}
@@ -1155,10 +1155,10 @@ export default function PortalPage() {
               userName={profile.contact_name || profile.company_name || profile.email}
               requestId={msgThread ?? undefined}
               title={msgThread
-                ? (myRequests.find(r => r.id === msgThread)?.reference_number ?? "Forespørgsel")
+                ? (requests.find(r => r.id === msgThread)?.reference_number ?? "Forespørgsel")
                 : undefined}
               subtitle={msgThread
-                ? myRequests.find(r => r.id === msgThread)?.description?.slice(0, 60)
+                ? requests.find(r => r.id === msgThread)?.description?.slice(0, 60)
                 : undefined}
             />
           </div>
