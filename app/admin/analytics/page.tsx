@@ -1,166 +1,122 @@
 "use client";
-import { useState } from "react";
 
-/* ── Vercel Analytics URL ─────────────────────────────────────── */
-const VERCEL_ANALYTICS_URL =
-  "https://vercel.com/briantofft/finditconsultants/analytics";
+/* ─────────────────────────────────────────────────────────────────
+   Sæt NEXT_PUBLIC_VERCEL_ANALYTICS_URL i Vercel Environment Variables
+   til fx: https://vercel.com/DIT-TEAM/finditconsultants/analytics
+   ───────────────────────────────────────────────────────────────── */
 
-const VERCEL_SPEED_URL =
-  "https://vercel.com/briantofft/finditconsultants/speed-insights";
+const analyticsUrl  = process.env.NEXT_PUBLIC_VERCEL_ANALYTICS_URL ?? "";
+const speedUrl      = process.env.NEXT_PUBLIC_VERCEL_SPEED_URL ?? "";
+const deploymentsUrl = process.env.NEXT_PUBLIC_VERCEL_DEPLOYMENTS_URL ?? "";
 
-const VERCEL_DEPLOYMENTS_URL =
-  "https://vercel.com/briantofft/finditconsultants/deployments";
+const configured = !!analyticsUrl;
 
-type View = "analytics" | "speed";
+const links = [
+  {
+    label:   "Web Analytics",
+    icon:    "📊",
+    url:     analyticsUrl,
+    desc:    "Sidevisninger, unikke besøgende, top-sider og trafikkilder",
+    color:   "bg-orange",
+  },
+  {
+    label:   "Speed Insights",
+    icon:    "⚡",
+    url:     speedUrl,
+    desc:    "Core Web Vitals — LCP, CLS, FID og TTFB per side",
+    color:   "bg-charcoal",
+  },
+  {
+    label:   "Deployments",
+    icon:    "🚀",
+    url:     deploymentsUrl,
+    desc:    "Byggestatus og log for seneste Vercel-deployments",
+    color:   "bg-green",
+  },
+];
 
 export default function AnalyticsPage() {
-  const [view, setView] = useState<View>("analytics");
-  const [iframeBlocked, setIframeBlocked] = useState(false);
-
-  const currentUrl =
-    view === "analytics" ? VERCEL_ANALYTICS_URL : VERCEL_SPEED_URL;
-
   return (
-    <div className="p-4 md:p-8 flex flex-col h-full">
+    <div className="p-4 md:p-8 max-w-2xl">
 
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
-        <div>
-          <h1 className="font-bold text-xl text-charcoal">Analytics</h1>
-          <p className="text-xs text-charcoal/45 mt-0.5">
-            Drevet af Vercel Web Analytics
-          </p>
-        </div>
-
-        {/* View toggle */}
-        <div className="flex items-center gap-1 bg-white border border-[#ede9e3] rounded-xl p-1">
-          <button
-            onClick={() => { setView("analytics"); setIframeBlocked(false); }}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              view === "analytics"
-                ? "bg-orange text-white shadow-sm"
-                : "text-charcoal/50 hover:text-charcoal"
-            }`}
-          >
-            📊 Trafik
-          </button>
-          <button
-            onClick={() => { setView("speed"); setIframeBlocked(false); }}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              view === "speed"
-                ? "bg-orange text-white shadow-sm"
-                : "text-charcoal/50 hover:text-charcoal"
-            }`}
-          >
-            ⚡ Speed
-          </button>
-        </div>
-
-        {/* Open in Vercel button */}
-        <a
-          href={currentUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 bg-charcoal text-white text-xs font-bold px-4 py-2 rounded-full hover:bg-charcoal/80 transition-colors"
-        >
-          Åbn i Vercel ↗
-        </a>
+      <div className="mb-8">
+        <h1 className="font-bold text-xl text-charcoal">Analytics</h1>
+        <p className="text-xs text-charcoal/45 mt-0.5">Drevet af Vercel Web Analytics</p>
       </div>
 
-      {/* Quick-links */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-        {[
-          { label: "Web Analytics", icon: "📊", url: VERCEL_ANALYTICS_URL, desc: "Sidevisninger & besøgende" },
-          { label: "Speed Insights", icon: "⚡", url: VERCEL_SPEED_URL, desc: "Core Web Vitals & ydeevne" },
-          { label: "Deployments", icon: "🚀", url: VERCEL_DEPLOYMENTS_URL, desc: "Seneste Vercel-deployments" },
-        ].map(card => (
-          <a
-            key={card.label}
-            href={card.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="bg-white border border-[#ede9e3] rounded-2xl p-4 hover:border-orange/30 hover:shadow-md transition-all group"
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-lg">{card.icon}</span>
-              <span className="font-bold text-sm text-charcoal group-hover:text-orange transition-colors">
-                {card.label}
-              </span>
-              <span className="ml-auto text-charcoal/25 group-hover:text-orange text-xs transition-colors">↗</span>
-            </div>
-            <p className="text-xs text-charcoal/45">{card.desc}</p>
-          </a>
+      {/* ── Links til Vercel ── */}
+      <div className="space-y-3 mb-10">
+        {links.map(link => (
+          link.url ? (
+            <a
+              key={link.label}
+              href={link.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-4 bg-white border border-[#ede9e3] rounded-2xl p-5 hover:border-orange/30 hover:shadow-md transition-all group"
+            >
+              <div className={`w-10 h-10 ${link.color} rounded-xl flex items-center justify-center flex-shrink-0 text-xl`}>
+                {link.icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm text-charcoal group-hover:text-orange transition-colors">{link.label}</p>
+                <p className="text-xs text-charcoal/45 mt-0.5">{link.desc}</p>
+              </div>
+              <span className="text-charcoal/25 group-hover:text-orange text-sm transition-colors flex-shrink-0">↗</span>
+            </a>
+          ) : null
         ))}
       </div>
 
-      {/* iframe embed */}
-      <div className="flex-1 bg-white border border-[#ede9e3] rounded-2xl overflow-hidden min-h-[500px] relative">
-        {!iframeBlocked ? (
-          <>
-            <iframe
-              key={view}
-              src={currentUrl}
-              className="w-full h-full min-h-[600px] border-0"
-              title="Vercel Analytics"
-              onError={() => setIframeBlocked(true)}
-              /* Vercel may block iframe — onLoad check below */
-              onLoad={e => {
-                try {
-                  // If the iframe loaded a Vercel login/block page, detect it
-                  const doc = (e.target as HTMLIFrameElement).contentDocument;
-                  if (doc && doc.title && doc.title.toLowerCase().includes("sign in")) {
-                    setIframeBlocked(true);
-                  }
-                } catch {
-                  // Cross-origin — Vercel blocked the embed
-                  setIframeBlocked(true);
-                }
-              }}
-            />
-            {/* Overlay hint */}
-            <div className="absolute bottom-4 right-4 bg-black/50 text-white text-[10px] font-bold px-3 py-1.5 rounded-full backdrop-blur-sm pointer-events-none">
-              💡 Log ind på Vercel hvis dashboardet er blankt
-            </div>
-          </>
-        ) : (
-          /* Fallback når iframe er blokeret */
-          <div className="flex flex-col items-center justify-center h-full p-12 text-center">
-            <div className="text-6xl mb-6">📈</div>
-            <h2 className="font-bold text-xl text-charcoal mb-2">
-              Åbn Vercel Analytics
-            </h2>
-            <p className="text-sm text-charcoal/50 mb-6 max-w-sm">
-              Vercel tillader ikke iframe-visning af dashboardet af sikkerhedshensyn.
-              Åbn det direkte i Vercel.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <a
-                href={VERCEL_ANALYTICS_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 bg-orange text-white font-bold px-6 py-3 rounded-full hover:bg-orange/90 transition-colors"
-              >
-                📊 Web Analytics ↗
-              </a>
-              <a
-                href={VERCEL_SPEED_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 bg-charcoal text-white font-bold px-6 py-3 rounded-full hover:bg-charcoal/80 transition-colors"
-              >
-                ⚡ Speed Insights ↗
-              </a>
-            </div>
-            <p className="text-xs text-charcoal/35 mt-6">
-              Tip: Du skal være logget ind på{" "}
-              <a href="https://vercel.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-orange">
-                vercel.com
-              </a>{" "}
-              for at se data
-            </p>
-          </div>
-        )}
-      </div>
+      {/* ── Setup-guide hvis env vars mangler ── */}
+      {!configured && (
+        <div className="bg-orange/5 border border-orange/20 rounded-2xl p-6">
+          <p className="font-bold text-sm text-charcoal mb-1">⚙️ Opsætning mangler</p>
+          <p className="text-xs text-charcoal/60 mb-5 leading-relaxed">
+            Tilføj disse tre miljøvariabler i dit Vercel-projekt for at aktivere linkene ovenfor.
+          </p>
+
+          <ol className="space-y-4 text-xs">
+            <li>
+              <p className="font-bold text-charcoal/70 mb-1">1. Find din Vercel Analytics URL</p>
+              <p className="text-charcoal/50 mb-1.5">
+                Log ind på <a href="https://vercel.com" target="_blank" rel="noopener noreferrer" className="text-orange underline">vercel.com</a>{" "}
+                → vælg projektet <strong>finditconsultants</strong> → klik på <strong>Analytics</strong>.
+                Kopiér URL'en fra browseren — den ligner:
+              </p>
+              <code className="block bg-charcoal text-white rounded-xl px-4 py-2.5 font-mono text-[11px] break-all">
+                https://vercel.com/DIT-TEAM/finditconsultants/analytics
+              </code>
+            </li>
+
+            <li>
+              <p className="font-bold text-charcoal/70 mb-1">2. Gå til Project Settings → Environment Variables</p>
+              <p className="text-charcoal/50 mb-2">Tilføj disse tre variabler (alle med scope: <em>Production</em>):</p>
+              <div className="space-y-2">
+                {[
+                  { key: "NEXT_PUBLIC_VERCEL_ANALYTICS_URL",   suffix: "/analytics" },
+                  { key: "NEXT_PUBLIC_VERCEL_SPEED_URL",        suffix: "/speed-insights" },
+                  { key: "NEXT_PUBLIC_VERCEL_DEPLOYMENTS_URL",  suffix: "/deployments" },
+                ].map(v => (
+                  <div key={v.key} className="bg-white border border-[#ede9e3] rounded-xl px-4 py-2.5">
+                    <p className="font-mono font-bold text-orange text-[11px]">{v.key}</p>
+                    <p className="text-charcoal/40 text-[11px] mt-0.5 font-mono">
+                      https://vercel.com/DIT-TEAM/finditconsultants{v.suffix}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </li>
+
+            <li>
+              <p className="font-bold text-charcoal/70 mb-1">3. Redeploy</p>
+              <p className="text-charcoal/50">
+                Push en tom commit eller klik <strong>Redeploy</strong> i Vercel for at aktivere de nye variabler.
+              </p>
+            </li>
+          </ol>
+        </div>
+      )}
     </div>
   );
 }
