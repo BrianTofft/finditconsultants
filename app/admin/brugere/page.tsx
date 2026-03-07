@@ -85,6 +85,12 @@ export default function BrugerePage() {
     alert(`Reset email sendt til ${email}`);
   };
 
+  const handleToggleAgreement = async (u: User) => {
+    const next = !u.signed_agreement;
+    await supabase.from("suppliers").update({ signed_agreement: next }).eq("id", u.id);
+    setUsers(prev => prev.map(x => x.id === u.id ? { ...x, signed_agreement: next } : x));
+  };
+
   const handleDeleteUser = async (id: string, email: string) => {
     if (!confirm(`Er du sikker på at du vil slette ${email}?`)) return;
     await fetch("/api/delete-user", {
@@ -434,6 +440,19 @@ export default function BrugerePage() {
                           {u.rolle === "Leverandør" && u.company_type && (
                             <span className="text-xs text-charcoal/35 font-medium italic">{u.company_type}</span>
                           )}
+                          {u.rolle === "Leverandør" && (
+                            <button
+                              onClick={() => handleToggleAgreement(u)}
+                              title="Skift status for underskrevet aftale"
+                              className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full border transition-all ${
+                                u.signed_agreement
+                                  ? "bg-green-100 text-green-700 border-green-200 hover:bg-green-200"
+                                  : "bg-white text-charcoal/35 border-[#e8e5e0] hover:border-charcoal/25 hover:text-charcoal/60"
+                              }`}
+                            >
+                              {u.signed_agreement ? "✓" : "○"} Aftale
+                            </button>
+                          )}
                         </div>
                         <p className="text-xs text-charcoal/45 mt-0.5">{u.email}{u.phone ? ` · ${u.phone}` : ""}</p>
                       </div>
@@ -471,6 +490,19 @@ export default function BrugerePage() {
                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${rolleColor[u.rolle] ?? "bg-gray-100 text-gray-500"}`}>{u.rolle}</span>
                     {u.rolle === "Leverandør" && u.company_type && (
                       <span className="text-xs text-charcoal/40 font-medium italic">{u.company_type}</span>
+                    )}
+                    {u.rolle === "Leverandør" && (
+                      <button
+                        onClick={() => handleToggleAgreement(u)}
+                        title="Skift status for underskrevet aftale"
+                        className={`flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full border transition-all ${
+                          u.signed_agreement
+                            ? "bg-green-100 text-green-700 border-green-200 hover:bg-green-200"
+                            : "bg-white text-charcoal/35 border-[#e8e5e0] hover:border-charcoal/25 hover:text-charcoal/60"
+                        }`}
+                      >
+                        {u.signed_agreement ? "✓" : "○"} Aftale
+                      </button>
                     )}
                   </div>
                   <div className="flex flex-wrap gap-x-4 gap-y-0.5">

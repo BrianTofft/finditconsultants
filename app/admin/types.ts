@@ -21,6 +21,7 @@ export type User = {
   id: string; email: string; created_at: string; rolle: string;
   company_name: string; contact_name: string; phone: string; supplier_company: string;
   first_name: string | null; last_name: string | null; company_type: string | null;
+  signed_agreement: boolean | null;
 };
 
 export type Contract = {
