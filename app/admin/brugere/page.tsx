@@ -37,6 +37,7 @@ export default function BrugerePage() {
   const [search, setSearch] = useState("");
   const [groupByCompany, setGroupByCompany] = useState(false);
   const [roleFilter, setRoleFilter] = useState<"alle" | "Leverandør" | "Kunde" | "Admin">("alle");
+  const [companyTypeFilter, setCompanyTypeFilter] = useState<string | null>(null);
 
   // Edit state — kun én bruger kan være expanded ad gangen
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
@@ -185,14 +186,27 @@ export default function BrugerePage() {
     </div>
   );
 
+  const suppliers = users.filter(u => u.rolle === "Leverandør");
+
   const roleCounts = {
-    Leverandør: users.filter(u => u.rolle === "Leverandør").length,
-    Kunde:      users.filter(u => u.rolle === "Kunde").length,
-    Admin:      users.filter(u => u.rolle === "Admin").length,
+    Leverandør:  suppliers.length,
+    Kunde:       users.filter(u => u.rolle === "Kunde").length,
+    Admin:       users.filter(u => u.rolle === "Admin").length,
+  };
+
+  const companyTypeCounts = {
+    Konsulenthus: suppliers.filter(u => u.company_type?.includes("Konsulenthus")).length,
+    Formidler:    suppliers.filter(u => u.company_type?.toLowerCase().includes("formidler")).length,
+    Selvstændig:  suppliers.filter(u => u.company_type?.includes("Selvstændig")).length,
   };
 
   const filtered = users.filter(u => {
     if (roleFilter !== "alle" && u.rolle !== roleFilter) return false;
+    if (companyTypeFilter) {
+      if (companyTypeFilter === "Konsulenthus" && !u.company_type?.includes("Konsulenthus"))            return false;
+      if (companyTypeFilter === "Formidler"    && !u.company_type?.toLowerCase().includes("formidler")) return false;
+      if (companyTypeFilter === "Selvstændig"  && !u.company_type?.includes("Selvstændig"))             return false;
+    }
     if (!search) return true;
     const q = search.toLowerCase();
     return u.email?.toLowerCase().includes(q)
@@ -328,7 +342,7 @@ export default function BrugerePage() {
           return (
             <button
               key={r}
-              onClick={() => setRoleFilter(r)}
+              onClick={() => { setRoleFilter(r); setCompanyTypeFilter(null); }}
               className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-bold transition-all border ${
                 active
                   ? "bg-charcoal text-white border-charcoal"
@@ -350,6 +364,35 @@ export default function BrugerePage() {
           );
         })}
       </div>
+
+      {/* Leverandør sub-filter: virksomhedstype */}
+      {roleFilter === "Leverandør" && (
+        <div className="flex gap-1.5 mb-5 flex-wrap pl-1">
+          <span className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/35 self-center mr-1">Type</span>
+          {(["Konsulenthus", "Formidler", "Selvstændig"] as const).map(t => {
+            const count  = companyTypeCounts[t];
+            const active = companyTypeFilter === t;
+            return (
+              <button
+                key={t}
+                onClick={() => setCompanyTypeFilter(active ? null : t)}
+                className={`flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold transition-all border ${
+                  active
+                    ? "bg-blue-600 text-white border-blue-600"
+                    : "bg-white text-charcoal/55 border-[#e8e5e0] hover:border-blue-300 hover:text-charcoal"
+                }`}
+              >
+                {t}
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                  active ? "bg-white/25 text-white" : "bg-blue-50 text-blue-500"
+                }`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Firma-gruperet visning */}
       {groupByCompany && (() => {
