@@ -1,122 +1,190 @@
 "use client";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
-/* ─────────────────────────────────────────────────────────────────
-   Sæt NEXT_PUBLIC_VERCEL_ANALYTICS_URL i Vercel Environment Variables
-   til fx: https://vercel.com/DIT-TEAM/finditconsultants/analytics
-   ───────────────────────────────────────────────────────────────── */
+type TrafficData = {
+  today: number;
+  week: number;
+  month: number;
+  uniqueMonth: number;
+  topPages: { path: string; count: number }[];
+  dailyLast30: { date: string; count: number }[];
+};
 
-const analyticsUrl  = process.env.NEXT_PUBLIC_VERCEL_ANALYTICS_URL ?? "";
-const speedUrl      = process.env.NEXT_PUBLIC_VERCEL_SPEED_URL ?? "";
+const speedUrl       = process.env.NEXT_PUBLIC_VERCEL_SPEED_URL ?? "";
 const deploymentsUrl = process.env.NEXT_PUBLIC_VERCEL_DEPLOYMENTS_URL ?? "";
 
-const configured = !!analyticsUrl;
-
-const links = [
-  {
-    label:   "Web Analytics",
-    icon:    "📊",
-    url:     analyticsUrl,
-    desc:    "Sidevisninger, unikke besøgende, top-sider og trafikkilder",
-    color:   "bg-orange",
-  },
-  {
-    label:   "Speed Insights",
-    icon:    "⚡",
-    url:     speedUrl,
-    desc:    "Core Web Vitals — LCP, CLS, FID og TTFB per side",
-    color:   "bg-charcoal",
-  },
-  {
-    label:   "Deployments",
-    icon:    "🚀",
-    url:     deploymentsUrl,
-    desc:    "Byggestatus og log for seneste Vercel-deployments",
-    color:   "bg-green",
-  },
-];
-
 export default function AnalyticsPage() {
-  return (
-    <div className="p-4 md:p-8 max-w-2xl">
+  const [traffic, setTraffic] = useState<TrafficData | null>(null);
+  const [loading, setLoading] = useState(true);
 
+  useEffect(() => {
+    const load = async () => {
+      const now = new Date();
+      const startOfToday = new Date(now); startOfToday.setHours(0, 0, 0, 0);
+      const startOfWeek  = new Date(now); startOfWeek.setDate(now.getDate() - 7);
+      const startOfMonth = new Date(now); startOfMonth.setDate(now.getDate() - 30);
+
+      const [todayRes, weekRes, monthRes] = await Promise.all([
+        supabase.from("page_events").select("id", { count: "exact", head: true })
+          .eq("event_type", "pageview").gte("recorded_at", startOfToday.toISOString()),
+        supabase.from("page_events").select("id", { count: "exact", head: true })
+          .eq("event_type", "pageview").gte("recorded_at", startOfWeek.toISOString()),
+        supabase.from("page_events").select("device_id, path, recorded_at")
+          .eq("event_type", "pageview").gte("recorded_at", startOfMonth.toISOString()),
+      ]);
+
+      const monthRows = monthRes.data ?? [];
+      const uniqueMonth = new Set(monthRows.map(r => r.device_id).filter(Boolean)).size;
+
+      // Top sider
+      const pathCounts: Record<string, number> = {};
+      for (const r of monthRows) {
+        if (r.path) pathCounts[r.path] = (pathCounts[r.path] ?? 0) + 1;
+      }
+      const topPages = Object.entries(pathCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([path, count]) => ({ path, count }));
+
+      // Daglige sidevisninger (seneste 30 dage)
+      const dailyCounts: Record<string, number> = {};
+      for (const r of monthRows) {
+        const day = r.recorded_at.slice(0, 10);
+        dailyCounts[day] = (dailyCounts[day] ?? 0) + 1;
+      }
+      const dailyLast30 = Array.from({ length: 30 }, (_, i) => {
+        const d = new Date(now);
+        d.setDate(d.getDate() - (29 - i));
+        const dateStr = d.toISOString().slice(0, 10);
+        return { date: dateStr, count: dailyCounts[dateStr] ?? 0 };
+      });
+
+      setTraffic({
+        today: todayRes.count ?? 0,
+        week: weekRes.count ?? 0,
+        month: monthRows.length,
+        uniqueMonth,
+        topPages,
+        dailyLast30,
+      });
+      setLoading(false);
+    };
+    load();
+  }, []);
+
+  const maxDay = traffic ? Math.max(...traffic.dailyLast30.map(d => d.count), 1) : 1;
+
+  return (
+    <div className="p-4 md:p-8 max-w-4xl">
       <div className="mb-8">
         <h1 className="font-bold text-xl text-charcoal">Analytics</h1>
-        <p className="text-xs text-charcoal/45 mt-0.5">Drevet af Vercel Web Analytics</p>
+        <p className="text-xs text-charcoal/45 mt-0.5">Webtrafik via Vercel Log Drain → Supabase</p>
       </div>
 
+      {loading ? (
+        <div className="space-y-4 animate-pulse">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => <div key={i} className="h-20 bg-charcoal/8 rounded-xl" />)}
+          </div>
+          <div className="h-40 bg-charcoal/8 rounded-xl" />
+        </div>
+      ) : traffic && traffic.month === 0 ? (
+        <div className="bg-orange/5 border border-orange/20 rounded-2xl p-8 text-center">
+          <p className="text-3xl mb-3">📡</p>
+          <p className="font-bold text-charcoal mb-1">Ingen data endnu</p>
+          <p className="text-xs text-charcoal/50">Log Drain er opsat — data vises her når der er trafik på finditconsultants.com</p>
+        </div>
+      ) : traffic ? (
+        <div className="space-y-6">
+
+          {/* ── Tal-oversigt ── */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {[
+              { label: "I dag",           value: traffic.today,       icon: "📅" },
+              { label: "Seneste 7 dage",  value: traffic.week,        icon: "📆" },
+              { label: "Seneste 30 dage", value: traffic.month,       icon: "📊" },
+              { label: "Unikke bes. (30d)", value: traffic.uniqueMonth, icon: "👤" },
+            ].map(item => (
+              <div key={item.label} className="bg-white border border-[#ede9e3] rounded-xl px-4 py-4">
+                <p className="text-xs text-charcoal/40 mb-1">{item.icon} {item.label}</p>
+                <p className="text-2xl font-black text-charcoal">{item.value.toLocaleString("da-DK")}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* ── Dagligt søjlediagram ── */}
+          <div className="bg-white border border-[#ede9e3] rounded-xl px-5 pt-5 pb-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-charcoal/40 mb-4">Sidevisninger per dag — seneste 30 dage</p>
+            <div className="flex items-end gap-0.5 h-28">
+              {traffic.dailyLast30.map(({ date, count }) => {
+                const h = Math.round((count / maxDay) * 100);
+                const isToday = date === new Date().toISOString().slice(0, 10);
+                return (
+                  <div key={date} className="flex-1 flex flex-col items-center gap-1 group relative">
+                    <div
+                      className={`w-full rounded-t-sm transition-all ${isToday ? "bg-orange" : "bg-orange/30 group-hover:bg-orange/60"}`}
+                      style={{ height: `${Math.max(h, count > 0 ? 4 : 0)}%` }}
+                    />
+                    {/* Tooltip */}
+                    <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-charcoal text-white text-[10px] px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      {new Date(date).toLocaleDateString("da-DK", { day: "numeric", month: "short" })}: {count}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex justify-between text-[10px] text-charcoal/30 mt-1">
+              <span>{new Date(traffic.dailyLast30[0].date).toLocaleDateString("da-DK", { day: "numeric", month: "short" })}</span>
+              <span>I dag</span>
+            </div>
+          </div>
+
+          {/* ── Top sider ── */}
+          {traffic.topPages.length > 0 && (
+            <div className="bg-white border border-[#ede9e3] rounded-xl px-5 py-5">
+              <p className="text-xs font-bold uppercase tracking-wider text-charcoal/40 mb-4">Top sider — seneste 30 dage</p>
+              <div className="space-y-2.5">
+                {traffic.topPages.map(({ path, count }) => {
+                  const pct = Math.round((count / traffic.topPages[0].count) * 100);
+                  const share = traffic.month > 0 ? Math.round((count / traffic.month) * 100) : 0;
+                  return (
+                    <div key={path} className="flex items-center gap-3">
+                      <span className="text-[12px] text-charcoal/70 font-mono w-40 truncate shrink-0">{path || "/"}</span>
+                      <div className="flex-1 bg-charcoal/6 rounded-full h-2 overflow-hidden">
+                        <div className="h-full bg-orange rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-xs font-bold text-charcoal w-8 text-right shrink-0">{count}</span>
+                      <span className="text-[11px] text-charcoal/35 w-9 text-right shrink-0">{share}%</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+        </div>
+      ) : null}
+
       {/* ── Links til Vercel ── */}
-      <div className="space-y-3 mb-10">
-        {links.map(link => (
-          link.url ? (
-            <a
-              key={link.label}
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-4 bg-white border border-[#ede9e3] rounded-2xl p-5 hover:border-orange/30 hover:shadow-md transition-all group"
-            >
-              <div className={`w-10 h-10 ${link.color} rounded-xl flex items-center justify-center flex-shrink-0 text-xl`}>
-                {link.icon}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-bold text-sm text-charcoal group-hover:text-orange transition-colors">{link.label}</p>
-                <p className="text-xs text-charcoal/45 mt-0.5">{link.desc}</p>
-              </div>
-              <span className="text-charcoal/25 group-hover:text-orange text-sm transition-colors flex-shrink-0">↗</span>
-            </a>
-          ) : null
+      <div className="mt-8 space-y-3">
+        <p className="text-xs font-bold uppercase tracking-wider text-charcoal/30">Åbn i Vercel</p>
+        {[
+          speedUrl       && { label: "Speed Insights",  icon: "⚡", url: speedUrl,       desc: "Core Web Vitals — LCP, CLS, FID og TTFB" },
+          deploymentsUrl && { label: "Deployments",      icon: "🚀", url: deploymentsUrl, desc: "Byggestatus og log for seneste deployments" },
+        ].filter(Boolean).map((link: any) => (
+          <a key={link.url} href={link.url} target="_blank" rel="noopener noreferrer"
+            className="flex items-center gap-4 bg-white border border-[#ede9e3] rounded-xl p-4 hover:border-orange/30 hover:shadow-sm transition-all group">
+            <span className="text-xl">{link.icon}</span>
+            <div className="flex-1">
+              <p className="font-bold text-sm text-charcoal group-hover:text-orange transition-colors">{link.label}</p>
+              <p className="text-xs text-charcoal/40">{link.desc}</p>
+            </div>
+            <span className="text-charcoal/25 group-hover:text-orange transition-colors">↗</span>
+          </a>
         ))}
       </div>
 
-      {/* ── Setup-guide hvis env vars mangler ── */}
-      {!configured && (
-        <div className="bg-orange/5 border border-orange/20 rounded-2xl p-6">
-          <p className="font-bold text-sm text-charcoal mb-1">⚙️ Opsætning mangler</p>
-          <p className="text-xs text-charcoal/60 mb-5 leading-relaxed">
-            Tilføj disse tre miljøvariabler i dit Vercel-projekt for at aktivere linkene ovenfor.
-          </p>
-
-          <ol className="space-y-4 text-xs">
-            <li>
-              <p className="font-bold text-charcoal/70 mb-1">1. Find din Vercel Analytics URL</p>
-              <p className="text-charcoal/50 mb-1.5">
-                Log ind på <a href="https://vercel.com" target="_blank" rel="noopener noreferrer" className="text-orange underline">vercel.com</a>{" "}
-                → vælg projektet <strong>finditconsultants</strong> → klik på <strong>Analytics</strong>.
-                Kopiér URL'en fra browseren — den ligner:
-              </p>
-              <code className="block bg-charcoal text-white rounded-xl px-4 py-2.5 font-mono text-[11px] break-all">
-                https://vercel.com/DIT-TEAM/finditconsultants/analytics
-              </code>
-            </li>
-
-            <li>
-              <p className="font-bold text-charcoal/70 mb-1">2. Gå til Project Settings → Environment Variables</p>
-              <p className="text-charcoal/50 mb-2">Tilføj disse tre variabler (alle med scope: <em>Production</em>):</p>
-              <div className="space-y-2">
-                {[
-                  { key: "NEXT_PUBLIC_VERCEL_ANALYTICS_URL",   suffix: "/analytics" },
-                  { key: "NEXT_PUBLIC_VERCEL_SPEED_URL",        suffix: "/speed-insights" },
-                  { key: "NEXT_PUBLIC_VERCEL_DEPLOYMENTS_URL",  suffix: "/deployments" },
-                ].map(v => (
-                  <div key={v.key} className="bg-white border border-[#ede9e3] rounded-xl px-4 py-2.5">
-                    <p className="font-mono font-bold text-orange text-[11px]">{v.key}</p>
-                    <p className="text-charcoal/40 text-[11px] mt-0.5 font-mono">
-                      https://vercel.com/DIT-TEAM/finditconsultants{v.suffix}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </li>
-
-            <li>
-              <p className="font-bold text-charcoal/70 mb-1">3. Redeploy</p>
-              <p className="text-charcoal/50">
-                Push en tom commit eller klik <strong>Redeploy</strong> i Vercel for at aktivere de nye variabler.
-              </p>
-            </li>
-          </ol>
-        </div>
-      )}
     </div>
   );
 }
