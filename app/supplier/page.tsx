@@ -443,6 +443,7 @@ export default function SupplierPage() {
   const [deliveryHours, setDeliveryHours] = useState<DeliveryHoursData[]>([]);
   const [localHoursMap, setLocalHoursMap] = useState<Record<string, string>>({});
   const [msgThread, setMsgThread] = useState<string | null>(null); // null = Generel
+  const [marketAvgRate, setMarketAvgRate] = useState<number | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -489,6 +490,16 @@ export default function SupplierPage() {
 
       setRequests(reqData ?? []);
       setSubmissions(subData ?? []);
+
+      // Markedsgennemsnit for timepris (alle godkendte profiler)
+      const { data: marketRates } = await supabase
+        .from("consultant_submissions")
+        .select("rate")
+        .eq("status", "Godkendt");
+      const rates = (marketRates ?? []).map(s => s.rate).filter((r): r is number => r != null && r > 0);
+      if (rates.length > 0) {
+        setMarketAvgRate(Math.round(rates.reduce((a, b) => a + b, 0) / rates.length));
+      }
 
       // Hent kontrakter for denne leverandør + leverancetimer
       const { data: contractData } = await supabase
@@ -974,6 +985,76 @@ export default function SupplierPage() {
         {tab === "submissions" && (
           <>
             <h2 className="font-bold text-lg text-charcoal mb-6">Mine konsulenter</h2>
+
+            {/* ── Performance-indsigt ── */}
+            {submissions.length > 0 && (() => {
+              const totalSubs = submissions.length;
+              const interviews = submissions.filter(s => s.customer_decision === "interview").length;
+              const rejected   = submissions.filter(s => s.customer_decision === "afvist").length;
+              const evaluated  = interviews + rejected;
+              const winRate    = evaluated > 0 ? Math.round((interviews / evaluated) * 100) : null;
+
+              const myRates  = submissions.map(s => s.rate).filter((r): r is number => r != null && r > 0);
+              const myAvgRate = myRates.length > 0
+                ? Math.round(myRates.reduce((a, b) => a + b, 0) / myRates.length)
+                : null;
+              const delta = myAvgRate && marketAvgRate
+                ? Math.round(((myAvgRate - marketAvgRate) / marketAvgRate) * 100)
+                : null;
+
+              const items = [
+                {
+                  label: "Profiler indsendt",
+                  icon: "👤",
+                  value: totalSubs.toString(),
+                  sub: null,
+                },
+                {
+                  label: "Interview-konvertering",
+                  icon: "🏆",
+                  value: winRate != null ? `${winRate}%` : "–",
+                  sub: winRate != null
+                    ? `${interviews} interview ud af ${evaluated} vurderede`
+                    : evaluated === 0 ? "Ingen beslutninger endnu" : null,
+                },
+                {
+                  label: "Kontrakter vundet",
+                  icon: "📝",
+                  value: contracts.length.toString(),
+                  sub: null,
+                },
+                {
+                  label: "Gns. timepris",
+                  icon: "💰",
+                  value: myAvgRate ? `${myAvgRate.toLocaleString("da-DK")} DKK` : "–",
+                  sub: delta != null
+                    ? { text: `${delta > 0 ? "+" : ""}${delta}% ift. markedet`, positive: delta <= 0 }
+                    : null,
+                },
+              ];
+
+              return (
+                <div className="bg-white border border-[#ede9e3] rounded-xl px-5 py-4 mb-6">
+                  <p className="text-xs font-bold uppercase tracking-wider text-charcoal/40 mb-3">📈 Jeres performanceindsigt</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {items.map(item => (
+                      <div key={item.label}>
+                        <p className="text-xs text-charcoal/40 mb-0.5">{item.label}</p>
+                        <p className="text-sm font-bold text-charcoal">{item.icon} {item.value}</p>
+                        {item.sub && typeof item.sub === "string" && (
+                          <p className="text-[11px] text-charcoal/35 mt-0.5">{item.sub}</p>
+                        )}
+                        {item.sub && typeof item.sub === "object" && (
+                          <p className={`text-[11px] font-bold mt-0.5 ${item.sub.positive ? "text-green-600" : "text-orange"}`}>
+                            {item.sub.text}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {subGroups.length === 0 ? (
               <div className="bg-white rounded-2xl border border-[#ede9e3] p-10 text-center">
