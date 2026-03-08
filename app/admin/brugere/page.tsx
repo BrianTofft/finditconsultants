@@ -110,10 +110,14 @@ export default function BrugerePage() {
 
     if (u.rolle === "Kunde") {
       const { data } = await supabase.from("customers").select("*").eq("id", u.id).single();
+      const fullName = data?.contact_name ?? u.contact_name ?? "";
+      const nameParts = fullName.trim().split(/\s+/);
+      const firstName = nameParts.length > 1 ? nameParts.slice(0, -1).join(" ") : nameParts[0] ?? "";
+      const lastName  = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
       setEditData({
-        contact_name: data?.contact_name ?? u.contact_name ?? "",
-        first_name: "",
-        last_name: "",
+        contact_name: fullName,
+        first_name: firstName,
+        last_name: lastName,
         phone: data?.phone ?? u.phone ?? "",
         company_type: "",
         company_name: data?.company_name ?? u.company_name ?? "",
@@ -154,8 +158,9 @@ export default function BrugerePage() {
   const handleSaveEdit = async (u: User) => {
     setSavingEdit(true);
     if (u.rolle === "Kunde") {
+      const contact_name = [editData.first_name, editData.last_name].filter(Boolean).join(" ").trim() || editData.contact_name;
       await supabase.from("customers").update({
-        contact_name: editData.contact_name,
+        contact_name,
         phone: editData.phone,
         company_name: editData.company_name,
       }).eq("id", u.id);
@@ -278,7 +283,8 @@ export default function BrugerePage() {
             {newUser.role === "customer" && (
               <>
                 <div className="col-span-2"><label className={lbl}>Firmanavn</label><input className={inp} placeholder="Firma A/S" value={newUser.company_name} onChange={e => setNewUser(u => ({ ...u, company_name: e.target.value }))} /></div>
-                <div><label className={lbl}>Kontaktperson</label><input className={inp} placeholder="Navn Efternavn" value={newUser.contact_name} onChange={e => setNewUser(u => ({ ...u, contact_name: e.target.value }))} /></div>
+                <div><label className={lbl}>Fornavn</label><input className={inp} placeholder="Fornavn" value={newUser.first_name} onChange={e => setNewUser(u => ({ ...u, first_name: e.target.value }))} /></div>
+                <div><label className={lbl}>Efternavn</label><input className={inp} placeholder="Efternavn" value={newUser.last_name} onChange={e => setNewUser(u => ({ ...u, last_name: e.target.value }))} /></div>
                 <div><label className={lbl}>Telefon</label><input className={inp} placeholder="+45 12 34 56 78" value={newUser.phone} onChange={e => setNewUser(u => ({ ...u, phone: e.target.value }))} /></div>
               </>
             )}
@@ -579,11 +585,13 @@ export default function BrugerePage() {
                         {field(`company-${u.id}`, "Firmanavn", editData.company_name,
                           v => setEditData(d => ({ ...d, company_name: v })), "Firma A/S")}
                         <div className="grid grid-cols-2 gap-3">
-                          {field(`contact-${u.id}`, "Kontaktperson", editData.contact_name,
-                            v => setEditData(d => ({ ...d, contact_name: v })), "Navn Efternavn")}
-                          {field(`phone-${u.id}`, "Telefon", editData.phone,
-                            v => setEditData(d => ({ ...d, phone: v })), "+45 12 34 56 78")}
+                          {field(`fname-${u.id}`, "Fornavn", editData.first_name,
+                            v => setEditData(d => ({ ...d, first_name: v })), "Fornavn")}
+                          {field(`lname-${u.id}`, "Efternavn", editData.last_name,
+                            v => setEditData(d => ({ ...d, last_name: v })), "Efternavn")}
                         </div>
+                        {field(`phone-${u.id}`, "Telefon", editData.phone,
+                          v => setEditData(d => ({ ...d, phone: v })), "+45 12 34 56 78")}
                       </>
                     )}
 

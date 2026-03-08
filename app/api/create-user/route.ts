@@ -42,7 +42,8 @@ export async function POST(req: Request) {
       extra_competencies: extra_competencies ?? "",
     });
   } else if (role === "customer") {
-    await supabaseAdmin.from("customers").insert({ id: userId, email, company_name, contact_name, phone });
+    const customerName = [first_name, last_name].filter(Boolean).join(" ").trim() || contact_name || "";
+    await supabaseAdmin.from("customers").insert({ id: userId, email, company_name, contact_name: customerName, phone });
   }
 
   return NextResponse.json({ success: true, userId });
