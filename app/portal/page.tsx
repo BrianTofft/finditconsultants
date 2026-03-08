@@ -7,6 +7,8 @@ import MarketPulse from "@/components/MarketPulse";
 
 type Submission = {
   id: string;
+  request_id: string;
+  created_at: string;
   name: string;
   title: string;
   experience_years: number;
@@ -69,6 +71,8 @@ type ContractData = {
   rate: number;
   start_date: string | null;
   end_date: string | null;
+  score: number | null;
+  score_comment: string | null;
   suppliers: { company_name: string; contact_name: string | null; email: string; phone: string | null } | null;
   requests: { description: string; reference_number?: string | null } | null;
 };
@@ -527,6 +531,9 @@ export default function PortalPage() {
   const [deliveryHours, setDeliveryHours] = useState<DeliveryHoursData[]>([]);
   const [msgThread, setMsgThread] = useState<string | null>(null); // null = Generel
   const [compareMode, setCompareMode] = useState(false);
+  const [marketAvgRate, setMarketAvgRate] = useState<number | null>(null);
+  const [supplierCompCounts, setSupplierCompCounts] = useState<Record<string, number>>({});
+  const [allReqStats, setAllReqStats] = useState<{ competencies: string[]; status: string }[]>([]);
 
   useEffect(() => {
     const init = async () => {
@@ -588,11 +595,28 @@ export default function PortalPage() {
         submissions: (subData ?? []).filter(s => s.request_id === r.id),
       })));
 
+      // K1: Markedsgennemsnit for timepris
+      const { data: mktRates } = await supabase
+        .from("consultant_submissions").select("rate").eq("status", "Godkendt");
+      const rateVals = (mktRates ?? []).map((s: { rate: number }) => s.rate).filter((r): r is number => r != null && r > 0);
+      if (rateVals.length > 0) setMarketAvgRate(Math.round(rateVals.reduce((a, b) => a + b, 0) / rateVals.length));
+
+      // K4: Leverandør-antal pr. kompetence
+      const { data: suppData } = await supabase.from("suppliers").select("competencies");
+      const compCounts: Record<string, number> = {};
+      for (const s of suppData ?? []) for (const c of (s.competencies ?? [])) compCounts[c] = (compCounts[c] ?? 0) + 1;
+      setSupplierCompCounts(compCounts);
+
+      // K5: Alle accepterede forespørgsler til succesrate-beregning
+      const { data: statsReqs } = await supabase
+        .from("requests").select("competencies, status").eq("admin_status", "accepted");
+      setAllReqStats(statsReqs ?? []);
+
       // Hent kontrakter + leverancetimer
       if (allReqs.length > 0) {
         const { data: contractData } = await supabase
           .from("contracts")
-          .select("id, request_id, consultant_name, consultant_email, consultant_phone, rate, start_date, end_date, suppliers(company_name, contact_name, email, phone), requests(description, reference_number)")
+          .select("id, request_id, consultant_name, consultant_email, consultant_phone, rate, start_date, end_date, score, score_comment, suppliers(company_name, contact_name, email, phone), requests(description, reference_number)")
           .in("request_id", allReqs.map(r => r.id));
         const ctrs = contractData ?? [];
         setContracts(ctrs as unknown as ContractData[]);
@@ -875,6 +899,11 @@ export default function PortalPage() {
                             {r.language && <span>🌐 {r.language}</span>}
                             {r.nearshore && <span>🌍 Nearshore: {r.nearshore}</span>}
                             {r.max_rate && <span>💰 Maks. {r.max_rate} DKK/t</span>}
+                            {/* K4: Kompetence-tilgængelighed */}
+                            {(r.competencies?.length ?? 0) > 0 && Object.keys(supplierCompCounts).length > 0 && (() => {
+                              const min = Math.min(...r.competencies.map(c => supplierCompCounts[c] ?? 0));
+                              return <span className={min === 0 ? "text-orange" : "text-charcoal/35"}>🏢 {min === 0 ? "Begrænset leverandørdækning" : `${min}+ leverandør${min !== 1 ? "er" : ""} matcher`}</span>;
+                            })()}
                           </div>
                         </div>
                         <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
@@ -972,15 +1001,60 @@ export default function PortalPage() {
                 const interviewCount = subs.filter(s => s.customer_decision === "interview").length;
                 const afvistCount = subs.filter(s => s.customer_decision === "afvist").length;
                 const afventerCount = subs.filter(s => !s.customer_decision).length;
+
+                // K2: Hastighed-til-tilbud
+                const firstSub = subs.slice().sort((a, b) => a.created_at.localeCompare(b.created_at))[0];
+                const diffH = Math.round((new Date(firstSub.created_at).getTime() - new Date(selectedRequest.created_at).getTime()) / (1000 * 60 * 60));
+                const timeToFirst = diffH < 48 ? `${diffH} timer` : `${Math.round(diffH / 24)} dage`;
+
+                // K1: Markedspris-benchmark
+                const rates = subs.map(s => s.rate).filter((r): r is number => r != null && r > 0);
+                const bestRate = rates.length > 0 ? Math.min(...rates) : null;
+                const priceDelta = bestRate && marketAvgRate ? Math.round(((bestRate - marketAvgRate) / marketAvgRate) * 100) : null;
+
                 return (
-                  <div className="flex gap-3 mt-4 pt-4 border-t border-[#f0ede8] flex-wrap">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-charcoal/50">
-                      <span className="w-5 h-5 bg-orange text-white rounded-full flex items-center justify-center text-[10px] font-black">{subs.length}</span>
-                      kandidater
+                  <div className="mt-4 pt-4 border-t border-[#f0ede8] space-y-2">
+                    <div className="flex gap-3 flex-wrap">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-charcoal/50">
+                        <span className="w-5 h-5 bg-orange text-white rounded-full flex items-center justify-center text-[10px] font-black">{subs.length}</span>
+                        kandidater
+                      </div>
+                      {afventerCount > 0 && <div className="flex items-center gap-1.5 text-xs font-bold text-charcoal/40"><span className="w-2 h-2 rounded-full bg-charcoal/20" />{afventerCount} afventer</div>}
+                      {interviewCount > 0 && <div className="flex items-center gap-1.5 text-xs font-bold text-green-600"><span className="w-2 h-2 rounded-full bg-green-400" />{interviewCount} til interview</div>}
+                      {afvistCount > 0 && <div className="flex items-center gap-1.5 text-xs font-bold text-red-400"><span className="w-2 h-2 rounded-full bg-red-300" />{afvistCount} afvist</div>}
                     </div>
-                    {afventerCount > 0 && <div className="flex items-center gap-1.5 text-xs font-bold text-charcoal/40"><span className="w-2 h-2 rounded-full bg-charcoal/20" />{afventerCount} afventer</div>}
-                    {interviewCount > 0 && <div className="flex items-center gap-1.5 text-xs font-bold text-green-600"><span className="w-2 h-2 rounded-full bg-green-400" />{interviewCount} til interview</div>}
-                    {afvistCount > 0 && <div className="flex items-center gap-1.5 text-xs font-bold text-red-400"><span className="w-2 h-2 rounded-full bg-red-300" />{afvistCount} afvist</div>}
+                    {/* K2 + K1 */}
+                    <div className="flex flex-wrap gap-x-5 gap-y-1 text-xs text-charcoal/40">
+                      <span>⚡ Første profil modtaget efter <strong className="text-charcoal/60">{timeToFirst}</strong></span>
+                      {priceDelta != null && (
+                        <span>
+                          💰 Bedste timepris: <strong className="text-charcoal/60">{bestRate!.toLocaleString("da-DK")} DKK/t</strong>
+                          {" "}
+                          <span className={priceDelta <= 0 ? "text-green-600 font-bold" : "text-orange font-bold"}>
+                            ({priceDelta > 0 ? "+" : ""}{priceDelta}% ift. markedet)
+                          </span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* K5: Historisk succesrate */}
+              {allReqStats.length >= 3 && (selectedRequest.competencies?.length ?? 0) > 0 && (() => {
+                const similar = allReqStats.filter(r =>
+                  (r.competencies ?? []).some(c => selectedRequest.competencies.includes(c))
+                );
+                if (similar.length < 2) return null;
+                const besat = similar.filter(r => r.status === "Afsluttet").length;
+                const pct = Math.round((besat / similar.length) * 100);
+                return (
+                  <div className="flex items-center gap-2 mt-3 px-3 py-2 bg-[#f8f6f3] rounded-lg">
+                    <span className="text-base">📊</span>
+                    <p className="text-xs text-charcoal/50">
+                      <strong className="text-charcoal/70">{pct}% af lignende opgaver</strong> er blevet besat
+                      <span className="text-charcoal/35"> ({besat} af {similar.length} med samme kompetencer)</span>
+                    </p>
                   </div>
                 );
               })()}
@@ -1146,6 +1220,53 @@ export default function PortalPage() {
         {tab === "leverance" && (
           <div>
             <h2 className="font-bold text-lg text-charcoal mb-4">Leverance</h2>
+
+            {/* K6: Tidligere konsulenter */}
+            {contracts.length > 0 && (
+              <div className="bg-white border border-[#ede9e3] rounded-xl px-5 py-4 mb-5">
+                <p className="text-xs font-bold uppercase tracking-wider text-charcoal/40 mb-3">⭐ Jeres konsulenter</p>
+                <div className="space-y-2">
+                  {contracts.map(c => (
+                    <div key={c.id} className="flex items-center justify-between gap-4 py-2 border-b border-[#f0ede8] last:border-0">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-charcoal">{c.consultant_name}</p>
+                        <p className="text-xs text-charcoal/40">
+                          {c.suppliers?.company_name && <span>{c.suppliers.company_name} · </span>}
+                          {c.requests?.reference_number && <span className="text-orange font-bold">{c.requests.reference_number}</span>}
+                          {c.start_date && <span className="ml-1">· {new Date(c.start_date).getFullYear()}</span>}
+                        </p>
+                        {c.score_comment && <p className="text-xs text-charcoal/35 mt-0.5 italic">&ldquo;{c.score_comment}&rdquo;</p>}
+                      </div>
+                      <div className="shrink-0 text-right">
+                        {c.score != null ? (
+                          <div>
+                            <span className="text-sm font-black text-charcoal">{c.score}</span>
+                            <span className="text-xs text-charcoal/30">/5</span>
+                            <div className="flex gap-0.5 mt-0.5 justify-end">
+                              {[1,2,3,4,5].map(i => (
+                                <span key={i} className={`text-xs ${i <= c.score! ? "text-orange" : "text-charcoal/15"}`}>★</span>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-charcoal/30">Ikke vurderet</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {contracts.filter(c => c.score != null).length > 0 && (
+                  <p className="text-xs text-charcoal/35 mt-3">
+                    Gns. tilfredshed:{" "}
+                    <strong className="text-charcoal/55">
+                      {(contracts.filter(c => c.score != null).reduce((sum, c) => sum + c.score!, 0) /
+                        contracts.filter(c => c.score != null).length).toFixed(1)}/5
+                    </strong>
+                  </p>
+                )}
+              </div>
+            )}
+
             {contracts.length === 0 ? (
               <div className="bg-white rounded-2xl border border-[#ede9e3] p-12 text-center">
                 <div className="text-5xl mb-4">📦</div>

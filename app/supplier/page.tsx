@@ -27,6 +27,7 @@ type Request = {
 type Submission = {
   id: string;
   request_id: string;
+  created_at: string;
   name: string;
   title: string;
   rate: number | null;
@@ -38,6 +39,7 @@ type Submission = {
   interview_proposed_by: string | null;
   interview_location: string | null;
   interview_address: string | null;
+  ai_rating: number | null;
   requests: {
     description: string;
     reference_number?: string | null;
@@ -77,6 +79,7 @@ type ContractData = {
   rate: number;
   start_date: string | null;
   end_date: string | null;
+  score: number | null;
   requests: { description: string; reference_number?: string | null } | null;
 };
 
@@ -444,6 +447,7 @@ export default function SupplierPage() {
   const [localHoursMap, setLocalHoursMap] = useState<Record<string, string>>({});
   const [msgThread, setMsgThread] = useState<string | null>(null); // null = Generel
   const [marketAvgRate, setMarketAvgRate] = useState<number | null>(null);
+  const [demandedComps, setDemandedComps] = useState<{ competencies: string[] }[]>([]);
 
   useEffect(() => {
     const init = async () => {
@@ -501,10 +505,16 @@ export default function SupplierPage() {
         setMarketAvgRate(Math.round(rates.reduce((a, b) => a + b, 0) / rates.length));
       }
 
+      // L4: Alle accepterede forespørgsler til heatmap
+      const { data: heatReqs } = await supabase
+        .from("requests").select("competencies").eq("admin_status", "accepted")
+        .order("created_at", { ascending: false }).limit(50);
+      setDemandedComps(heatReqs ?? []);
+
       // Hent kontrakter for denne leverandør + leverancetimer
       const { data: contractData } = await supabase
         .from("contracts")
-        .select("id, request_id, consultant_name, consultant_email, consultant_phone, rate, start_date, end_date, requests(description, reference_number)")
+        .select("id, request_id, consultant_name, consultant_email, consultant_phone, rate, start_date, end_date, score, requests(description, reference_number)")
         .eq("supplier_id", user.id)
         .order("created_at", { ascending: false });
       const ctrs = contractData ?? [];
@@ -1033,26 +1043,133 @@ export default function SupplierPage() {
                 },
               ];
 
+              // L6: Kundetilfredshed
+              const scoredContracts = contracts.filter(c => c.score != null);
+              const avgScore = scoredContracts.length > 0
+                ? (scoredContracts.reduce((sum, c) => sum + c.score!, 0) / scoredContracts.length).toFixed(1)
+                : null;
+              if (avgScore != null) {
+                items.push({
+                  label: "Kundetilfredshed",
+                  icon: "⭐",
+                  value: `${avgScore}/5`,
+                  sub: `${scoredContracts.length} vurderet${scoredContracts.length !== 1 ? "e" : ""} kontrakt${scoredContracts.length !== 1 ? "er" : ""}`,
+                });
+              }
+
+              // L3: AI-score-trend (grupér submissions pr. måned, seneste 6 mdr.)
+              const now = new Date();
+              type MonthBucket = { sum: number; count: number };
+              const monthBuckets: MonthBucket[] = Array.from({ length: 6 }, () => ({ sum: 0, count: 0 }));
+              for (const s of submissions) {
+                if (s.ai_rating == null) continue;
+                const d = new Date(s.created_at);
+                const diffM = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
+                if (diffM >= 0 && diffM < 6) {
+                  monthBuckets[5 - diffM].sum += s.ai_rating;
+                  monthBuckets[5 - diffM].count += 1;
+                }
+              }
+              const monthAvgs = monthBuckets.map(b => b.count > 0 ? +(b.sum / b.count).toFixed(1) : null);
+              const nonNull = monthAvgs.filter((v): v is number => v != null);
+              const aiTrend = nonNull.length >= 2
+                ? { first: nonNull[0], last: nonNull[nonNull.length - 1], points: monthAvgs }
+                : null;
+
               return (
-                <div className="bg-white border border-[#ede9e3] rounded-xl px-5 py-4 mb-6">
-                  <p className="text-xs font-bold uppercase tracking-wider text-charcoal/40 mb-3">📈 Jeres performanceindsigt</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {items.map(item => (
-                      <div key={item.label}>
-                        <p className="text-xs text-charcoal/40 mb-0.5">{item.label}</p>
-                        <p className="text-sm font-bold text-charcoal">{item.icon} {item.value}</p>
-                        {item.sub && typeof item.sub === "string" && (
-                          <p className="text-[11px] text-charcoal/35 mt-0.5">{item.sub}</p>
-                        )}
-                        {item.sub && typeof item.sub === "object" && (
-                          <p className={`text-[11px] font-bold mt-0.5 ${item.sub.positive ? "text-green-600" : "text-orange"}`}>
-                            {item.sub.text}
+                <>
+                  {/* Performancepanel */}
+                  <div className="bg-white border border-[#ede9e3] rounded-xl px-5 py-4 mb-4">
+                    <p className="text-xs font-bold uppercase tracking-wider text-charcoal/40 mb-3">📈 Jeres performanceindsigt</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                      {items.map(item => (
+                        <div key={item.label}>
+                          <p className="text-xs text-charcoal/40 mb-0.5">{item.label}</p>
+                          <p className="text-sm font-bold text-charcoal">{item.icon} {item.value}</p>
+                          {item.sub && typeof item.sub === "string" && (
+                            <p className="text-[11px] text-charcoal/35 mt-0.5">{item.sub}</p>
+                          )}
+                          {item.sub && typeof item.sub === "object" && (
+                            <p className={`text-[11px] font-bold mt-0.5 ${item.sub.positive ? "text-green-600" : "text-orange"}`}>
+                              {item.sub.text}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* L3: AI-score-trend */}
+                  {aiTrend && (
+                    <div className="bg-white border border-[#ede9e3] rounded-xl px-5 py-4 mb-4">
+                      <p className="text-xs font-bold uppercase tracking-wider text-charcoal/40 mb-3">🤖 AI-score-trend (seneste 6 måneder)</p>
+                      <div className="flex items-end gap-2">
+                        {aiTrend.points.map((v, i) => {
+                          const d = new Date(); d.setMonth(d.getMonth() - (5 - i));
+                          const label = d.toLocaleDateString("da-DK", { month: "short" });
+                          const h = v != null ? Math.max(8, Math.round(v * 8)) : 4;
+                          return (
+                            <div key={i} className="flex-1 flex flex-col items-center gap-1">
+                              <span className={`text-[10px] font-bold ${v == null ? "text-charcoal/20" : v >= 8 ? "text-green-600" : v >= 5 ? "text-orange" : "text-red-400"}`}>
+                                {v ?? "–"}
+                              </span>
+                              <div
+                                className={`w-full rounded-t-sm transition-all ${v == null ? "bg-charcoal/8" : v >= 8 ? "bg-green-400" : v >= 5 ? "bg-orange" : "bg-red-300"}`}
+                                style={{ height: `${h}px` }}
+                              />
+                              <span className="text-[10px] text-charcoal/35 capitalize">{label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <p className="text-xs text-charcoal/40 mt-3">
+                        {aiTrend.last > aiTrend.first
+                          ? <span>📈 Jeres AI-score er <strong className="text-green-600">steget</strong> fra {aiTrend.first} → {aiTrend.last}</span>
+                          : aiTrend.last < aiTrend.first
+                          ? <span>📉 Jeres AI-score er <strong className="text-orange">faldet</strong> fra {aiTrend.first} → {aiTrend.last}</span>
+                          : <span>➡️ Jeres AI-score er <strong>stabil</strong> på {aiTrend.last}</span>}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* L4: Efterspørgsels-heatmap */}
+                  {demandedComps.length > 0 && (() => {
+                    const counts: Record<string, number> = {};
+                    for (const r of demandedComps) for (const c of r.competencies ?? []) counts[c] = (counts[c] ?? 0) + 1;
+                    const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+                    const myComps = new Set(profile.competencies);
+                    return (
+                      <div className="bg-white border border-[#ede9e3] rounded-xl px-5 py-4 mb-6">
+                        <p className="text-xs font-bold uppercase tracking-wider text-charcoal/40 mb-3">🔥 Efterspørgsels-heatmap</p>
+                        <div className="space-y-1.5">
+                          {top.map(([comp, cnt]) => {
+                            const hasIt = myComps.has(comp);
+                            const max = top[0][1];
+                            const barW = Math.round((cnt / max) * 100);
+                            const heat = cnt >= max * 0.7 ? "bg-orange" : cnt >= max * 0.4 ? "bg-orange/50" : "bg-charcoal/15";
+                            return (
+                              <div key={comp} className="flex items-center gap-3">
+                                <div className="w-28 shrink-0 text-xs font-semibold text-charcoal/70 truncate">{comp}</div>
+                                <div className="flex-1 bg-charcoal/6 rounded-full h-2 overflow-hidden">
+                                  <div className={`h-full rounded-full ${heat}`} style={{ width: `${barW}%` }} />
+                                </div>
+                                <span className="text-[10px] text-charcoal/35 w-5 text-right">{cnt}</span>
+                                <span className={`text-[11px] font-bold w-14 text-right ${hasIt ? "text-green-600" : "text-charcoal/30"}`}>
+                                  {hasIt ? "✅ Har I" : "❌ Mangler"}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {top.some(([c]) => !myComps.has(c) && counts[c] >= (top[0][1] * 0.5)) && (
+                          <p className="text-xs text-orange mt-3">
+                            💡 Overvej at tilføje konsulenter med højtefterspurgte kompetencer I ikke dækker
                           </p>
                         )}
                       </div>
-                    ))}
-                  </div>
-                </div>
+                    );
+                  })()}
+                </>
               );
             })()}
 
