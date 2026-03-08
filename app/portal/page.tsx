@@ -506,6 +506,48 @@ function ConsultantCard({
   );
 }
 
+/* ─── Status-tidslinje ───────────────────────────────────────── */
+function RequestTimeline({ request, hasContract }: { request: Request; hasContract: boolean }) {
+  const subs = request.submissions ?? [];
+  const hasCandidates = subs.length > 0;
+  const hasInterview = subs.some(s => s.customer_decision === "interview");
+  const isDone = request.status === "Afsluttet" || hasContract;
+  const isStarted = request.status === "I gang" || hasCandidates || hasInterview || isDone;
+
+  const steps = [
+    { label: "Modtaget",   done: true },
+    { label: "Igangsat",   done: isStarted },
+    { label: "Kandidater", done: hasCandidates || hasInterview || isDone },
+    { label: "Interview",  done: hasInterview || isDone },
+    { label: "Afsluttet",  done: isDone },
+  ];
+
+  let currentIdx = 0;
+  steps.forEach((s, i) => { if (s.done) currentIdx = i; });
+
+  return (
+    <div className="mt-3 pt-3 border-t border-[#f5f2ee]">
+      <div className="flex items-start">
+        {steps.map((step, i) => (
+          <div key={i} className={`flex items-start ${i < steps.length - 1 ? "flex-1" : "flex-shrink-0"}`}>
+            <div className="flex flex-col items-center flex-shrink-0">
+              <div className={`w-2.5 h-2.5 rounded-full transition-all ${
+                step.done ? "bg-orange" : "bg-charcoal/15"
+              } ${i === currentIdx ? "ring-[3px] ring-orange/20" : ""}`} />
+              <span className={`text-[9px] font-bold mt-1 whitespace-nowrap ${step.done ? "text-orange/70" : "text-charcoal/25"}`}>
+                {step.label}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <div className={`flex-1 h-px mt-[5px] ${steps[i + 1].done ? "bg-orange/40" : "bg-charcoal/10"}`} />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Hoved-komponent ────────────────────────────────────────── */
 export default function PortalPage() {
   const router = useRouter();
@@ -911,6 +953,7 @@ export default function PortalPage() {
                           <span className="text-orange text-xs font-bold group-hover:translate-x-0.5 transition-transform">Se kandidater →</span>
                         </div>
                       </div>
+                      <RequestTimeline request={r} hasContract={contracts.some(c => c.request_id === r.id)} />
                     </div>
                   );
                 })}
@@ -1058,6 +1101,7 @@ export default function PortalPage() {
                   </div>
                 );
               })()}
+              <RequestTimeline request={selectedRequest} hasContract={contracts.some(c => c.request_id === selectedRequest.id)} />
             </div>
 
             <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
