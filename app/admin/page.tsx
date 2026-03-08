@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
+import MarketPulse from "@/components/MarketPulse";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -131,6 +132,8 @@ export default function AdminDashboard() {
           </Link>
         ))}
       </div>
+
+      <MarketPulse />
 
       {/* Recent activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
