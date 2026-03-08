@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { COMPETENCIES } from "@/app/data";
 import { useRouter } from "next/navigation";
 import ChatWindow from "@/components/chat/ChatWindow";
+import MarketPulse from "@/components/MarketPulse";
 
 type Request = {
   id: string;
@@ -745,6 +746,8 @@ export default function SupplierPage() {
       </div>
 
       <main className="flex-1 md:ml-56 overflow-y-auto pt-14 md:pt-0 p-4 md:p-8">
+
+        <MarketPulse />
 
         {/* ══════════════════════════════════════════════
             TAB: FORESPØRGSLER

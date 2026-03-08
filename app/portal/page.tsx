@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import ChatWindow from "@/components/chat/ChatWindow";
+import MarketPulse from "@/components/MarketPulse";
 
 type Submission = {
   id: string;
@@ -781,6 +782,8 @@ export default function PortalPage() {
 
       {/* ── Hovedindhold ── */}
       <main className="flex-1 md:ml-56 overflow-y-auto pt-14 md:pt-0 p-4 md:p-8">
+
+        <MarketPulse />
 
         {/* ══ TAB: FORESPØRGSLER — LISTE ══ */}
         {tab === "requests" && !selectedRequest && (
