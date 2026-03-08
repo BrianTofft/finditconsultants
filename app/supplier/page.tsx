@@ -254,6 +254,47 @@ function LocationPicker({
   );
 }
 
+/* ─── Status-tidslinje (leverandørvisning) ──────────────────── */
+function SubmissionTimeline({ s, hasContract }: { s: Submission; hasContract: boolean }) {
+  const isApproved  = s.status === "Godkendt" || s.status === "Valgt" || s.customer_decision != null;
+  const isPresented = s.status === "Valgt" || s.customer_decision != null;
+  const hasInterview = s.customer_decision === "interview";
+  const isConfirmed  = s.interview_confirmed;
+
+  const steps = [
+    { label: "Indsendt",    done: true },
+    { label: "Godkendt",    done: isApproved },
+    { label: "Præsenteret", done: isPresented || hasInterview || isConfirmed || hasContract },
+    { label: "Interview",   done: hasInterview || isConfirmed || hasContract },
+    { label: "Kontrakt",    done: hasContract },
+  ];
+
+  let currentIdx = 0;
+  steps.forEach((step, i) => { if (step.done) currentIdx = i; });
+
+  return (
+    <div className="mt-3 pt-3 border-t border-[#f5f2ee]">
+      <div className="flex items-start">
+        {steps.map((step, i) => (
+          <div key={i} className={`flex items-start ${i < steps.length - 1 ? "flex-1" : "flex-shrink-0"}`}>
+            <div className="flex flex-col items-center flex-shrink-0">
+              <div className={`w-2.5 h-2.5 rounded-full transition-all ${
+                step.done ? "bg-orange" : "bg-charcoal/15"
+              } ${i === currentIdx ? "ring-[3px] ring-orange/20" : ""}`} />
+              <span className={`text-[9px] font-bold mt-1 whitespace-nowrap ${step.done ? "text-orange/70" : "text-charcoal/25"}`}>
+                {step.label}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <div className={`flex-1 h-px mt-[5px] ${steps[i + 1].done ? "bg-orange/40" : "bg-charcoal/10"}`} />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Konsulent-kort (leverandørvisning) ─────────────────────── */
 function SubmissionCard({
   s,
@@ -265,6 +306,7 @@ function SubmissionCard({
   onCounterAddressChange,
   onSupplierResponse,
   confirming,
+  hasContract,
 }: {
   s: Submission;
   interviewDate: string;
@@ -275,6 +317,7 @@ function SubmissionCard({
   onCounterAddressChange: (val: string) => void;
   onSupplierResponse: (action: "accept" | "counter", newDate?: string) => void;
   confirming: boolean;
+  hasContract?: boolean;
 }) {
   const statusColor: Record<string, string> = {
     "Indsendt": "bg-blue-100 text-blue-700",
@@ -415,6 +458,8 @@ function SubmissionCard({
             )}
           </div>
         )}
+
+        <SubmissionTimeline s={s} hasContract={hasContract ?? false} />
       </div>
     </div>
   );
@@ -1339,6 +1384,7 @@ export default function SupplierPage() {
                           onCounterAddressChange={val => setCounterSupplierAddresses(prev => ({ ...prev, [s.id]: val }))}
                           onSupplierResponse={(action, newDate) => handleSupplierResponse(s.id, action, newDate)}
                           confirming={confirming === s.id}
+                          hasContract={contracts.some(c => c.request_id === s.request_id)}
                         />
                       ))}
                     </div>
