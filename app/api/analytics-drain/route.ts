@@ -29,6 +29,10 @@ export async function POST(req: Request) {
       device_id: e.deviceId ?? null,
       event_type: e.eventType ?? "pageview",
       referrer: e.referrer ?? null,
+      country: e.country ?? null,
+      device:  e.device  ?? null,
+      browser: e.browser ?? null,
+      os:      e.os      ?? null,
     }));
 
   if (rows.length > 0) {

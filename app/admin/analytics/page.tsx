@@ -20,6 +20,15 @@ function parseSource(referrer: string | null): string {
   }
 }
 
+// Konverterer 2-bogstavs landekode til flag-emoji
+function countryFlag(code: string): string {
+  if (!code || code.length !== 2) return "🌍";
+  const o = 0x1F1E6;
+  return String.fromCodePoint(o + code.toUpperCase().charCodeAt(0) - 65, o + code.toUpperCase().charCodeAt(1) - 65);
+}
+
+type Stat = { label: string; count: number };
+
 type TrafficData = {
   today: number;
   week: number;
@@ -27,7 +36,11 @@ type TrafficData = {
   uniqueMonth: number;
   topPages: { path: string; count: number }[];
   dailyLast30: { date: string; count: number }[];
-  topSources: { source: string; count: number }[];
+  topSources: Stat[];
+  topCountries: Stat[];
+  devices: Stat[];
+  topBrowsers: Stat[];
+  topOS: Stat[];
 };
 
 const speedUrl       = process.env.NEXT_PUBLIC_VERCEL_SPEED_URL ?? "";
@@ -49,7 +62,7 @@ export default function AnalyticsPage() {
           .eq("event_type", "pageview").gte("recorded_at", startOfToday.toISOString()),
         supabase.from("page_events").select("id", { count: "exact", head: true })
           .eq("event_type", "pageview").gte("recorded_at", startOfWeek.toISOString()),
-        supabase.from("page_events").select("device_id, path, recorded_at, referrer")
+        supabase.from("page_events").select("device_id, path, recorded_at, referrer, country, device, browser, os")
           .eq("event_type", "pageview").gte("recorded_at", startOfMonth.toISOString()),
       ]);
 
@@ -88,7 +101,24 @@ export default function AnalyticsPage() {
       const topSources = Object.entries(sourceCounts)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 8)
-        .map(([source, count]) => ({ source, count }));
+        .map(([label, count]) => ({ label, count }));
+
+      // Land, enhed, browser, OS
+      const countryCounts: Record<string, number> = {};
+      const deviceCounts:  Record<string, number> = {};
+      const browserCounts: Record<string, number> = {};
+      const osCounts:      Record<string, number> = {};
+
+      for (const r of monthRows) {
+        const row = r as any;
+        if (row.country) countryCounts[row.country] = (countryCounts[row.country] ?? 0) + 1;
+        if (row.device)  deviceCounts[row.device]   = (deviceCounts[row.device]   ?? 0) + 1;
+        if (row.browser) browserCounts[row.browser]  = (browserCounts[row.browser]  ?? 0) + 1;
+        if (row.os)      osCounts[row.os]            = (osCounts[row.os]            ?? 0) + 1;
+      }
+
+      const toStats = (obj: Record<string, number>, n = 8): Stat[] =>
+        Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n).map(([label, count]) => ({ label, count }));
 
       setTraffic({
         today: todayRes.count ?? 0,
@@ -98,6 +128,10 @@ export default function AnalyticsPage() {
         topPages,
         dailyLast30,
         topSources,
+        topCountries: toStats(countryCounts),
+        devices:      toStats(deviceCounts, 3),
+        topBrowsers:  toStats(browserCounts),
+        topOS:        toStats(osCounts),
       });
       setLoading(false);
     };
@@ -200,28 +234,136 @@ export default function AnalyticsPage() {
               <div className="bg-white border border-[#ede9e3] rounded-xl px-5 py-5">
                 <p className="text-xs font-bold uppercase tracking-wider text-charcoal/40 mb-4">Trafikkilder — seneste 30 dage</p>
                 <div className="space-y-2.5">
-                  {traffic.topSources.map(({ source, count }) => {
+                  {traffic.topSources.map(({ label, count }) => {
                     const pct = Math.round((count / traffic.topSources[0].count) * 100);
                     const share = traffic.month > 0 ? Math.round((count / traffic.month) * 100) : 0;
                     const icon =
-                      source === "Google"      ? "🔍" :
-                      source === "LinkedIn"    ? "💼" :
-                      source === "Facebook"    ? "📘" :
-                      source === "Instagram"   ? "📸" :
-                      source === "Twitter / X" ? "🐦" :
-                      source === "Bing"        ? "🔎" :
-                      source === "Direkte"     ? "🔗" :
-                      source === "Intern"      ? "🏠" : "🌐";
+                      label === "Google"      ? "🔍" :
+                      label === "LinkedIn"    ? "💼" :
+                      label === "Facebook"    ? "📘" :
+                      label === "Instagram"   ? "📸" :
+                      label === "Twitter / X" ? "🐦" :
+                      label === "Bing"        ? "🔎" :
+                      label === "Direkte"     ? "🔗" :
+                      label === "Intern"      ? "🏠" : "🌐";
                     return (
-                      <div key={source} className="flex items-center gap-3">
+                      <div key={label} className="flex items-center gap-3">
                         <span className="text-[12px] text-charcoal/70 w-32 truncate shrink-0 flex items-center gap-1.5">
-                          <span>{icon}</span>{source}
+                          <span>{icon}</span>{label}
                         </span>
                         <div className="flex-1 bg-charcoal/6 rounded-full h-2 overflow-hidden">
                           <div className="h-full bg-green rounded-full" style={{ width: `${pct}%` }} />
                         </div>
                         <span className="text-xs font-bold text-charcoal w-8 text-right shrink-0">{count}</span>
                         <span className="text-[11px] text-charcoal/35 w-9 text-right shrink-0">{share}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          {/* ── Enhed (device split) ── */}
+          {traffic.devices.length > 0 && (() => {
+            const total = traffic.devices.reduce((s, d) => s + d.count, 0);
+            const deviceIcon = (d: string) =>
+              d === "mobile" ? "📱" : d === "tablet" ? "📟" : "🖥️";
+            const deviceLabel = (d: string) =>
+              d === "mobile" ? "Mobil" : d === "tablet" ? "Tablet" : "Desktop";
+            return (
+              <div className="bg-white border border-[#ede9e3] rounded-xl px-5 py-5">
+                <p className="text-xs font-bold uppercase tracking-wider text-charcoal/40 mb-4">Enhedsfordeling — seneste 30 dage</p>
+                {/* Stacked bar */}
+                <div className="flex h-5 rounded-full overflow-hidden mb-4 gap-0.5">
+                  {traffic.devices.map(({ label, count }) => (
+                    <div key={label} title={`${deviceLabel(label)}: ${count}`}
+                      className={`transition-all ${label === "mobile" ? "bg-orange" : label === "tablet" ? "bg-green" : "bg-charcoal/30"}`}
+                      style={{ width: `${Math.round((count / total) * 100)}%` }} />
+                  ))}
+                </div>
+                <div className="flex gap-6">
+                  {traffic.devices.map(({ label, count }) => (
+                    <div key={label} className="flex items-center gap-2">
+                      <span className="text-lg">{deviceIcon(label)}</span>
+                      <div>
+                        <p className="text-xs font-bold text-charcoal">{Math.round((count / total) * 100)}%</p>
+                        <p className="text-[10px] text-charcoal/40">{deviceLabel(label)} ({count})</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* ── Land + Browser + OS ── */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+            {traffic.topCountries.length > 0 && (
+              <div className="bg-white border border-[#ede9e3] rounded-xl px-5 py-5">
+                <p className="text-xs font-bold uppercase tracking-wider text-charcoal/40 mb-4">Top lande</p>
+                <div className="space-y-2.5">
+                  {traffic.topCountries.map(({ label, count }) => {
+                    const pct = Math.round((count / traffic.topCountries[0].count) * 100);
+                    return (
+                      <div key={label} className="flex items-center gap-2">
+                        <span className="text-base shrink-0">{countryFlag(label)}</span>
+                        <span className="text-[12px] text-charcoal/70 w-8 shrink-0">{label}</span>
+                        <div className="flex-1 bg-charcoal/6 rounded-full h-2 overflow-hidden">
+                          <div className="h-full bg-orange/60 rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-xs font-bold text-charcoal w-8 text-right shrink-0">{count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {traffic.topBrowsers.length > 0 && (
+              <div className="bg-white border border-[#ede9e3] rounded-xl px-5 py-5">
+                <p className="text-xs font-bold uppercase tracking-wider text-charcoal/40 mb-4">Browser</p>
+                <div className="space-y-2.5">
+                  {traffic.topBrowsers.map(({ label, count }) => {
+                    const pct = Math.round((count / traffic.topBrowsers[0].count) * 100);
+                    const icon =
+                      label === "Chrome"  ? "🟢" : label === "Safari"  ? "🔵" :
+                      label === "Firefox" ? "🦊" : label === "Edge"    ? "🔷" : "🌐";
+                    return (
+                      <div key={label} className="flex items-center gap-2">
+                        <span className="text-sm shrink-0">{icon}</span>
+                        <span className="text-[12px] text-charcoal/70 w-16 truncate shrink-0">{label}</span>
+                        <div className="flex-1 bg-charcoal/6 rounded-full h-2 overflow-hidden">
+                          <div className="h-full bg-charcoal/25 rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-xs font-bold text-charcoal w-8 text-right shrink-0">{count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {traffic.topOS.length > 0 && (
+              <div className="bg-white border border-[#ede9e3] rounded-xl px-5 py-5">
+                <p className="text-xs font-bold uppercase tracking-wider text-charcoal/40 mb-4">Operativsystem</p>
+                <div className="space-y-2.5">
+                  {traffic.topOS.map(({ label, count }) => {
+                    const pct = Math.round((count / traffic.topOS[0].count) * 100);
+                    const icon =
+                      label === "Windows" ? "🪟" : label === "macOS"   ? "🍎" :
+                      label === "iOS"     ? "📱" : label === "Android" ? "🤖" :
+                      label === "Linux"   ? "🐧" : "💻";
+                    return (
+                      <div key={label} className="flex items-center gap-2">
+                        <span className="text-sm shrink-0">{icon}</span>
+                        <span className="text-[12px] text-charcoal/70 w-16 truncate shrink-0">{label}</span>
+                        <div className="flex-1 bg-charcoal/6 rounded-full h-2 overflow-hidden">
+                          <div className="h-full bg-green/50 rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-xs font-bold text-charcoal w-8 text-right shrink-0">{count}</span>
                       </div>
                     );
                   })}
