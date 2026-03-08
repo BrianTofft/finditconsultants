@@ -26,6 +26,47 @@ const reqStatusColor: Record<string, string> = {
   "Afsluttet": "bg-green-100 text-green-700",
 };
 
+/* ─── Status-tidslinje (admin-visning) ──────────────────────── */
+function SubmissionTimeline({ s, hasContract }: { s: Submission; hasContract: boolean }) {
+  const isApproved   = s.status === "Godkendt" || s.status === "Valgt" || s.customer_decision != null;
+  const isPresented  = s.status === "Valgt" || s.customer_decision != null;
+  const hasInterview = s.customer_decision === "interview";
+  const isConfirmed  = s.interview_confirmed;
+
+  const steps = [
+    { label: "Indsendt",    done: true },
+    { label: "Godkendt",    done: isApproved },
+    { label: "Præsenteret", done: isPresented || hasInterview || isConfirmed || hasContract },
+    { label: "Interview",   done: hasInterview || isConfirmed || hasContract },
+    { label: "Kontrakt",    done: hasContract },
+  ];
+
+  let currentIdx = 0;
+  steps.forEach((step, i) => { if (step.done) currentIdx = i; });
+
+  return (
+    <div className="mt-3 pt-3 border-t border-[#f5f2ee]">
+      <div className="flex items-start">
+        {steps.map((step, i) => (
+          <div key={i} className={`flex items-start ${i < steps.length - 1 ? "flex-1" : "flex-shrink-0"}`}>
+            <div className="flex flex-col items-center flex-shrink-0">
+              <div className={`w-2.5 h-2.5 rounded-full transition-all ${
+                step.done ? "bg-orange" : "bg-charcoal/15"
+              } ${i === currentIdx ? "ring-[3px] ring-orange/20" : ""}`} />
+              <span className={`text-[9px] font-bold mt-1 whitespace-nowrap ${step.done ? "text-orange/70" : "text-charcoal/25"}`}>
+                {step.label}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <div className={`flex-1 h-px mt-[5px] ${steps[i + 1].done ? "bg-orange/40" : "bg-charcoal/10"}`} />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Admin konsulent-kort ───────────────────────────────────── */
 function AdminConsultantCard({
   s,
@@ -41,6 +82,7 @@ function AdminConsultantCard({
   onSaveSummary,
   onCancelSummary,
   onSummaryChange,
+  hasContract,
 }: {
   s: Submission;
   selecting: boolean;
@@ -55,6 +97,7 @@ function AdminConsultantCard({
   onSaveSummary: () => void;
   onCancelSummary: () => void;
   onSummaryChange: (val: string) => void;
+  hasContract?: boolean;
 }) {
   const [showFullBio, setShowFullBio] = useState(false);
 
@@ -212,6 +255,8 @@ function AdminConsultantCard({
         {s.customer_decision === "afvist" && (
           <p className="text-xs text-red-500 font-bold">✗ Afvist af kunde</p>
         )}
+
+        <SubmissionTimeline s={s} hasContract={hasContract ?? false} />
       </div>
 
       {/* ── Footer: handlinger ── */}
@@ -277,6 +322,7 @@ function AdminConsultantCard({
 /* ─── Hoved-komponent ────────────────────────────────────────── */
 export default function KonsulenterPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [contractKeys, setContractKeys] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "Indsendt" | "Godkendt" | "Valgt" | "Afvist">("all");
   const [selecting, setSelecting] = useState<string | null>(null);
@@ -286,11 +332,15 @@ export default function KonsulenterPage() {
 
   useEffect(() => {
     const load = async () => {
-      const { data } = await supabase
-        .from("consultant_submissions")
-        .select("*, requests(description, email, reference_number, competencies, status)")
-        .order("created_at", { ascending: false });
-      setSubmissions(data ?? []);
+      const [{ data: subs }, { data: contracts }] = await Promise.all([
+        supabase
+          .from("consultant_submissions")
+          .select("*, requests(description, email, reference_number, competencies, status)")
+          .order("created_at", { ascending: false }),
+        supabase.from("contracts").select("request_id, supplier_id"),
+      ]);
+      setSubmissions(subs ?? []);
+      setContractKeys(new Set((contracts ?? []).map(c => `${c.request_id}:${c.supplier_id}`)));
       setLoading(false);
     };
     load();
@@ -483,6 +533,7 @@ export default function KonsulenterPage() {
                     onSaveSummary={() => handleSaveSummary(s.id)}
                     onCancelSummary={() => setEditingSummary(prev => Object.fromEntries(Object.entries(prev).filter(([k]) => k !== s.id)))}
                     onSummaryChange={val => setEditingSummary(prev => ({ ...prev, [s.id]: val }))}
+                    hasContract={contractKeys.has(`${s.request_id}:${s.supplier_id}`)}
                   />
                 ))}
               </div>
