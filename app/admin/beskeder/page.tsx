@@ -23,6 +23,7 @@ type Message = {
   content: string;
   created_at: string;
   request_id: string | null;
+  recipient_id: string | null;
   read_by_admin: boolean;
 };
 
@@ -39,6 +40,8 @@ export default function BeskederPage() {
   const [adminId, setAdminId] = useState("");
   const [loading, setLoading] = useState(true);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const selectedUserRef = useRef<ChatUser | null>(null);
+  const selectedThreadRef = useRef<string | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -150,6 +153,70 @@ export default function BeskederPage() {
     init();
   }, []);
 
+  // Hold refs synkroniserede med state (undgår stale closures i Realtime-handler)
+  useEffect(() => { selectedUserRef.current = selectedUser; }, [selectedUser]);
+  useEffect(() => { selectedThreadRef.current = selectedThread; }, [selectedThread]);
+
+  // Real-time subscription — lytter på ALLE nye chat-beskeder
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-beskeder-realtime")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "chat_messages" },
+        (payload) => {
+          const msg = payload.new as Message;
+          const currentUser = selectedUserRef.current;
+          const currentThread = selectedThreadRef.current;
+
+          // Hvem er beskeden fra/til (bruger-siden)
+          const msgUserId = msg.sender_type === "admin"
+            ? msg.recipient_id
+            : msg.sender_id;
+
+          // Opdater sidebar for ikke-admin beskeder (nye indkommende fra brugere)
+          if (msg.sender_type !== "admin" && msgUserId) {
+            const isCurrentConv = currentUser?.sender_id === msgUserId;
+            const updateUser = (u: ChatUser): ChatUser => {
+              if (u.sender_id !== msgUserId) return u;
+              return {
+                ...u,
+                latest: msg.created_at,
+                unread: isCurrentConv ? u.unread : u.unread + 1,
+              };
+            };
+            setRequestGroups(prev => prev.map(g => ({ ...g, users: g.users.map(updateUser) })));
+            setUngroupedUsers(prev => prev.map(updateUser));
+            setChatUsers(prev => {
+              const updated = prev.map(updateUser);
+              return updated.sort((a, b) => new Date(b.latest).getTime() - new Date(a.latest).getTime());
+            });
+          }
+
+          // Append besked i chatvinduet hvis den hører til den aktuelle samtale
+          if (currentUser) {
+            const belongsToConv =
+              msg.sender_id === currentUser.sender_id ||
+              msg.recipient_id === currentUser.sender_id;
+            const threadMatches =
+              (currentThread === null && msg.request_id === null) ||
+              (currentThread !== null && msg.request_id === currentThread);
+
+            if (belongsToConv && threadMatches) {
+              setMessages(prev => {
+                if (prev.some(m => m.id === msg.id)) return prev; // undgå dubletter
+                return [...prev, msg];
+              });
+              setTimeout(() => chatBottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []); // Kun én gang — handler bruger refs i stedet for state
+
   const loadChat = async (senderId: string, threadId: string | null) => {
     let query = supabase
       .from("chat_messages")
@@ -201,7 +268,7 @@ export default function BeskederPage() {
       read_by_admin: true,
       read_by_user: false,
     });
-    loadChat(selectedUser.sender_id, selectedThread);
+    // Realtime-subscriptionen håndterer automatisk at vise den nye besked
   };
 
   const handleDeleteConversation = async (senderId: string, senderName: string) => {
