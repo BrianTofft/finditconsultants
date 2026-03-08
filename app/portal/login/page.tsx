@@ -57,9 +57,11 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error || !data.user) {
       setError("Forkert email eller adgangskode");
+    } else if (data.user.user_metadata?.must_change_password) {
+      router.push("/set-password?role=customer");
     } else {
       router.push("/portal");
     }

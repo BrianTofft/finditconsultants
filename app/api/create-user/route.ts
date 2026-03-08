@@ -10,10 +10,12 @@ export async function POST(req: Request) {
   const { email, password, role, company_name, contact_name, phone, first_name, last_name, company_type, competencies, extra_competencies } = await req.json();
 
   // Opret bruger i Supabase Auth
+  // Kunder og leverandører skal vælge deres eget password ved første login
   const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
+    user_metadata: role !== "admin" ? { must_change_password: true } : {},
   });
 
   if (authError || !authData.user) {

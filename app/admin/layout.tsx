@@ -112,6 +112,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [counts, setCounts] = useState<BadgeCounts>({ pending: 0, applications: 0, messages: 0 });
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Auth check — kører kun ved mount
   useEffect(() => {
     if (isLoginPage) {
       setAuthChecked(true);
@@ -128,8 +129,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       setIsAdmin(true);
       setAuthChecked(true);
+    };
 
-      // Fetch badge counts for sidebar
+    check();
+  }, [isLoginPage, router]);
+
+  // Badge-tæller — genindlæses ved hvert sideskift (rydder fx ulæste efter besøg på /admin/beskeder)
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const fetchBadges = async () => {
       const [pendingRes, appsRes, msgRes] = await Promise.all([
         supabase.from("requests")
           .select("*", { count: "exact", head: true })
@@ -142,7 +151,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           .eq("read_by_admin", false)
           .neq("sender_type", "admin"),
       ]);
-
       setCounts({
         pending: pendingRes.count ?? 0,
         applications: appsRes.count ?? 0,
@@ -150,8 +158,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       });
     };
 
-    check();
-  }, [isLoginPage, router]);
+    fetchBadges();
+  }, [isAdmin, pathname]); // Re-kører ved hvert sideskift
+
+  // Realtime — opdaterer besked-badge øjeblikkeligt ved nye indkommende beskeder
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    const channel = supabase
+      .channel("admin-layout-badge")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "chat_messages" },
+        (payload) => {
+          if (payload.new.sender_type !== "admin") {
+            setCounts(prev => ({ ...prev, messages: prev.messages + 1 }));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [isAdmin]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();

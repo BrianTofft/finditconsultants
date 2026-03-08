@@ -75,7 +75,11 @@ export default function SupplierLoginPage() {
       setLoading(false);
       return;
     }
-    router.push("/supplier");
+    if (data.user.user_metadata?.must_change_password) {
+      router.push("/set-password?role=supplier");
+    } else {
+      router.push("/supplier");
+    }
     setLoading(false);
   };
 
