@@ -28,6 +28,7 @@ export async function POST(req: Request) {
       session_id: e.sessionId ?? null,
       device_id: e.deviceId ?? null,
       event_type: e.eventType ?? "pageview",
+      referrer: e.referrer ?? null,
     }));
 
   if (rows.length > 0) {

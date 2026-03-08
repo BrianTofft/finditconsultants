@@ -2,6 +2,24 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 
+// Oversætter rå referrer-URL til et menneskevenligt kildernavn
+function parseSource(referrer: string | null): string {
+  if (!referrer) return "Direkte";
+  try {
+    const host = new URL(referrer).hostname.replace(/^www\./, "");
+    if (host.startsWith("google.")) return "Google";
+    if (host === "bing.com") return "Bing";
+    if (host === "linkedin.com") return "LinkedIn";
+    if (host === "facebook.com" || host === "fb.com") return "Facebook";
+    if (host === "instagram.com") return "Instagram";
+    if (host === "twitter.com" || host === "t.co" || host === "x.com") return "Twitter / X";
+    if (host === "finditconsultants.com") return "Intern";
+    return host;
+  } catch {
+    return "Direkte";
+  }
+}
+
 type TrafficData = {
   today: number;
   week: number;
@@ -9,6 +27,7 @@ type TrafficData = {
   uniqueMonth: number;
   topPages: { path: string; count: number }[];
   dailyLast30: { date: string; count: number }[];
+  topSources: { source: string; count: number }[];
 };
 
 const speedUrl       = process.env.NEXT_PUBLIC_VERCEL_SPEED_URL ?? "";
@@ -30,7 +49,7 @@ export default function AnalyticsPage() {
           .eq("event_type", "pageview").gte("recorded_at", startOfToday.toISOString()),
         supabase.from("page_events").select("id", { count: "exact", head: true })
           .eq("event_type", "pageview").gte("recorded_at", startOfWeek.toISOString()),
-        supabase.from("page_events").select("device_id, path, recorded_at")
+        supabase.from("page_events").select("device_id, path, recorded_at, referrer")
           .eq("event_type", "pageview").gte("recorded_at", startOfMonth.toISOString()),
       ]);
 
@@ -60,6 +79,17 @@ export default function AnalyticsPage() {
         return { date: dateStr, count: dailyCounts[dateStr] ?? 0 };
       });
 
+      // Trafikkilder
+      const sourceCounts: Record<string, number> = {};
+      for (const r of monthRows) {
+        const src = parseSource((r as any).referrer ?? null);
+        sourceCounts[src] = (sourceCounts[src] ?? 0) + 1;
+      }
+      const topSources = Object.entries(sourceCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([source, count]) => ({ source, count }));
+
       setTraffic({
         today: todayRes.count ?? 0,
         week: weekRes.count ?? 0,
@@ -67,6 +97,7 @@ export default function AnalyticsPage() {
         uniqueMonth,
         topPages,
         dailyLast30,
+        topSources,
       });
       setLoading(false);
     };
@@ -140,28 +171,65 @@ export default function AnalyticsPage() {
             </div>
           </div>
 
-          {/* ── Top sider ── */}
-          {traffic.topPages.length > 0 && (
-            <div className="bg-white border border-[#ede9e3] rounded-xl px-5 py-5">
-              <p className="text-xs font-bold uppercase tracking-wider text-charcoal/40 mb-4">Top sider — seneste 30 dage</p>
-              <div className="space-y-2.5">
-                {traffic.topPages.map(({ path, count }) => {
-                  const pct = Math.round((count / traffic.topPages[0].count) * 100);
-                  const share = traffic.month > 0 ? Math.round((count / traffic.month) * 100) : 0;
-                  return (
-                    <div key={path} className="flex items-center gap-3">
-                      <span className="text-[12px] text-charcoal/70 font-mono w-40 truncate shrink-0">{path || "/"}</span>
-                      <div className="flex-1 bg-charcoal/6 rounded-full h-2 overflow-hidden">
-                        <div className="h-full bg-orange rounded-full" style={{ width: `${pct}%` }} />
+          {/* ── Top sider + Trafikkilder side om side ── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            {traffic.topPages.length > 0 && (
+              <div className="bg-white border border-[#ede9e3] rounded-xl px-5 py-5">
+                <p className="text-xs font-bold uppercase tracking-wider text-charcoal/40 mb-4">Top sider — seneste 30 dage</p>
+                <div className="space-y-2.5">
+                  {traffic.topPages.map(({ path, count }) => {
+                    const pct = Math.round((count / traffic.topPages[0].count) * 100);
+                    const share = traffic.month > 0 ? Math.round((count / traffic.month) * 100) : 0;
+                    return (
+                      <div key={path} className="flex items-center gap-3">
+                        <span className="text-[12px] text-charcoal/70 font-mono w-32 truncate shrink-0">{path || "/"}</span>
+                        <div className="flex-1 bg-charcoal/6 rounded-full h-2 overflow-hidden">
+                          <div className="h-full bg-orange rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-xs font-bold text-charcoal w-8 text-right shrink-0">{count}</span>
+                        <span className="text-[11px] text-charcoal/35 w-9 text-right shrink-0">{share}%</span>
                       </div>
-                      <span className="text-xs font-bold text-charcoal w-8 text-right shrink-0">{count}</span>
-                      <span className="text-[11px] text-charcoal/35 w-9 text-right shrink-0">{share}%</span>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {traffic.topSources.length > 0 && (
+              <div className="bg-white border border-[#ede9e3] rounded-xl px-5 py-5">
+                <p className="text-xs font-bold uppercase tracking-wider text-charcoal/40 mb-4">Trafikkilder — seneste 30 dage</p>
+                <div className="space-y-2.5">
+                  {traffic.topSources.map(({ source, count }) => {
+                    const pct = Math.round((count / traffic.topSources[0].count) * 100);
+                    const share = traffic.month > 0 ? Math.round((count / traffic.month) * 100) : 0;
+                    const icon =
+                      source === "Google"      ? "🔍" :
+                      source === "LinkedIn"    ? "💼" :
+                      source === "Facebook"    ? "📘" :
+                      source === "Instagram"   ? "📸" :
+                      source === "Twitter / X" ? "🐦" :
+                      source === "Bing"        ? "🔎" :
+                      source === "Direkte"     ? "🔗" :
+                      source === "Intern"      ? "🏠" : "🌐";
+                    return (
+                      <div key={source} className="flex items-center gap-3">
+                        <span className="text-[12px] text-charcoal/70 w-32 truncate shrink-0 flex items-center gap-1.5">
+                          <span>{icon}</span>{source}
+                        </span>
+                        <div className="flex-1 bg-charcoal/6 rounded-full h-2 overflow-hidden">
+                          <div className="h-full bg-green rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-xs font-bold text-charcoal w-8 text-right shrink-0">{count}</span>
+                        <span className="text-[11px] text-charcoal/35 w-9 text-right shrink-0">{share}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+          </div>
 
         </div>
       ) : null}
