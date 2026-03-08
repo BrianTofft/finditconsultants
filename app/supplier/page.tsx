@@ -448,6 +448,7 @@ export default function SupplierPage() {
   const [msgThread, setMsgThread] = useState<string | null>(null); // null = Generel
   const [marketAvgRate, setMarketAvgRate] = useState<number | null>(null);
   const [demandedComps, setDemandedComps] = useState<{ competencies: string[] }[]>([]);
+  const [responseTimeData, setResponseTimeData] = useState<{ myAvgHours: number | null; allAvgHours: number[] } | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -477,7 +478,7 @@ export default function SupplierPage() {
 
       const { data: rsData } = await supabase
         .from("request_suppliers")
-        .select("request_id")
+        .select("request_id, notified_at")
         .eq("supplier_id", user.id);
 
       const requestIds = (rsData ?? []).map(rs => rs.request_id);
@@ -494,6 +495,63 @@ export default function SupplierPage() {
 
       setRequests(reqData ?? []);
       setSubmissions(subData ?? []);
+
+      // L5: Responstidsberegning
+      const notifiedMap: Record<string, string> = {};
+      for (const rs of rsData ?? []) if (rs.notified_at) notifiedMap[rs.request_id] = rs.notified_at;
+
+      const firstSubByReq: Record<string, string> = {};
+      for (const s of subData ?? []) {
+        if (!firstSubByReq[s.request_id] || s.created_at < firstSubByReq[s.request_id])
+          firstSubByReq[s.request_id] = s.created_at;
+      }
+
+      const myHours: number[] = [];
+      for (const [reqId, subAt] of Object.entries(firstSubByReq)) {
+        const notAt = notifiedMap[reqId];
+        if (!notAt) continue;
+        const h = (new Date(subAt).getTime() - new Date(notAt).getTime()) / 3600000;
+        if (h > 0 && h < 720) myHours.push(h);
+      }
+      const myAvgHours = myHours.length > 0 ? myHours.reduce((a, b) => a + b, 0) / myHours.length : null;
+
+      // Hent alle leverandørers data til ranking (kun nødvendig hvis vi har egne data)
+      if (myAvgHours != null) {
+        const [{ data: allRS }, { data: allSubs }] = await Promise.all([
+          supabase.from("request_suppliers").select("request_id, supplier_id, notified_at"),
+          supabase.from("consultant_submissions").select("request_id, supplier_id, created_at"),
+        ]);
+
+        // Første indsendelse per (supplier, request)
+        const suppFirst: Record<string, Record<string, string>> = {};
+        for (const s of allSubs ?? []) {
+          if (!suppFirst[s.supplier_id]) suppFirst[s.supplier_id] = {};
+          const prev = suppFirst[s.supplier_id][s.request_id];
+          if (!prev || s.created_at < prev) suppFirst[s.supplier_id][s.request_id] = s.created_at;
+        }
+
+        // Gns. responstid per leverandør
+        const suppNotified: Record<string, Record<string, string>> = {};
+        for (const rs of allRS ?? []) {
+          if (!rs.notified_at) continue;
+          if (!suppNotified[rs.supplier_id]) suppNotified[rs.supplier_id] = {};
+          suppNotified[rs.supplier_id][rs.request_id] = rs.notified_at;
+        }
+
+        const allAvgHours: number[] = [];
+        for (const [sId, reqs] of Object.entries(suppNotified)) {
+          const hrs: number[] = [];
+          for (const [rId, notAt] of Object.entries(reqs)) {
+            const subAt = suppFirst[sId]?.[rId];
+            if (!subAt) continue;
+            const h = (new Date(subAt).getTime() - new Date(notAt).getTime()) / 3600000;
+            if (h > 0 && h < 720) hrs.push(h);
+          }
+          if (hrs.length > 0) allAvgHours.push(hrs.reduce((a, b) => a + b, 0) / hrs.length);
+        }
+
+        setResponseTimeData({ myAvgHours, allAvgHours });
+      }
 
       // Markedsgennemsnit for timepris (alle godkendte profiler)
       const { data: marketRates } = await supabase
@@ -1098,6 +1156,47 @@ export default function SupplierPage() {
                       ))}
                     </div>
                   </div>
+
+                  {/* L5: Responstids-ranking */}
+                  {responseTimeData?.myAvgHours != null && (() => {
+                    const { myAvgHours, allAvgHours } = responseTimeData;
+                    const formatH = (h: number) => h < 24 ? `${Math.round(h)} timer` : `${(h / 24).toFixed(1)} dage`;
+                    const fasterThan = allAvgHours.filter(h => h > myAvgHours).length;
+                    const pct = allAvgHours.length > 1 ? Math.round((fasterThan / allAvgHours.length) * 100) : null;
+                    const sorted = [...allAvgHours].sort((a, b) => a - b);
+                    const q25 = sorted.length >= 4 ? sorted[Math.floor(sorted.length * 0.25)] : null;
+                    const isTop = pct != null && pct >= 75;
+                    return (
+                      <div className="bg-white border border-[#ede9e3] rounded-xl px-5 py-4 mb-4">
+                        <p className="text-xs font-bold uppercase tracking-wider text-charcoal/40 mb-3">⏱ Responstids-ranking</p>
+                        <div className="flex items-start gap-8 flex-wrap">
+                          <div>
+                            <p className="text-xs text-charcoal/40 mb-0.5">Jeres gns. responstid</p>
+                            <p className="text-xl font-black text-charcoal">{formatH(myAvgHours)}</p>
+                          </div>
+                          {pct != null && (
+                            <div>
+                              <p className="text-xs text-charcoal/40 mb-0.5">Hurtigere end</p>
+                              <p className={`text-xl font-black ${isTop ? "text-green-600" : pct >= 50 ? "text-orange" : "text-charcoal/50"}`}>
+                                {pct}% af leverandørerne{isTop ? " 🏆" : ""}
+                              </p>
+                            </div>
+                          )}
+                          {q25 != null && (
+                            <div className="self-end">
+                              <p className="text-xs text-charcoal/35">Topkvartilen svarer inden <strong>{formatH(q25)}</strong></p>
+                            </div>
+                          )}
+                        </div>
+                        {pct != null && (
+                          <div className="mt-3 bg-charcoal/5 rounded-full h-2 overflow-hidden">
+                            <div className={`h-full rounded-full transition-all ${isTop ? "bg-green-400" : pct >= 50 ? "bg-orange" : "bg-charcoal/20"}`}
+                              style={{ width: `${pct}%` }} />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* L3: AI-score-trend */}
                   {aiTrend && (
