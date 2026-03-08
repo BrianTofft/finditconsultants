@@ -526,6 +526,7 @@ export default function PortalPage() {
   const [contracts, setContracts] = useState<ContractData[]>([]);
   const [deliveryHours, setDeliveryHours] = useState<DeliveryHoursData[]>([]);
   const [msgThread, setMsgThread] = useState<string | null>(null); // null = Generel
+  const [compareMode, setCompareMode] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -985,10 +986,28 @@ export default function PortalPage() {
               })()}
             </div>
 
-            <h3 className="font-bold text-charcoal mb-4 flex items-center gap-2">
-              Kandidater
-              <span className="text-xs bg-orange text-white font-bold px-2.5 py-1 rounded-full">{selectedRequest.submissions?.length ?? 0}</span>
-            </h3>
+            <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+              <h3 className="font-bold text-charcoal flex items-center gap-2">
+                Kandidater
+                <span className="text-xs bg-orange text-white font-bold px-2.5 py-1 rounded-full">{selectedRequest.submissions?.length ?? 0}</span>
+              </h3>
+              {(selectedRequest.submissions?.length ?? 0) >= 2 && (
+                <div className="flex rounded-lg overflow-hidden border border-[#ede9e3] text-xs font-bold">
+                  <button
+                    onClick={() => setCompareMode(false)}
+                    className={`px-3 py-1.5 transition-colors ${!compareMode ? "bg-charcoal text-white" : "bg-white text-charcoal/50 hover:bg-[#f8f6f3]"}`}
+                  >
+                    ▦ Kort
+                  </button>
+                  <button
+                    onClick={() => setCompareMode(true)}
+                    className={`px-3 py-1.5 transition-colors ${compareMode ? "bg-charcoal text-white" : "bg-white text-charcoal/50 hover:bg-[#f8f6f3]"}`}
+                  >
+                    ⇔ Sammenlign
+                  </button>
+                </div>
+              )}
+            </div>
 
             {(selectedRequest.submissions?.length ?? 0) === 0 ? (
               <div className="bg-white rounded-2xl border border-[#ede9e3] p-10 text-center">
@@ -996,7 +1015,106 @@ export default function PortalPage() {
                 <p className="text-charcoal/50 text-sm font-semibold">Ingen godkendte kandidater endnu</p>
                 <p className="text-charcoal/35 text-xs mt-1">Vi arbejder på at finde de bedste profiler til dig.</p>
               </div>
+            ) : compareMode ? (
+              /* ── SAMMENLIGNINGS-TABEL ── */
+              <div className="bg-white rounded-2xl border border-[#ede9e3] overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b border-[#ede9e3]">
+                      <th className="text-left text-xs font-extrabold uppercase tracking-wider text-charcoal/35 px-4 py-3 w-32 bg-[#f8f6f3]">Felt</th>
+                      {selectedRequest.submissions?.map(s => (
+                        <th key={s.id} className="text-left px-4 py-3 min-w-[180px]">
+                          <p className="font-bold text-charcoal text-sm leading-tight">{s.name}</p>
+                          <p className="text-charcoal/40 text-xs font-normal">{s.title}</p>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Timepris */}
+                    <tr className="border-b border-[#f0ede8] hover:bg-[#faf9f7]">
+                      <td className="px-4 py-3 text-xs font-bold text-charcoal/40 bg-[#f8f6f3]">💰 Timepris</td>
+                      {selectedRequest.submissions?.map(s => {
+                        const best = Math.min(...(selectedRequest.submissions?.map(x => x.rate).filter(Boolean) as number[]));
+                        const isBest = s.rate === best;
+                        return (
+                          <td key={s.id} className="px-4 py-3">
+                            <span className={`font-bold ${isBest ? "text-green-600" : "text-charcoal"}`}>
+                              {s.rate ? `${s.rate.toLocaleString("da-DK")} DKK/t` : "–"}
+                              {isBest && <span className="ml-1 text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-black">Lavest</span>}
+                            </span>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    {/* AI-score */}
+                    <tr className="border-b border-[#f0ede8] hover:bg-[#faf9f7]">
+                      <td className="px-4 py-3 text-xs font-bold text-charcoal/40 bg-[#f8f6f3]">🤖 AI-score</td>
+                      {selectedRequest.submissions?.map(s => {
+                        const score = s.ai_rating;
+                        const color = score == null ? "text-charcoal/30" : score >= 8 ? "text-green-600" : score >= 5 ? "text-orange" : "text-red-400";
+                        return (
+                          <td key={s.id} className="px-4 py-3">
+                            {score != null ? (
+                              <div>
+                                <span className={`font-black text-base ${color}`}>{score}<span className="text-xs font-normal text-charcoal/30">/10</span></span>
+                                {s.ai_summary && <p className="text-charcoal/40 text-xs mt-0.5 line-clamp-2">{s.ai_summary}</p>}
+                              </div>
+                            ) : <span className="text-charcoal/30 text-xs">Ikke vurderet</span>}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                    {/* Tilgængelighed */}
+                    <tr className="border-b border-[#f0ede8] hover:bg-[#faf9f7]">
+                      <td className="px-4 py-3 text-xs font-bold text-charcoal/40 bg-[#f8f6f3]">📅 Tilgængelighed</td>
+                      {selectedRequest.submissions?.map(s => (
+                        <td key={s.id} className="px-4 py-3 text-charcoal text-xs">{s.availability || "–"}</td>
+                      ))}
+                    </tr>
+                    {/* Kompetencer */}
+                    <tr className="border-b border-[#f0ede8] hover:bg-[#faf9f7]">
+                      <td className="px-4 py-3 text-xs font-bold text-charcoal/40 bg-[#f8f6f3]">🛠 Kompetencer</td>
+                      {selectedRequest.submissions?.map(s => (
+                        <td key={s.id} className="px-4 py-3">
+                          <div className="flex flex-wrap gap-1">
+                            {(s.skills ?? []).slice(0, 6).map(sk => (
+                              <span key={sk} className="text-[10px] bg-orange/10 text-orange font-bold px-2 py-0.5 rounded-full">{sk}</span>
+                            ))}
+                            {(s.skills ?? []).length > 6 && <span className="text-[10px] text-charcoal/30">+{s.skills.length - 6}</span>}
+                          </div>
+                        </td>
+                      ))}
+                    </tr>
+                    {/* Status */}
+                    <tr className="border-b border-[#f0ede8] hover:bg-[#faf9f7]">
+                      <td className="px-4 py-3 text-xs font-bold text-charcoal/40 bg-[#f8f6f3]">📋 Status</td>
+                      {selectedRequest.submissions?.map(s => (
+                        <td key={s.id} className="px-4 py-3">
+                          {s.customer_decision === "interview"
+                            ? <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">✅ Til interview</span>
+                            : s.customer_decision === "afvist"
+                            ? <span className="text-xs font-bold text-red-400 bg-red-50 px-2 py-0.5 rounded-full">❌ Afvist</span>
+                            : <span className="text-xs font-bold text-charcoal/40 bg-charcoal/5 px-2 py-0.5 rounded-full">⏳ Afventer</span>}
+                        </td>
+                      ))}
+                    </tr>
+                    {/* CV */}
+                    <tr className="hover:bg-[#faf9f7]">
+                      <td className="px-4 py-3 text-xs font-bold text-charcoal/40 bg-[#f8f6f3]">📄 CV</td>
+                      {selectedRequest.submissions?.map(s => (
+                        <td key={s.id} className="px-4 py-3">
+                          {s.cv_url
+                            ? <a href={s.cv_url} target="_blank" rel="noopener noreferrer" className="text-xs text-orange font-bold hover:underline">Download CV ↗</a>
+                            : <span className="text-xs text-charcoal/30">Ikke vedhæftet</span>}
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             ) : (
+              /* ── KORT-VISNING (standard) ── */
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                 {selectedRequest.submissions?.map(s => (
                   <ConsultantCard
