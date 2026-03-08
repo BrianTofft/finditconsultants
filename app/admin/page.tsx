@@ -4,6 +4,14 @@ import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import MarketPulse from "@/components/MarketPulse";
 
+type TrafficData = {
+  today: number;
+  week: number;
+  month: number;
+  uniqueMonth: number;
+  topPages: { path: string; count: number }[];
+};
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
     pending: 0, accepted: 0, submissions: 0,
@@ -12,6 +20,7 @@ export default function AdminDashboard() {
   const [recentRequests, setRecentRequests] = useState<any[]>([]);
   const [recentSubmissions, setRecentSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [traffic, setTraffic] = useState<TrafficData | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -42,6 +51,51 @@ export default function AdminDashboard() {
       setLoading(false);
     };
     load();
+  }, []);
+
+  useEffect(() => {
+    const loadTraffic = async () => {
+      const now = new Date();
+      const startOfToday = new Date(now); startOfToday.setHours(0, 0, 0, 0);
+      const startOfWeek  = new Date(now); startOfWeek.setDate(now.getDate() - 7);
+      const startOfMonth = new Date(now); startOfMonth.setDate(now.getDate() - 30);
+
+      const [todayRes, weekRes, monthRes] = await Promise.all([
+        supabase.from("page_events").select("id", { count: "exact", head: true })
+          .eq("event_type", "pageview").gte("recorded_at", startOfToday.toISOString()),
+        supabase.from("page_events").select("id", { count: "exact", head: true })
+          .eq("event_type", "pageview").gte("recorded_at", startOfWeek.toISOString()),
+        supabase.from("page_events").select("device_id")
+          .eq("event_type", "pageview").gte("recorded_at", startOfMonth.toISOString()),
+      ]);
+
+      const monthRows = monthRes.data ?? [];
+      const uniqueMonth = new Set(monthRows.map(r => r.device_id).filter(Boolean)).size;
+
+      // Top sider (seneste 30 dage)
+      const { data: pathRows } = await supabase
+        .from("page_events").select("path")
+        .eq("event_type", "pageview").gte("recorded_at", startOfMonth.toISOString())
+        .not("path", "is", null);
+
+      const pathCounts: Record<string, number> = {};
+      for (const r of pathRows ?? []) {
+        if (r.path) pathCounts[r.path] = (pathCounts[r.path] ?? 0) + 1;
+      }
+      const topPages = Object.entries(pathCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([path, count]) => ({ path, count }));
+
+      setTraffic({
+        today: todayRes.count ?? 0,
+        week: weekRes.count ?? 0,
+        month: monthRows.length,
+        uniqueMonth,
+        topPages,
+      });
+    };
+    loadTraffic();
   }, []);
 
   if (loading) return (
@@ -134,6 +188,67 @@ export default function AdminDashboard() {
       </div>
 
       <MarketPulse />
+
+      {/* Trafik fra Log Drain */}
+      <div className="bg-white border border-[#ede9e3] rounded-xl px-5 py-4 mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-xs font-bold uppercase tracking-wider text-charcoal/40">🌐 Webtrafik</p>
+          {traffic === null && <span className="text-xs text-charcoal/30 animate-pulse">Henter...</span>}
+        </div>
+        {traffic !== null && traffic.month === 0 ? (
+          <p className="text-xs text-charcoal/35 italic">
+            Ingen data endnu — Log Drain er endnu ikke opsat eller har ikke modtaget events.
+          </p>
+        ) : traffic !== null ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="sm:col-span-2 lg:col-span-1">
+              <p className="text-xs text-charcoal/40 mb-1">Sidevisninger</p>
+              <div className="flex gap-4">
+                <div>
+                  <p className="text-xl font-black text-charcoal">{traffic.today.toLocaleString("da-DK")}</p>
+                  <p className="text-[10px] text-charcoal/35 uppercase tracking-wider font-bold">i dag</p>
+                </div>
+                <div>
+                  <p className="text-xl font-black text-charcoal">{traffic.week.toLocaleString("da-DK")}</p>
+                  <p className="text-[10px] text-charcoal/35 uppercase tracking-wider font-bold">7 dage</p>
+                </div>
+                <div>
+                  <p className="text-xl font-black text-charcoal">{traffic.month.toLocaleString("da-DK")}</p>
+                  <p className="text-[10px] text-charcoal/35 uppercase tracking-wider font-bold">30 dage</p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-charcoal/40 mb-1">Unikke besøgende</p>
+              <p className="text-xl font-black text-charcoal">{traffic.uniqueMonth.toLocaleString("da-DK")}</p>
+              <p className="text-[10px] text-charcoal/35 uppercase tracking-wider font-bold">30 dage</p>
+            </div>
+            {traffic.topPages.length > 0 && (
+              <div className="sm:col-span-2">
+                <p className="text-xs text-charcoal/40 mb-2">Top sider (30 dage)</p>
+                <div className="space-y-1.5">
+                  {traffic.topPages.map(({ path, count }) => {
+                    const pct = Math.round((count / traffic.topPages[0].count) * 100);
+                    return (
+                      <div key={path} className="flex items-center gap-2">
+                        <span className="text-[11px] text-charcoal/60 font-mono w-32 truncate shrink-0">{path}</span>
+                        <div className="flex-1 bg-charcoal/6 rounded-full h-1.5 overflow-hidden">
+                          <div className="h-full bg-orange rounded-full" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-[11px] text-charcoal/40 w-8 text-right shrink-0">{count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-4 gap-4 animate-pulse">
+            {[...Array(4)].map((_, i) => <div key={i} className="h-10 bg-charcoal/8 rounded" />)}
+          </div>
+        )}
+      </div>
 
       {/* Recent activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
