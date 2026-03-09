@@ -49,16 +49,17 @@ export async function POST(req: Request) {
     await supabaseAdmin.from("customers").insert({ id: userId, email, company_name, contact_name: customerName, phone });
   }
 
-  // Sync til HubSpot (non-blocking — fejler aldrig brugeroprettelsen)
+  // Sync til HubSpot — awaited så serverless-funktionen ikke terminerer før kaldet er færdigt.
+  // Fejl logges men afbryder aldrig brugeroprettelsen.
   if (role === "customer" || role === "supplier") {
-    syncUserToHubspot({
+    await syncUserToHubspot({
       email,
       firstname: first_name || contact_name?.split(" ")[0],
       lastname: last_name || contact_name?.split(" ").slice(1).join(" "),
       phone,
       company_name,
       role,
-    }).catch(() => {}); // fire-and-forget
+    }).catch(err => console.error("[HubSpot] create-user sync fejl:", err));
   }
 
   return NextResponse.json({ success: true, userId });
