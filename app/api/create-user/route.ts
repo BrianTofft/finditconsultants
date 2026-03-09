@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { syncUserToHubspot } from "@/lib/hubspot";
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -46,6 +47,18 @@ export async function POST(req: Request) {
   } else if (role === "customer") {
     const customerName = [first_name, last_name].filter(Boolean).join(" ").trim() || contact_name || "";
     await supabaseAdmin.from("customers").insert({ id: userId, email, company_name, contact_name: customerName, phone });
+  }
+
+  // Sync til HubSpot (non-blocking — fejler aldrig brugeroprettelsen)
+  if (role === "customer" || role === "supplier") {
+    syncUserToHubspot({
+      email,
+      firstname: first_name || contact_name?.split(" ")[0],
+      lastname: last_name || contact_name?.split(" ").slice(1).join(" "),
+      phone,
+      company_name,
+      role,
+    }).catch(() => {}); // fire-and-forget
   }
 
   return NextResponse.json({ success: true, userId });
