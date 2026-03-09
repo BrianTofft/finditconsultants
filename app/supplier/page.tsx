@@ -720,6 +720,19 @@ export default function SupplierPage() {
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+    // Sync til HubSpot med opdaterede profiloplysninger (fire-and-forget)
+    fetch("/api/sync-hubspot-profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: profile.email,
+        firstname: profile.first_name,
+        lastname: profile.last_name,
+        phone: profile.phone,
+        company_name: profile.company_name,
+        role: "supplier",
+      }),
+    }).catch(() => {});
   };
 
   const handleSupplierResponse = async (submissionId: string, action: "accept" | "counter", newDatetime?: string) => {

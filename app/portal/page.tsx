@@ -768,6 +768,20 @@ export default function PortalPage() {
     });
     setSaving(false); setSaved(true);
     setTimeout(() => setSaved(false), 2000);
+    // Sync til HubSpot med opdaterede profiloplysninger (fire-and-forget)
+    const nameParts = profile.contact_name?.split(" ") ?? [];
+    fetch("/api/sync-hubspot-profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: profile.email,
+        firstname: nameParts[0] ?? "",
+        lastname: nameParts.slice(1).join(" ") ?? "",
+        phone: profile.phone,
+        company_name: profile.company_name,
+        role: "customer",
+      }),
+    }).catch(() => {});
   };
 
   const handleLogout = () => {
