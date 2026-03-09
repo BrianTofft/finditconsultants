@@ -273,7 +273,8 @@ export default function BeskederPage() {
 
   const handleDeleteConversation = async (senderId: string, senderName: string) => {
     if (!confirm(`Er du sikker på at du vil slette hele samtalen med ${senderName}?\n\nDenne handling kan ikke fortrydes.`)) return;
-    await supabase.from("chat_messages").delete().eq("sender_id", senderId);
+    const res = await fetch("/api/delete-conversation", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ userId: senderId }) });
+    if (!res.ok) { alert("Sletning fejlede — prøv igen"); return; }
     const remove = (list: ChatUser[]) => list.filter(u => u.sender_id !== senderId);
     setRequestGroups(prev => prev.map(g => ({ ...g, users: remove(g.users) })).filter(g => g.users.length > 0));
     setUngroupedUsers(prev => remove(prev));
