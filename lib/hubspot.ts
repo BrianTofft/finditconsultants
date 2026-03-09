@@ -2,9 +2,6 @@
  * HubSpot CRM integration — FindITconsultants
  *
  * Kræver env-variabel: HUBSPOT_ACCESS_TOKEN (Private App token)
- *
- * Bruges til at synce nye kunder og leverandører som kontakter + virksomheder.
- * Alle funktioner er ikke-blokerende: fejl logges men kaster ikke videre.
  */
 
 const BASE = "https://api.hubapi.com";
@@ -22,8 +19,6 @@ export type HubspotContactInput = {
   lastname?: string;
   phone?: string;
   company?: string;
-  /** "Kunde" | "Leverandør" */
-  lifecyclestage?: string;
 };
 
 /**
@@ -33,35 +28,40 @@ export type HubspotContactInput = {
 export async function upsertHubspotContact(
   contact: HubspotContactInput
 ): Promise<string | null> {
+  console.log("[HubSpot] upsertContact start:", contact.email);
   try {
+    const body = {
+      inputs: [
+        {
+          idProperty: "email",
+          id: contact.email,
+          properties: {
+            email: contact.email,
+            firstname: contact.firstname ?? "",
+            lastname: contact.lastname ?? "",
+            phone: contact.phone ?? "",
+            company: contact.company ?? "",
+          },
+        },
+      ],
+    };
+
     const res = await fetch(`${BASE}/crm/v3/objects/contacts/batch/upsert`, {
       method: "POST",
       headers: headers(),
-      body: JSON.stringify({
-        inputs: [
-          {
-            idProperty: "email",
-            id: contact.email,
-            properties: {
-              email: contact.email,
-              firstname: contact.firstname ?? "",
-              lastname: contact.lastname ?? "",
-              phone: contact.phone ?? "",
-              company: contact.company ?? "",
-              lifecyclestage: contact.lifecyclestage ?? "Kunde",
-            },
-          },
-        ],
-      }),
+      body: JSON.stringify(body),
     });
 
+    const text = await res.text();
     if (!res.ok) {
-      console.error("[HubSpot] upsertContact fejl:", await res.text());
+      console.error("[HubSpot] upsertContact fejl HTTP", res.status, text);
       return null;
     }
 
-    const data = await res.json();
-    return data.results?.[0]?.id ?? null;
+    const data = JSON.parse(text);
+    const id = data.results?.[0]?.id ?? null;
+    console.log("[HubSpot] upsertContact OK, id:", id);
+    return id;
   } catch (err) {
     console.error("[HubSpot] upsertContact exception:", err);
     return null;
@@ -76,6 +76,7 @@ export async function upsertHubspotCompany(
   companyName: string
 ): Promise<string | null> {
   if (!companyName?.trim()) return null;
+  console.log("[HubSpot] upsertCompany:", companyName);
 
   try {
     // Søg på navn først
@@ -84,11 +85,7 @@ export async function upsertHubspotCompany(
       headers: headers(),
       body: JSON.stringify({
         filterGroups: [
-          {
-            filters: [
-              { propertyName: "name", operator: "EQ", value: companyName },
-            ],
-          },
+          { filters: [{ propertyName: "name", operator: "EQ", value: companyName }] },
         ],
         properties: ["name"],
         limit: 1,
@@ -98,6 +95,7 @@ export async function upsertHubspotCompany(
     if (searchRes.ok) {
       const searchData = await searchRes.json();
       if (searchData.results?.length > 0) {
+        console.log("[HubSpot] upsertCompany fundet eksisterende:", searchData.results[0].id);
         return searchData.results[0].id;
       }
     }
@@ -106,17 +104,17 @@ export async function upsertHubspotCompany(
     const createRes = await fetch(`${BASE}/crm/v3/objects/companies`, {
       method: "POST",
       headers: headers(),
-      body: JSON.stringify({
-        properties: { name: companyName },
-      }),
+      body: JSON.stringify({ properties: { name: companyName } }),
     });
 
+    const text = await createRes.text();
     if (!createRes.ok) {
-      console.error("[HubSpot] upsertCompany fejl:", await createRes.text());
+      console.error("[HubSpot] upsertCompany fejl HTTP", createRes.status, text);
       return null;
     }
 
-    const data = await createRes.json();
+    const data = JSON.parse(text);
+    console.log("[HubSpot] upsertCompany oprettet:", data.id);
     return data.id ?? null;
   } catch (err) {
     console.error("[HubSpot] upsertCompany exception:", err);
@@ -131,16 +129,16 @@ export async function associateContactToCompany(
   contactId: string,
   companyId: string
 ): Promise<void> {
+  console.log("[HubSpot] associateContactToCompany:", contactId, "->", companyId);
   try {
     const res = await fetch(
       `${BASE}/crm/v4/objects/contacts/${contactId}/associations/default/companies/${companyId}`,
       { method: "PUT", headers: headers() }
     );
     if (!res.ok) {
-      console.error(
-        "[HubSpot] associateContactToCompany fejl:",
-        await res.text()
-      );
+      console.error("[HubSpot] associateContactToCompany fejl HTTP", res.status, await res.text());
+    } else {
+      console.log("[HubSpot] associateContactToCompany OK");
     }
   } catch (err) {
     console.error("[HubSpot] associateContactToCompany exception:", err);
@@ -149,8 +147,7 @@ export async function associateContactToCompany(
 
 /**
  * Samlet hjælpefunktion: upsert kontakt + virksomhed + tilknyt.
- * Kaldes fra API-routes efter brugeroprettelse.
- * Fejler aldrig (alt fanges internt).
+ * Kaldes fra API-routes efter brugeroprettelse og ved profil-opdatering.
  */
 export async function syncUserToHubspot({
   email,
@@ -167,9 +164,12 @@ export async function syncUserToHubspot({
   company_name?: string;
   role: "customer" | "supplier";
 }): Promise<void> {
-  if (!process.env.HUBSPOT_ACCESS_TOKEN) return; // Ikke konfigureret — skip stille
+  if (!process.env.HUBSPOT_ACCESS_TOKEN) {
+    console.warn("[HubSpot] HUBSPOT_ACCESS_TOKEN ikke sat — springer over");
+    return;
+  }
 
-  const lifecyclestage = role === "customer" ? "Kunde" : "Leverandør";
+  console.log("[HubSpot] syncUserToHubspot:", email, role);
 
   const contactId = await upsertHubspotContact({
     email,
@@ -177,7 +177,6 @@ export async function syncUserToHubspot({
     lastname,
     phone,
     company: company_name,
-    lifecyclestage,
   });
 
   if (contactId && company_name?.trim()) {
