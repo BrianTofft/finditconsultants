@@ -76,13 +76,36 @@ export async function upsertHubspotContact(
  * Returnerer HubSpot company-ID eller null ved fejl.
  */
 export async function upsertHubspotCompany(
-  companyName: string
+  companyName: string,
+  domain?: string
 ): Promise<string | null> {
   if (!companyName?.trim()) return null;
-  console.log("[HubSpot] upsertCompany:", companyName);
+  console.log("[HubSpot] upsertCompany:", companyName, domain ?? "");
 
   try {
-    // Søg på navn først
+    // Søg på domæne først (undgår duplikat med HubSpots auto-association)
+    if (domain) {
+      const domainSearch = await fetch(`${BASE}/crm/v3/objects/companies/search`, {
+        method: "POST",
+        headers: headers(),
+        body: JSON.stringify({
+          filterGroups: [
+            { filters: [{ propertyName: "domain", operator: "EQ", value: domain }] },
+          ],
+          properties: ["name", "domain"],
+          limit: 1,
+        }),
+      });
+      if (domainSearch.ok) {
+        const domainData = await domainSearch.json();
+        if (domainData.results?.length > 0) {
+          console.log("[HubSpot] upsertCompany fundet via domæne:", domainData.results[0].id);
+          return domainData.results[0].id;
+        }
+      }
+    }
+
+    // Søg på navn
     const searchRes = await fetch(`${BASE}/crm/v3/objects/companies/search`, {
       method: "POST",
       headers: headers(),
@@ -98,16 +121,16 @@ export async function upsertHubspotCompany(
     if (searchRes.ok) {
       const searchData = await searchRes.json();
       if (searchData.results?.length > 0) {
-        console.log("[HubSpot] upsertCompany fundet eksisterende:", searchData.results[0].id);
+        console.log("[HubSpot] upsertCompany fundet via navn:", searchData.results[0].id);
         return searchData.results[0].id;
       }
     }
 
-    // Ikke fundet — opret ny
+    // Ikke fundet — opret ny med både navn og domæne
     const createRes = await fetch(`${BASE}/crm/v3/objects/companies`, {
       method: "POST",
       headers: headers(),
-      body: JSON.stringify({ properties: { name: companyName } }),
+      body: JSON.stringify({ properties: { name: companyName, ...(domain ? { domain } : {}) } }),
     });
 
     const text = await createRes.text();
@@ -185,8 +208,10 @@ export async function syncUserToHubspot({
     lifecyclestage,
   });
 
+  const emailDomain = email.split("@")[1]?.toLowerCase();
+
   if (contactId && company_name?.trim()) {
-    const companyId = await upsertHubspotCompany(company_name);
+    const companyId = await upsertHubspotCompany(company_name, emailDomain);
     if (companyId) {
       await associateContactToCompany(contactId, companyId);
     }
