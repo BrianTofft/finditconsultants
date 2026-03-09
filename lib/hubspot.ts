@@ -23,8 +23,6 @@ export type HubspotContactInput = {
   phone?: string;
   company?: string;
   /** "Kunde" | "Leverandør" */
-  jobtitle?: string;
-  /** HubSpot lifecyclestage: "lead" | "customer" | "other" osv. */
   lifecyclestage?: string;
 };
 
@@ -50,8 +48,7 @@ export async function upsertHubspotContact(
               lastname: contact.lastname ?? "",
               phone: contact.phone ?? "",
               company: contact.company ?? "",
-              jobtitle: contact.jobtitle ?? "",
-              lifecyclestage: contact.lifecyclestage ?? "lead",
+              lifecyclestage: contact.lifecyclestage ?? "Kunde",
             },
           },
         ],
@@ -172,8 +169,7 @@ export async function syncUserToHubspot({
 }): Promise<void> {
   if (!process.env.HUBSPOT_ACCESS_TOKEN) return; // Ikke konfigureret — skip stille
 
-  const jobtitle = role === "customer" ? "Kunde" : "Leverandør";
-  const lifecyclestage = role === "customer" ? "customer" : "other";
+  const lifecyclestage = role === "customer" ? "Kunde" : "Leverandør";
 
   const contactId = await upsertHubspotContact({
     email,
@@ -181,7 +177,6 @@ export async function syncUserToHubspot({
     lastname,
     phone,
     company: company_name,
-    jobtitle,
     lifecyclestage,
   });
 
