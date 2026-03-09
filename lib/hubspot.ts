@@ -174,7 +174,7 @@ export async function syncUserToHubspot({
 
   console.log("[HubSpot] syncUserToHubspot:", email, role);
 
-  const lifecyclestage = role === "customer" ? "kunde" : "leverandør";
+  const lifecyclestage = role === "customer" ? "customer" : "other";
 
   const contactId = await upsertHubspotContact({
     email,
