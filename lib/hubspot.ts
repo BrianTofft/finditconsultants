@@ -18,23 +18,26 @@ export type HubspotContactInput = {
   firstname?: string;
   lastname?: string;
   phone?: string;
-  company?: string;
-  /** Intern HubSpot-værdi for lifecyclestage, fx "kunde" eller "leverandør" */
+  /** Intern HubSpot-værdi: "customer" | "other" */
   lifecyclestage?: string;
 };
 
 /**
  * Opretter eller opdaterer en kontakt i HubSpot via batch-upsert på email.
+ * Bemærk: company-felt er IKKE sat her — virksomheden associeres separat
+ * for at undgå HubSpots automatiske duplikat-oprettelse.
  * Returnerer HubSpot contact-ID eller null ved fejl.
  */
 export async function upsertHubspotContact(
   contact: HubspotContactInput
 ): Promise<string | null> {
-  console.log("[HubSpot] upsertContact start:", contact.email);
+  console.log("[HubSpot] upsertContact:", contact.email);
   try {
-    const body = {
-      inputs: [
-        {
+    const res = await fetch(`${BASE}/crm/v3/objects/contacts/batch/upsert`, {
+      method: "POST",
+      headers: headers(),
+      body: JSON.stringify({
+        inputs: [{
           idProperty: "email",
           id: contact.email,
           properties: {
@@ -42,17 +45,10 @@ export async function upsertHubspotContact(
             firstname: contact.firstname ?? "",
             lastname: contact.lastname ?? "",
             phone: contact.phone ?? "",
-            company: contact.company ?? "",
             ...(contact.lifecyclestage ? { lifecyclestage: contact.lifecyclestage } : {}),
           },
-        },
-      ],
-    };
-
-    const res = await fetch(`${BASE}/crm/v3/objects/contacts/batch/upsert`, {
-      method: "POST",
-      headers: headers(),
-      body: JSON.stringify(body),
+        }],
+      }),
     });
 
     const text = await res.text();
@@ -61,8 +57,7 @@ export async function upsertHubspotContact(
       return null;
     }
 
-    const data = JSON.parse(text);
-    const id = data.results?.[0]?.id ?? null;
+    const id = JSON.parse(text).results?.[0]?.id ?? null;
     console.log("[HubSpot] upsertContact OK, id:", id);
     return id;
   } catch (err) {
@@ -72,7 +67,8 @@ export async function upsertHubspotContact(
 }
 
 /**
- * Finder eksisterende virksomhed på navn eller opretter ny.
+ * Finder eksisterende virksomhed på domæne eller navn, opretter ny hvis ikke fundet.
+ * Søgerækkefølge: domæne → navn → opret (med domæne sat).
  * Returnerer HubSpot company-ID eller null ved fejl.
  */
 export async function upsertHubspotCompany(
@@ -83,65 +79,60 @@ export async function upsertHubspotCompany(
   console.log("[HubSpot] upsertCompany:", companyName, domain ?? "");
 
   try {
-    // Søg på domæne først (undgår duplikat med HubSpots auto-association)
+    // 1. Søg på domæne
     if (domain) {
-      const domainSearch = await fetch(`${BASE}/crm/v3/objects/companies/search`, {
+      const res = await fetch(`${BASE}/crm/v3/objects/companies/search`, {
         method: "POST",
         headers: headers(),
         body: JSON.stringify({
-          filterGroups: [
-            { filters: [{ propertyName: "domain", operator: "EQ", value: domain }] },
-          ],
+          filterGroups: [{ filters: [{ propertyName: "domain", operator: "EQ", value: domain }] }],
           properties: ["name", "domain"],
           limit: 1,
         }),
       });
-      if (domainSearch.ok) {
-        const domainData = await domainSearch.json();
-        if (domainData.results?.length > 0) {
-          console.log("[HubSpot] upsertCompany fundet via domæne:", domainData.results[0].id);
-          return domainData.results[0].id;
+      if (res.ok) {
+        const data = await res.json();
+        if (data.results?.length > 0) {
+          console.log("[HubSpot] upsertCompany fundet via domæne:", data.results[0].id);
+          return data.results[0].id;
         }
       }
     }
 
-    // Søg på navn
-    const searchRes = await fetch(`${BASE}/crm/v3/objects/companies/search`, {
+    // 2. Søg på navn
+    const res2 = await fetch(`${BASE}/crm/v3/objects/companies/search`, {
       method: "POST",
       headers: headers(),
       body: JSON.stringify({
-        filterGroups: [
-          { filters: [{ propertyName: "name", operator: "EQ", value: companyName }] },
-        ],
+        filterGroups: [{ filters: [{ propertyName: "name", operator: "EQ", value: companyName }] }],
         properties: ["name"],
         limit: 1,
       }),
     });
-
-    if (searchRes.ok) {
-      const searchData = await searchRes.json();
-      if (searchData.results?.length > 0) {
-        console.log("[HubSpot] upsertCompany fundet via navn:", searchData.results[0].id);
-        return searchData.results[0].id;
+    if (res2.ok) {
+      const data2 = await res2.json();
+      if (data2.results?.length > 0) {
+        console.log("[HubSpot] upsertCompany fundet via navn:", data2.results[0].id);
+        return data2.results[0].id;
       }
     }
 
-    // Ikke fundet — opret ny med både navn og domæne
+    // 3. Opret ny med navn + domæne
     const createRes = await fetch(`${BASE}/crm/v3/objects/companies`, {
       method: "POST",
       headers: headers(),
-      body: JSON.stringify({ properties: { name: companyName, ...(domain ? { domain } : {}) } }),
+      body: JSON.stringify({
+        properties: { name: companyName, ...(domain ? { domain } : {}) },
+      }),
     });
-
     const text = await createRes.text();
     if (!createRes.ok) {
       console.error("[HubSpot] upsertCompany fejl HTTP", createRes.status, text);
       return null;
     }
-
-    const data = JSON.parse(text);
-    console.log("[HubSpot] upsertCompany oprettet:", data.id);
-    return data.id ?? null;
+    const id = JSON.parse(text).id ?? null;
+    console.log("[HubSpot] upsertCompany oprettet:", id);
+    return id;
   } catch (err) {
     console.error("[HubSpot] upsertCompany exception:", err);
     return null;
@@ -172,8 +163,9 @@ export async function associateContactToCompany(
 }
 
 /**
- * Samlet hjælpefunktion: upsert kontakt + virksomhed + tilknyt.
- * Kaldes fra API-routes efter brugeroprettelse og ved profil-opdatering.
+ * Samlet hjælpefunktion: upsert virksomhed → upsert kontakt → tilknyt.
+ * Virksomhed oprettes FØR kontakt for at forhindre HubSpots auto-association
+ * i at oprette en duplikat-virksomhed fra email-domænet eller company-feltet.
  */
 export async function syncUserToHubspot({
   email,
@@ -197,23 +189,26 @@ export async function syncUserToHubspot({
 
   console.log("[HubSpot] syncUserToHubspot:", email, role);
 
+  const emailDomain = email.split("@")[1]?.toLowerCase();
   const lifecyclestage = role === "customer" ? "customer" : "other";
 
+  // 1. Opret/find virksomhed først — forhindrer duplikater fra HubSpot auto-association
+  let companyId: string | null = null;
+  if (company_name?.trim()) {
+    companyId = await upsertHubspotCompany(company_name, emailDomain);
+  }
+
+  // 2. Opret/opdater kontakt — uden company-felt (styres via eksplicit association)
   const contactId = await upsertHubspotContact({
     email,
     firstname,
     lastname,
     phone,
-    company: company_name,
     lifecyclestage,
   });
 
-  const emailDomain = email.split("@")[1]?.toLowerCase();
-
-  if (contactId && company_name?.trim()) {
-    const companyId = await upsertHubspotCompany(company_name, emailDomain);
-    if (companyId) {
-      await associateContactToCompany(contactId, companyId);
-    }
+  // 3. Tilknyt kontakt til virksomhed
+  if (contactId && companyId) {
+    await associateContactToCompany(contactId, companyId);
   }
 }
