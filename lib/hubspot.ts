@@ -19,6 +19,8 @@ export type HubspotContactInput = {
   lastname?: string;
   phone?: string;
   company?: string;
+  /** Intern HubSpot-værdi for lifecyclestage, fx "kunde" eller "leverandør" */
+  lifecyclestage?: string;
 };
 
 /**
@@ -41,6 +43,7 @@ export async function upsertHubspotContact(
             lastname: contact.lastname ?? "",
             phone: contact.phone ?? "",
             company: contact.company ?? "",
+            ...(contact.lifecyclestage ? { lifecyclestage: contact.lifecyclestage } : {}),
           },
         },
       ],
@@ -171,12 +174,15 @@ export async function syncUserToHubspot({
 
   console.log("[HubSpot] syncUserToHubspot:", email, role);
 
+  const lifecyclestage = role === "customer" ? "kunde" : "leverandør";
+
   const contactId = await upsertHubspotContact({
     email,
     firstname,
     lastname,
     phone,
     company: company_name,
+    lifecyclestage,
   });
 
   if (contactId && company_name?.trim()) {
