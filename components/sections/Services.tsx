@@ -1,3 +1,6 @@
+import Link from "next/link";
+import RevealOnScroll from "@/components/ui/RevealOnScroll";
+import SectionHeader from "@/components/ui/SectionHeader";
 import { useTranslations } from "next-intl";
 
 export default function Services() {

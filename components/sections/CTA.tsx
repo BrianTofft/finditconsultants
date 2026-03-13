@@ -1,3 +1,5 @@
+import RevealOnScroll from "@/components/ui/RevealOnScroll";
+import Button from "@/components/ui/Button";
 import { useTranslations } from "next-intl";
 
 export default function CTA() {
