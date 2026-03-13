@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { NextIntlClientProvider } from "next-intl";
+import daMessages from "@/messages/da.json";
 
 const BASE_URL = "https://finditconsultants.com";
 
@@ -36,6 +38,12 @@ export const metadata: Metadata = {
 };
 
 // Root layout — html/body provided by app/[locale]/layout.tsx
+// NextIntlClientProvider here ensures static pages outside [locale] (e.g. /konsulenter/*) have DA translations.
+// [locale]/layout.tsx overrides this with the correct locale for locale-aware pages.
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return children;
+  return (
+    <NextIntlClientProvider locale="da" messages={daMessages}>
+      {children}
+    </NextIntlClientProvider>
+  );
 }
