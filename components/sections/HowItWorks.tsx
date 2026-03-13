@@ -47,7 +47,9 @@ const LANE_CONFIG = [
 ] as const;
 
 /* ── Sub-komponenter ────────────────────────────────────────── */
-function LaneCell({ step, lane }: { step: LaneStep; lane: typeof LANE_CONFIG[number] }) {
+type LaneWithLabel = typeof LANE_CONFIG[number] & { label: string };
+
+function LaneCell({ step, lane }: { step: LaneStep; lane: LaneWithLabel }) {
   if (!step) {
     return (
       <div className="flex justify-center items-stretch py-2">
@@ -63,7 +65,7 @@ function LaneCell({ step, lane }: { step: LaneStep; lane: typeof LANE_CONFIG[num
   );
 }
 
-function FlowArrow({ flow, phase, lanes }: { flow?: string; phase: Phase; lanes: typeof LANE_CONFIG }) {
+function FlowArrow({ flow, phase, lanes }: { flow?: string; phase: Phase; lanes: LaneWithLabel[] }) {
   if (!flow) return null;
   const active = lanes.filter(l => !!phase[l.key]);
   if (active.length < 2) return null;
