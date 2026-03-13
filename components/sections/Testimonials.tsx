@@ -1,11 +1,19 @@
 import RevealOnScroll from "@/components/ui/RevealOnScroll";
 import SectionHeader from "@/components/ui/SectionHeader";
-import { TESTIMONIALS } from "@/app/data";
 import { useTranslations } from "next-intl";
+
+interface TestimonialItem {
+  quote: string;
+  name: string;
+  role: string;
+  company: string;
+  initials: string;
+}
 
 export default function Testimonials() {
   const t = useTranslations("testimonials");
-  const [featured, ...rest] = TESTIMONIALS;
+  const items = t.raw("items") as TestimonialItem[];
+  const [featured, ...rest] = items;
 
   const STATS = [
     { val: "3", unit: t("statDaysUnit"),    label: t("statDays") },

@@ -111,7 +111,15 @@
     "statMatch": "Perfect match found",
     "statDaysUnit": "days",
     "statProfilesUnit": "profiles",
-    "statMatchUnit": "hit"
+    "statMatchUnit": "hit",
+    "items": [
+      { "quote": "FindITconsultants.com made it easy for us to find the right IT consultants. Every time we have been presented with relevant profiles quickly and efficiently – at competitive prices.", "name": "Lasse Thomsen", "role": "IT Director", "company": "Nordic Bioscience A/S", "initials": "LT" },
+      { "quote": "We quickly received relevant profiles, and the process was simple and straightforward. FindITconsultants.com saved us an enormous amount of time.", "name": "Lars M.", "role": "IT Manager", "company": "Assa", "initials": "LM" },
+      { "quote": "Impressively fast response and very relevant profiles. The process was easy and we quickly found the right consultant for our project.", "name": "Michael H.", "role": "CTO", "company": "AJ Vaccines", "initials": "MH" },
+      { "quote": "Perfect service — we got exactly what we asked for and more. We will definitely use FindITconsultants.com again.", "name": "Mohan Palaniandy", "role": "IT Director", "company": "DANX Carousel", "initials": "MP" },
+      { "quote": "Simple, fast and professional service. We received qualified candidates within a short time and chose the best one for our needs.", "name": "Sevgyl Abdulovski", "role": "Project Manager", "company": "Guldager", "initials": "SA" },
+      { "quote": "A great experience from start to finish. Large network, fast response and competitive prices.", "name": "Peter T.", "role": "Head of IT", "company": "Retail", "initials": "PT" }
+    ]
   },
   "faq": {
     "eyebrow": "Frequently asked questions",
@@ -312,19 +320,6 @@
     "ctaDesc": "Free and non-binding. We activate the market and get back to you with screened profiles within 3 working days.",
     "ctaBtn": "Get started for free →",
     "heroPrefix": "Free multi-sourcing of"
-  },
-  "testimonials": {
-    "eyebrow": "Customer reviews",
-    "title": "What do",
-    "titleHighlight": "our customers say?",
-    "sub": "Real results from real companies that have used our multi-sourcing service.",
-    "verified": "5.0 · Verified review",
-    "statDays": "To first candidates",
-    "statProfiles": "Received and screened",
-    "statMatch": "Perfect match found",
-    "statDaysUnit": "days",
-    "statProfilesUnit": "profiles",
-    "statMatchUnit": "hit"
   },
   "statsCounter": {
     "partners": "partners",

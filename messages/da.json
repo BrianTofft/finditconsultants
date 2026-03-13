@@ -111,7 +111,15 @@
     "statMatch": "Perfekt match fundet",
     "statDaysUnit": "dage",
     "statProfilesUnit": "profiler",
-    "statMatchUnit": "hit"
+    "statMatchUnit": "hit",
+    "items": [
+      { "quote": "FindITkonsulenter.dk har gjort det nemt for os at finde de rette IT-konsulenter. Hver gang har vi fået præsenteret relevante profiler hurtigt og effektivt – og til konkurrencedygtige priser.", "name": "Lasse Thomsen", "role": "IT Director", "company": "Nordic Bioscience A/S", "initials": "LT" },
+      { "quote": "Vi fik hurtigt præsenteret relevante profiler, og processen var simpel og overskuelig. FindITkonsulenter.dk sparede os for enormt meget tid.", "name": "Lars M.", "role": "IT Manager", "company": "Assa", "initials": "LM" },
+      { "quote": "Imponerende hurtigt svar og meget relevante profiler. Processen var nem og vi fandt hurtigt den rette konsulent til vores projekt.", "name": "Michael H.", "role": "CTO", "company": "AJ Vaccines", "initials": "MH" },
+      { "quote": "Perfekt service — vi fik præcist det vi bad om og mere til. Vil helt sikkert bruge FindITkonsulenter.dk igen.", "name": "Mohan Palaniandy", "role": "IT Director", "company": "DANX Carousel", "initials": "MP" },
+      { "quote": "Enkel, hurtig og professionel service. Vi fik kvalificerede kandidater præsenteret inden for kort tid og valgte den bedste til vores behov.", "name": "Sevgyl Abdulovski", "role": "Project Manager", "company": "Guldager", "initials": "SA" },
+      { "quote": "En god oplevelse fra start til slut. Stort netværk, hurtig respons og konkurrencedygtige priser.", "name": "Peter T.", "role": "Head of IT", "company": "Retail", "initials": "PT" }
+    ]
   },
   "faq": {
     "eyebrow": "Ofte stillede spørgsmål",

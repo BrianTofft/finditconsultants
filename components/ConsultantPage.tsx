@@ -4,6 +4,7 @@ import Footer from "@/components/layout/Footer";
 import Button from "@/components/ui/Button";
 import LeadForm from "@/components/sections/LeadForm";
 import ConsultantGraphic from "@/components/ConsultantGraphic";
+import { getTranslations } from "next-intl/server";
 
 interface Section {
   title: string;
@@ -30,7 +31,8 @@ interface Props {
   graphic?: "network" | "cloud" | "chart" | "gears" | "people" | "globe" | "database" | "shield";
 }
 
-export default function ConsultantPage({ title, eyebrow, hero, intro, price, sections, faq, resources, graphic = "network" }: Props) {
+export default async function ConsultantPage({ title, eyebrow, hero, intro, price, sections, faq, resources, graphic = "network" }: Props) {
+  const t = await getTranslations("consultantPage");
 
   const serviceSchema = {
     "@context": "https://schema.org",
@@ -86,8 +88,8 @@ export default function ConsultantPage({ title, eyebrow, hero, intro, price, sec
 
               {/* CTA row */}
               <div className="flex flex-wrap gap-4 mb-8">
-                <Button href="#form" size="lg">Find konsulenter gratis →</Button>
-                <Button href="#info" variant="ghost-dark" size="lg">Læs mere</Button>
+                <Button href="#form" size="lg">{t("findFree")}</Button>
+                <Button href="#info" variant="ghost-dark" size="lg">{t("readMore")}</Button>
               </div>
 
               {/* Price badge */}
@@ -95,7 +97,7 @@ export default function ConsultantPage({ title, eyebrow, hero, intro, price, sec
                 <div className="inline-flex items-center gap-3 bg-white/6 border border-white/12 rounded-2xl px-5 py-3">
                   <span className="text-2xl">💰</span>
                   <div>
-                    <div className="text-white/40 text-[10px] font-extrabold uppercase tracking-widest">Typisk timepris</div>
+                    <div className="text-white/40 text-[10px] font-extrabold uppercase tracking-widest">{t("typicalRate")}</div>
                     <div className="text-white font-bold text-sm mt-0.5">{price}</div>
                   </div>
                 </div>
@@ -130,10 +132,10 @@ export default function ConsultantPage({ title, eyebrow, hero, intro, price, sec
         <section className="bg-[#f8f6f3] py-12">
           <div className="max-w-4xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
-              { val: "70+", lbl: "Leverandører aktiveret", icon: "🤝" },
-              { val: "3",   lbl: "Arbejdsdage til første profiler", icon: "⚡" },
-              { val: "0",   lbl: "Kr. for kunder", icon: "✓" },
-              { val: "100%", lbl: "Fortrolig behandling", icon: "🔒" },
+              { val: t("stat0Val"), lbl: t("stat0Lbl"), icon: "🤝" },
+              { val: t("stat1Val"), lbl: t("stat1Lbl"), icon: "⚡" },
+              { val: t("stat2Val"), lbl: t("stat2Lbl"), icon: "✓" },
+              { val: t("stat3Val"), lbl: t("stat3Lbl"), icon: "🔒" },
             ].map(s => (
               <div key={s.lbl} className="text-center">
                 <div className="text-2xl mb-1">{s.icon}</div>
@@ -183,7 +185,7 @@ export default function ConsultantPage({ title, eyebrow, hero, intro, price, sec
               <div className="pt-4">
                 <h2 className="font-bold text-2xl text-charcoal mb-5 flex items-center gap-3">
                   <span className="w-8 h-8 rounded-xl bg-orange flex items-center justify-center text-white text-sm font-bold leading-none">↗</span>
-                  Nyttige ressourcer
+                  {t("usefulResources")}
                 </h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {resources.map((r, i) => (
@@ -210,7 +212,7 @@ export default function ConsultantPage({ title, eyebrow, hero, intro, price, sec
               <div className="pt-6">
                 <h2 className="font-bold text-2xl text-charcoal mb-5 flex items-center gap-3">
                   <span className="w-8 h-8 rounded-xl bg-orange flex items-center justify-center text-white text-sm">?</span>
-                  Ofte stillede spørgsmål
+                  {t("frequentlyAsked")}
                 </h2>
                 <div className="space-y-3">
                   {faq.map((item, i) => (
@@ -236,11 +238,11 @@ export default function ConsultantPage({ title, eyebrow, hero, intro, price, sec
           }} />
           <div className="relative z-10 max-w-xl mx-auto px-6">
             <div className="inline-flex items-center gap-2 text-orange text-xs font-extrabold tracking-widest uppercase mb-6">
-              <span className="w-4 h-px bg-orange" />Klar til at starte?<span className="w-4 h-px bg-orange" />
+              <span className="w-4 h-px bg-orange" />{t("ctaEyebrow")}<span className="w-4 h-px bg-orange" />
             </div>
-            <h2 className="font-bold text-4xl text-white mb-4">Find din {title} i dag</h2>
-            <p className="text-white/50 mb-8 leading-relaxed">Gratis og uforpligtende. Vi aktiverer markedet og vender tilbage med screenede profiler inden for 3 arbejdsdage.</p>
-            <Button href="#form" size="lg">Kom i gang gratis →</Button>
+            <h2 className="font-bold text-4xl text-white mb-4">{t("ctaTitle", { title })}</h2>
+            <p className="text-white/50 mb-8 leading-relaxed">{t("ctaDesc")}</p>
+            <Button href="#form" size="lg">{t("ctaBtn")}</Button>
           </div>
         </section>
       </main>

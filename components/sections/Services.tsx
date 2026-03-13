@@ -1,10 +1,11 @@
 import Link from "next/link";
 import RevealOnScroll from "@/components/ui/RevealOnScroll";
 import SectionHeader from "@/components/ui/SectionHeader";
-import { useTranslations } from "next-intl";
+import { getTranslations, getLocale } from "next-intl/server";
 
-export default function Services() {
-  const t = useTranslations("services");
+export default async function Services() {
+  const t = await getTranslations("services");
+  const locale = await getLocale();
   const items = t.raw("items") as { icon: string; title: string; desc: string; slug: string }[];
 
   return (
@@ -20,7 +21,7 @@ export default function Services() {
         </RevealOnScroll>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {items.map((s, i) => {
-            const href = s.slug ? `/konsulenter/${s.slug}` : null;
+            const href = s.slug ? `/${locale}/konsulenter/${s.slug}` : null;
             const inner = (
               <div className="group bg-white rounded-2xl p-5 border border-[#ede9e3] hover:border-orange/35 hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 h-full overflow-hidden relative">
                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-orange scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
