@@ -1,10 +1,12 @@
 "use client";
 import { useEffect, useRef } from "react";
 import { CLIENTS } from "@/app/data";
+import { useTranslations } from "next-intl";
 
 const LOGO_TOKEN = "pk_HaV_0DKNSxSsORx1ud0r6A";
 
 export default function LogoBar() {
+  const t = useTranslations("logoBar");
   const trackRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -45,7 +47,7 @@ export default function LogoBar() {
     <section className="border-b border-[#e8e5e0] py-14 bg-white overflow-hidden">
       <div className="max-w-7xl mx-auto px-6 mb-10">
         <p className="text-center text-[10px] font-extrabold tracking-widest uppercase text-charcoal/35">
-          Betroet af ledende danske virksomheder
+          {t("label")}
         </p>
       </div>
 

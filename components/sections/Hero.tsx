@@ -2,12 +2,12 @@
 import { useEffect, useState } from "react";
 import LeadForm from "./LeadForm";
 import Button from "@/components/ui/Button";
-import { STATS } from "@/app/data";
+import { useTranslations } from "next-intl";
 
 const PHOTOS = [
-  { src: "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=700&q=80&fit=crop", badge: "70+ aktive leverandører", alt: "IT-team samarbejder om projekt på kontor" },
-  { src: "https://images.unsplash.com/photo-1556761175-4b46a572b786?w=400&q=80&fit=crop", badge: null, alt: "Professionelt forretningsmøde med IT-konsulenter" },
-  { src: "https://images.unsplash.com/photo-1553877522-43269d4ea984?w=400&q=80&fit=crop", badge: null, alt: "Strategisk IT-planlægning og dataanalyse" },
+  { src: "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=700&q=80&fit=crop", badge: true, alt: "IT-team samarbejder om projekt på kontor" },
+  { src: "https://images.unsplash.com/photo-1556761175-4b46a572b786?w=400&q=80&fit=crop", badge: false, alt: "Professionelt forretningsmøde med IT-konsulenter" },
+  { src: "https://images.unsplash.com/photo-1553877522-43269d4ea984?w=400&q=80&fit=crop", badge: false, alt: "Strategisk IT-planlægning og dataanalyse" },
 ];
 
 // Fallback-kompetencer hvis DB er tom / fejler
@@ -18,6 +18,7 @@ const FALLBACK: { name: string; count: number }[] = [
 ];
 
 function ActiveCompetencies() {
+  const t = useTranslations("hero");
   const [competencies, setCompetencies] = useState<{ name: string; count: number }[]>([]);
   const [requestCount, setRequestCount] = useState<number | null>(null);
   const [highlighted, setHighlighted] = useState(0);
@@ -37,15 +38,15 @@ function ActiveCompetencies() {
   // Fremhæv én tag ad gangen i loop
   useEffect(() => {
     if (!competencies.length) return;
-    const t = setInterval(() => setHighlighted(i => (i + 1) % competencies.length), 1800);
-    return () => clearInterval(t);
+    const timer = setInterval(() => setHighlighted(i => (i + 1) % competencies.length), 1800);
+    return () => clearInterval(timer);
   }, [competencies.length]);
 
   return (
     <div className={`bg-white border border-[#ede9e3] rounded-2xl px-4 py-3.5 shadow-md transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}>
       <div className="flex items-center gap-2 mb-3">
         <span className="w-2 h-2 rounded-full bg-green animate-pulse flex-shrink-0" />
-        <span className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40">Søges aktivt lige nu</span>
+        <span className="text-[10px] font-extrabold tracking-widest uppercase text-charcoal/40">{t("badge")}</span>
       </div>
       <div className="flex flex-wrap gap-1.5">
         {competencies.map((c, i) => (
@@ -63,7 +64,9 @@ function ActiveCompetencies() {
       </div>
       {requestCount !== null && requestCount > 0 && (
         <p className="text-[10px] text-charcoal/35 font-semibold mt-2.5">
-          Baseret på {requestCount} aktiv{requestCount !== 1 ? "e" : ""} forespørgsel{requestCount !== 1 ? "er" : ""}
+          {requestCount === 1
+            ? t("requestCountSingular", { count: requestCount })
+            : t("requestCountPlural", { count: requestCount })}
         </p>
       )}
     </div>
@@ -71,6 +74,15 @@ function ActiveCompetencies() {
 }
 
 export default function Hero() {
+  const t = useTranslations("hero");
+
+  const STATS = [
+    { value: "70+",   label: t("statsPartners") },
+    { value: "4–9",   label: t("statsCandidates") },
+    { value: "3 dage", label: t("statsDays") },
+    { value: "0 kr",  label: t("statsPrice") },
+  ];
+
   return (
     <section className="bg-gradient-to-br from-[#f8f6f3] via-white to-[#fff4ee] pt-16 pb-0 relative overflow-hidden">
       {/* Dekorative blobs */}
@@ -91,9 +103,9 @@ export default function Hero() {
 
           {/* Headline */}
           <h1 className="font-bold text-5xl lg:text-6xl text-charcoal leading-[1.08] tracking-tight mb-6">
-            Fortæl os hvad I mangler.<br />
+            {t("headline1")}<br />
             <span className="relative inline-block pb-2">
-              <span className="text-orange">Vi finder konsulenterne.</span>
+              <span className="text-orange">{t("headline2")}</span>
               <svg className="absolute -bottom-1 left-0 w-full" viewBox="0 0 300 8" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
                 <path d="M2 6 Q75 2 150 5 Q225 8 298 4" stroke="#2d2c2c" strokeWidth="3" strokeLinecap="round" fill="none" className="draw-underline"/>
               </svg>
@@ -101,12 +113,12 @@ export default function Hero() {
           </h1>
 
           <p className="text-charcoal/60 text-lg leading-relaxed mb-8 max-w-lg">
-            Gratis og uafhængig multi-sourcing service. Vi aktiverer hele markedet og præsenterer dig for 4–9 relevante kandidater med priser — helt uforpligtende.
+            {t("subtitle")}
           </p>
 
           <div className="flex flex-wrap gap-4 mb-10">
-            <Button href="#hero-form" size="lg">Find IT-konsulenter →</Button>
-            <Button href="#how" variant="ghost-light" size="lg">Sådan virker det</Button>
+            <Button href="#hero-form" size="lg">{t("cta")}</Button>
+            <Button href="#how" variant="ghost-light" size="lg">{t("howItWorks")}</Button>
           </div>
 
           {/* Social proof avatarer */}
@@ -117,9 +129,9 @@ export default function Hero() {
               ))}
             </div>
             <div>
-              <div className="font-bold text-charcoal text-sm">+20 tilfredse kunder</div>
+              <div className="font-bold text-charcoal text-sm">{t("socialProof")}</div>
               <div className="text-charcoal/45 text-xs flex items-center gap-1">
-                <span className="text-orange">★★★★★</span> 5.0 gennemsnitlig rating
+                <span className="text-orange">★★★★★</span> {t("rating")}
               </div>
             </div>
           </div>
@@ -144,7 +156,7 @@ export default function Hero() {
                 {p.badge && (
                   <div className="absolute bottom-2 left-2 bg-white/90 backdrop-blur-sm rounded-lg px-2.5 py-1 flex items-center gap-1.5 shadow-sm">
                     <span className="w-1.5 h-1.5 rounded-full bg-green animate-pulse" />
-                    <span className="text-charcoal text-[10px] font-bold">{p.badge}</span>
+                    <span className="text-charcoal text-[10px] font-bold">{t("activeBadge")}</span>
                   </div>
                 )}
               </div>

@@ -1,5 +1,6 @@
 import SectionHeader from "@/components/ui/SectionHeader";
 import RevealOnScroll from "@/components/ui/RevealOnScroll";
+import { useTranslations } from "next-intl";
 
 /* ── Datamodel ─────────────────────────────────────────────── */
 type LaneStep = { icon: string; text: string } | null;
@@ -10,48 +11,13 @@ type Phase = {
   kunde:      LaneStep;
   findit:     LaneStep;
   leverandor: LaneStep;
-  /** "→" = venstre→højre, "←" = højre→venstre, "↔" = direkte */
   flow?: string;
 };
 
-const PHASES: Phase[] = [
-  {
-    n: "01", title: "Beskriv behovet", flow: "→",
-    kunde:      { icon: "📋", text: "Udfylder formularen med kompetencer, tidslinje, arbejdsform og budget. Under 3 minutter." },
-    findit:     null,
-    leverandor: null,
-  },
-  {
-    n: "02", title: "Vi aktiverer markedet", flow: "→",
-    kunde:      null,
-    findit:     { icon: "📡", text: "Godkender forespørgslen og notificerer øjeblikkeligt 70+ leverandører og freelancenetværk." },
-    leverandor: { icon: "📩", text: "Modtager notifikation med opgavebeskrivelse og kompetencekrav." },
-  },
-  {
-    n: "03", title: "Profiler screenes", flow: "←",
-    kunde:      null,
-    findit:     { icon: "🔍", text: "Screener og godkender indsendte profiler. Irrelevante forslag sorteres fra." },
-    leverandor: { icon: "👤", text: "Indsender relevante konsulentprofiler med pris, CV og tilgængelighed." },
-  },
-  {
-    n: "04", title: "Du vælger frit", flow: "←",
-    kunde:      { icon: "✅", text: "Modtager 4–9 screenede profiler i kundeportalen og anmoder om interview." },
-    findit:     { icon: "📤", text: "Præsenterer godkendte profiler og koordinerer interviewtidspunkter." },
-    leverandor: { icon: "📅", text: "Bekræfter interviewtidspunkt via leverandørportalen." },
-  },
-  {
-    n: "05", title: "Direkte kontrakt", flow: "↔",
-    kunde:      { icon: "🤝", text: "Indgår kontrakten direkte med den valgte leverandør. Ingen mellemled, intet gebyr." },
-    findit:     null,
-    leverandor: { icon: "📄", text: "Underskriver kontrakt direkte med kunden. FindITconsultants er ikke part i aftalen." },
-  },
-];
-
 /* Lane-konfiguration */
-const LANES = [
+const LANE_CONFIG = [
   {
     key: "kunde"      as const,
-    label: "Kunde",
     emoji: "🏢",
     headerBg:   "bg-orange border-orange",
     headerText: "text-white",
@@ -71,7 +37,6 @@ const LANES = [
   },
   {
     key: "leverandor" as const,
-    label: "Leverandør",
     emoji: "👥",
     headerBg:   "bg-[#4a7c59] border-[#4a7c59]",
     headerText: "text-white",
@@ -82,7 +47,7 @@ const LANES = [
 ] as const;
 
 /* ── Sub-komponenter ────────────────────────────────────────── */
-function LaneCell({ step, lane }: { step: LaneStep; lane: typeof LANES[number] }) {
+function LaneCell({ step, lane }: { step: LaneStep; lane: typeof LANE_CONFIG[number] }) {
   if (!step) {
     return (
       <div className="flex justify-center items-stretch py-2">
@@ -98,20 +63,16 @@ function LaneCell({ step, lane }: { step: LaneStep; lane: typeof LANES[number] }
   );
 }
 
-function FlowArrow({ flow, phase }: { flow?: string; phase: Phase }) {
+function FlowArrow({ flow, phase, lanes }: { flow?: string; phase: Phase; lanes: typeof LANE_CONFIG }) {
   if (!flow) return null;
-
-  /* Afgør hvilke baner der er aktive for at tegne den rigtige pil */
-  const active = LANES.filter(l => !!phase[l.key]);
+  const active = lanes.filter(l => !!phase[l.key]);
   if (active.length < 2) return null;
-
   const label =
     flow === "↔"
-      ? `${active[0].label} ↔ ${active[active.length - 1].label}`
+      ? `${active[0].label ?? active[0].key} ↔ ${active[active.length - 1].label ?? active[active.length - 1].key}`
       : flow === "→"
-      ? `${active[0].label} → ${active[active.length - 1].label}`
-      : `${active[active.length - 1].label} → ${active[0].label}`;
-
+      ? `${active[0].label ?? active[0].key} → ${active[active.length - 1].label ?? active[active.length - 1].key}`
+      : `${active[active.length - 1].label ?? active[active.length - 1].key} → ${active[0].label ?? active[0].key}`;
   return (
     <div className="flex items-center justify-center col-span-3 -mt-1 mb-1 pointer-events-none select-none">
       <span className="text-[10px] font-bold text-charcoal/30 tracking-wide uppercase">{label}</span>
@@ -121,15 +82,55 @@ function FlowArrow({ flow, phase }: { flow?: string; phase: Phase }) {
 
 /* ── Hoved-komponent ────────────────────────────────────────── */
 export default function HowItWorks() {
+  const t = useTranslations("howItWorks");
+
+  const LANES = LANE_CONFIG.map(l => ({
+    ...l,
+    label: l.key === "findit" ? "FindITconsultants" : l.key === "kunde" ? t("laneCustomer") : t("laneSupplier"),
+  }));
+
+  const PHASES: Phase[] = [
+    {
+      n: "01", title: t("phase01Title"), flow: "→",
+      kunde:      { icon: "📋", text: t("phase01Customer") },
+      findit:     null,
+      leverandor: null,
+    },
+    {
+      n: "02", title: t("phase02Title"), flow: "→",
+      kunde:      null,
+      findit:     { icon: "📡", text: t("phase02Findit") },
+      leverandor: { icon: "📩", text: t("phase02Supplier") },
+    },
+    {
+      n: "03", title: t("phase03Title"), flow: "←",
+      kunde:      null,
+      findit:     { icon: "🔍", text: t("phase03Findit") },
+      leverandor: { icon: "👤", text: t("phase03Supplier") },
+    },
+    {
+      n: "04", title: t("phase04Title"), flow: "←",
+      kunde:      { icon: "✅", text: t("phase04Customer") },
+      findit:     { icon: "📤", text: t("phase04Findit") },
+      leverandor: { icon: "📅", text: t("phase04Supplier") },
+    },
+    {
+      n: "05", title: t("phase05Title"), flow: "↔",
+      kunde:      { icon: "🤝", text: t("phase05Customer") },
+      findit:     null,
+      leverandor: { icon: "📄", text: t("phase05Supplier") },
+    },
+  ];
+
   return (
     <section id="how" className="py-24 bg-[#f8f6f3]">
       <div className="max-w-6xl mx-auto px-6">
 
         <RevealOnScroll>
           <SectionHeader
-            eyebrow="Sådan fungerer det"
-            title={<>Fra behov til kontrakt — <span className="text-orange italic">3 parter, 5 faser</span></>}
-            sub="FindITconsultants koordinerer processen mellem dig, vores leverandørnetværk og konsulenterne — du vælger frit og indgår aftalen direkte."
+            eyebrow={t("eyebrow")}
+            title={<>{t("title")} <span className="text-orange italic">{t("titleHighlight")}</span></>}
+            sub={t("sub")}
             center
           />
         </RevealOnScroll>
@@ -169,7 +170,7 @@ export default function HowItWorks() {
                     <div className="col-span-3 flex items-center gap-2">
                       <h3 className="font-bold text-charcoal text-sm">{phase.title}</h3>
                       {phase.flow && (
-                        <FlowArrow flow={phase.flow} phase={phase} />
+                        <FlowArrow flow={phase.flow} phase={phase} lanes={LANES} />
                       )}
                     </div>
                   </div>
@@ -206,7 +207,7 @@ export default function HowItWorks() {
               </div>
             ))}
             <span className="text-charcoal/25 text-xs">· · ·</span>
-            <span className="text-xs text-charcoal/40">Ingen binding · Ingen gebyr fra kunden</span>
+            <span className="text-xs text-charcoal/40">{t("noBinding")}</span>
           </div>
         </RevealOnScroll>
 
@@ -217,9 +218,9 @@ export default function HowItWorks() {
               href="#hero-form"
               className="inline-flex items-center gap-2 bg-orange text-white font-bold rounded-full px-8 py-4 text-base hover:bg-orange-dark transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5"
             >
-              Kom i gang — det er gratis →
+              {t("cta")}
             </a>
-            <p className="text-charcoal/40 text-xs mt-3">Svar inden for 3 arbejdsdage</p>
+            <p className="text-charcoal/40 text-xs mt-3">{t("ctaSub")}</p>
           </div>
         </RevealOnScroll>
 

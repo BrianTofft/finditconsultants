@@ -1,12 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import RevealOnScroll from "@/components/ui/RevealOnScroll";
-
-const COUNTERS = [
-  { end: 120, suffix: "+", label: "Opgaver løst", icon: "✅", desc: "succesfulde matchmakings" },
-  { end: 580, suffix: "+", label: "Konsulenter præsenteret", icon: "👤", desc: "screenede kandidater leveret" },
-  { end: 70, suffix: "+", label: "Aktive partnere", icon: "🤝", desc: "konsulenthuse og bureauer" },
-];
+import { useTranslations } from "next-intl";
 
 function AnimatedCount({ end, suffix, active }: { end: number; suffix: string; active: boolean }) {
   const [count, setCount] = useState(0);
@@ -31,8 +26,15 @@ function AnimatedCount({ end, suffix, active }: { end: number; suffix: string; a
 }
 
 export default function StatsCounter() {
+  const t = useTranslations("statsCounter");
   const [active, setActive] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  const COUNTERS = [
+    { end: 120, suffix: "+", label: t("counter0Label"), desc: t("counter0Desc"), icon: "✅" },
+    { end: 580, suffix: "+", label: t("counter1Label"), desc: t("counter1Desc"), icon: "👤" },
+    { end: 70,  suffix: "+", label: t("counter2Label"), desc: t("counter2Desc"), icon: "🤝" },
+  ];
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -53,9 +55,9 @@ export default function StatsCounter() {
       <div className="max-w-7xl mx-auto px-6 relative z-10">
         <RevealOnScroll>
           <div className="text-center mb-12">
-            <p className="text-[10px] font-extrabold tracking-widest uppercase text-orange mb-3">Resultater i tal</p>
+            <p className="text-[10px] font-extrabold tracking-widest uppercase text-orange mb-3">{t("eyebrow")}</p>
             <h2 className="font-bold text-3xl md:text-4xl text-white leading-tight">
-              Vi leverer resultater — <span className="text-orange italic">dag efter dag</span>
+              {t("title")} <span className="text-orange italic">{t("titleHighlight")}</span>
             </h2>
           </div>
         </RevealOnScroll>

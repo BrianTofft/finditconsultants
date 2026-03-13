@@ -4,19 +4,22 @@ import RevealOnScroll from "@/components/ui/RevealOnScroll";
 import SectionHeader from "@/components/ui/SectionHeader";
 import Button from "@/components/ui/Button";
 import { COMPETENCIES } from "@/app/data";
-
-const PERKS = [
-  { icon: "🔥", title: "Modtag relevante forespørgsler", desc: "Adgang til screenede kundebehov der matcher dine kompetencer — direkte i din indbakke." },
-  { icon: "🎯", title: "Ingen spildtid på forkerte kunder", desc: "Vi matcher forespørgsler til de rette partnere. Du bruger tid på muligheder der passer til dit speciale." },
-  { icon: "💼", title: "Indgå aftaler direkte", desc: "Ingen mellemled i kontrakten. Du forhandler og indgår aftalen direkte med kunden." },
-  { icon: "📈", title: "Voks dit netværk", desc: "Bliv en del af 70+ konsulenthuse og freelancere og styrk din position i markedet." },
-];
+import { useTranslations } from "next-intl";
 
 const inp = "w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange/30 transition-all";
 const lbl = "block text-[10px] font-extrabold text-white/45 uppercase tracking-widest mb-1.5";
 const FIELD_STYLE = { background: "#ffffff", borderColor: "#d1d0cf", color: "#2d2c2c" };
 
 export default function Partners() {
+  const t = useTranslations("partners");
+
+  const PERKS = [
+    { icon: t("perk0Icon"), title: t("perk0Title"), desc: t("perk0Desc") },
+    { icon: t("perk1Icon"), title: t("perk1Title"), desc: t("perk1Desc") },
+    { icon: t("perk2Icon"), title: t("perk2Title"), desc: t("perk2Desc") },
+    { icon: t("perk3Icon"), title: t("perk3Title"), desc: t("perk3Desc") },
+  ];
+
   const [form, setForm] = useState({
     company_name: "", first_name: "", last_name: "", email: "", phone: "",
     company_type: "", competencies: [] as string[], extra_competencies: "", language: "",
@@ -38,7 +41,7 @@ export default function Partners() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.company_name || !form.email || !form.first_name || !form.last_name) {
-      setError("Udfyld venligst alle påkrævede felter"); return;
+      setError(t("errorRequired")); return;
     }
     setSubmitting(true);
     const res = await fetch("/api/supplier-application", {
@@ -58,7 +61,7 @@ export default function Partners() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 
           <RevealOnScroll>
-            <SectionHeader eyebrow="Bliv leverandør" title={<>Er du konsulenthus <span className="text-orange italic">eller freelancer?</span></>} sub="Tilmeld dig vores netværk og modtag relevante forespørgsler fra screenede kunder." />
+            <SectionHeader eyebrow={t("eyebrow")} title={<>{t("title")} <span className="text-orange italic">{t("titleHighlight")}</span></>} sub={t("sub")} />
             <ul className="space-y-5 mb-8">
               {PERKS.map(p => (
                 <li key={p.title} className="flex gap-4">
@@ -68,27 +71,27 @@ export default function Partners() {
               ))}
             </ul>
             <div className="flex gap-4 flex-wrap">
-              <Button href="tel:+4528340907" variant="ghost-light" size="lg">Ring til os</Button>
+              <Button href="tel:+4528340907" variant="ghost-light" size="lg">{t("callUs")}</Button>
             </div>
           </RevealOnScroll>
 
           <RevealOnScroll delay={150}>
             <div className="bg-[#2d2c2c] rounded-3xl p-8">
-              <div className="text-orange text-xs font-extrabold tracking-widest uppercase mb-6">Tilmeld dit konsulenthus</div>
+              <div className="text-orange text-xs font-extrabold tracking-widest uppercase mb-6">{t("formHeader")}</div>
 
               {done ? (
                 <div className="text-center py-8">
                   <div className="text-4xl mb-3">✅</div>
-                  <h3 className="font-bold text-white text-lg mb-1">Tak for din tilmelding!</h3>
-                  <p className="text-white/50 text-sm">Du hører fra os når der er opgaver der matcher jeres profil.</p>
-                  <p className="text-white/30 text-xs mt-2">Husk at tjekke din spammappe!</p>
+                  <h3 className="font-bold text-white text-lg mb-1">{t("successTitle")}</h3>
+                  <p className="text-white/50 text-sm">{t("successDesc")}</p>
+                  <p className="text-white/30 text-xs mt-2">{t("successSpam")}</p>
                 </div>
               ) : (
                 <form className="space-y-4" onSubmit={handleSubmit}>
 
                   <div>
-                    <label className={lbl}>Virksomhed *</label>
-                    <input type="text" placeholder="Konsulenthus A/S" className={inp} style={FIELD_STYLE}
+                    <label className={lbl}>{t("labelCompany")} *</label>
+                    <input type="text" placeholder={t("placeholderCompany")} className={inp} style={FIELD_STYLE}
                       value={form.company_name} onChange={e => setForm(f => ({ ...f, company_name: e.target.value }))}
                       onFocus={e => e.target.style.borderColor = "#e28100"}
                       onBlur={e => e.target.style.borderColor = "#d1d0cf"} />
@@ -96,15 +99,15 @@ export default function Partners() {
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className={lbl}>Fornavn *</label>
-                      <input type="text" placeholder="Fornavn" className={inp} style={FIELD_STYLE}
+                      <label className={lbl}>{t("labelFirstName")} *</label>
+                      <input type="text" placeholder={t("placeholderFirstName")} className={inp} style={FIELD_STYLE}
                         value={form.first_name} onChange={e => setForm(f => ({ ...f, first_name: e.target.value }))}
                         onFocus={e => e.target.style.borderColor = "#e28100"}
                         onBlur={e => e.target.style.borderColor = "#d1d0cf"} />
                     </div>
                     <div>
-                      <label className={lbl}>Efternavn *</label>
-                      <input type="text" placeholder="Efternavn" className={inp} style={FIELD_STYLE}
+                      <label className={lbl}>{t("labelLastName")} *</label>
+                      <input type="text" placeholder={t("placeholderLastName")} className={inp} style={FIELD_STYLE}
                         value={form.last_name} onChange={e => setForm(f => ({ ...f, last_name: e.target.value }))}
                         onFocus={e => e.target.style.borderColor = "#e28100"}
                         onBlur={e => e.target.style.borderColor = "#d1d0cf"} />
@@ -112,16 +115,16 @@ export default function Partners() {
                   </div>
 
                   <div>
-                    <label className={lbl}>E-mail *</label>
-                    <input type="email" placeholder="kontakt@jeresfirma.dk" className={inp} style={FIELD_STYLE}
+                    <label className={lbl}>{t("labelEmail")} *</label>
+                    <input type="email" placeholder={t("placeholderEmail")} className={inp} style={FIELD_STYLE}
                       value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                       onFocus={e => e.target.style.borderColor = "#e28100"}
                       onBlur={e => e.target.style.borderColor = "#d1d0cf"} />
                   </div>
 
                   <div>
-                    <label className={lbl}>Telefon</label>
-                    <input type="tel" placeholder="+45 XXXX XXXX" className={inp} style={FIELD_STYLE}
+                    <label className={lbl}>{t("labelPhone")}</label>
+                    <input type="tel" placeholder={t("placeholderPhone")} className={inp} style={FIELD_STYLE}
                       value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
                       onFocus={e => e.target.style.borderColor = "#e28100"}
                       onBlur={e => e.target.style.borderColor = "#d1d0cf"} />
@@ -129,13 +132,13 @@ export default function Partners() {
 
                   {/* Leverandørtype */}
                   <div>
-                    <label className={lbl}>Leverandørtype</label>
+                    <label className={lbl}>{t("labelType")}</label>
                     <div className="relative">
                       <button type="button" onClick={() => setTypeOpen(!typeOpen)}
                         className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm transition-all ${typeOpen ? "rounded-b-none border-orange" : ""}`}
                         style={{ ...FIELD_STYLE, borderColor: typeOpen ? "#e28100" : "#d1d0cf" }}>
                         <span className={form.company_type ? "text-charcoal font-semibold" : "text-charcoal/35"}>
-                          {form.company_type || "Vælg type…"}
+                          {form.company_type || t("placeholderType")}
                         </span>
                         <svg className={`w-3 h-3 text-charcoal/40 transition-transform ${typeOpen ? "rotate-180" : ""}`} viewBox="0 0 12 8" fill="none">
                           <path d="M1 1l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -143,10 +146,10 @@ export default function Partners() {
                       </button>
                       {typeOpen && (
                         <div className="absolute top-full left-0 right-0 z-30 bg-white border border-orange border-t-0 rounded-b-xl shadow-xl overflow-hidden">
-                          {["Konsulenthus (egne konsulenter)", "Konsulentformidler (freelancers)", "Selvstændig (freelancer)"].map(t => (
-                            <div key={t} onClick={() => { setForm(f => ({ ...f, company_type: t })); setTypeOpen(false); }}
-                              className={`px-4 py-2.5 cursor-pointer text-sm font-semibold transition-colors ${form.company_type === t ? "bg-orange-light text-charcoal" : "text-charcoal hover:bg-[#f8f6f3]"}`}>
-                              {t}
+                          {[t("type0"), t("type1"), t("type2")].map(type => (
+                            <div key={type} onClick={() => { setForm(f => ({ ...f, company_type: type })); setTypeOpen(false); }}
+                              className={`px-4 py-2.5 cursor-pointer text-sm font-semibold transition-colors ${form.company_type === type ? "bg-orange-light text-charcoal" : "text-charcoal hover:bg-[#f8f6f3]"}`}>
+                              {type}
                             </div>
                           ))}
                         </div>
@@ -156,13 +159,17 @@ export default function Partners() {
 
                   {/* Kompetencer */}
                   <div>
-                    <label className={lbl}>Kompetenceområder</label>
+                    <label className={lbl}>{t("labelCompetencies")}</label>
                     <div className="relative">
                       <button type="button" onClick={() => setDropOpen(!dropOpen)}
                         className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm transition-all ${dropOpen ? "border-orange rounded-b-none" : ""}`}
                         style={{ ...FIELD_STYLE, borderColor: dropOpen ? "#e28100" : "#d1d0cf" }}>
                         <span className={form.competencies.length ? "text-charcoal font-semibold" : "text-charcoal/35"}>
-                          {form.competencies.length ? `${form.competencies.length} kompetence${form.competencies.length > 1 ? "r" : ""} valgt` : "Vælg kompetenceområder…"}
+                          {form.competencies.length
+                            ? (form.competencies.length === 1
+                                ? t("competenciesSelected", { count: form.competencies.length })
+                                : t("competenciesSelectedPlural", { count: form.competencies.length }))
+                            : t("placeholderCompetencies")}
                         </span>
                         <svg className={`w-3 h-3 text-charcoal/40 transition-transform ${dropOpen ? "rotate-180" : ""}`} viewBox="0 0 12 8" fill="none">
                           <path d="M1 1l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -200,8 +207,8 @@ export default function Partners() {
 
                   {/* Yderligere kompetencer */}
                   <div>
-                    <label className={lbl}>Yderligere kompetencer</label>
-                    <input type="text" placeholder="F.eks. specifikke teknologier eller brancher…" className={inp} style={FIELD_STYLE}
+                    <label className={lbl}>{t("labelExtra")}</label>
+                    <input type="text" placeholder={t("placeholderExtra")} className={inp} style={FIELD_STYLE}
                       value={form.extra_competencies} onChange={e => setForm(f => ({ ...f, extra_competencies: e.target.value }))}
                       onFocus={e => e.target.style.borderColor = "#e28100"}
                       onBlur={e => e.target.style.borderColor = "#d1d0cf"} />
@@ -209,13 +216,13 @@ export default function Partners() {
 
                   {/* Sprog */}
                   <div>
-                    <label className={lbl}>Sprog</label>
+                    <label className={lbl}>{t("labelLanguage")}</label>
                     <div className="relative">
                       <button type="button" onClick={() => setLangOpen(!langOpen)}
                         className={`w-full flex items-center justify-between rounded-xl border px-4 py-3 text-sm transition-all ${langOpen ? "rounded-b-none border-orange" : ""}`}
                         style={{ ...FIELD_STYLE, borderColor: langOpen ? "#e28100" : "#d1d0cf" }}>
                         <span className={form.language ? "text-charcoal font-semibold" : "text-charcoal/35"}>
-                          {form.language || "Vælg sprog…"}
+                          {form.language || t("placeholderLanguage")}
                         </span>
                         <svg className={`w-3 h-3 text-charcoal/40 transition-transform ${langOpen ? "rotate-180" : ""}`} viewBox="0 0 12 8" fill="none">
                           <path d="M1 1l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -223,10 +230,10 @@ export default function Partners() {
                       </button>
                       {langOpen && (
                         <div className="absolute top-full left-0 right-0 z-30 bg-white border border-orange border-t-0 rounded-b-xl shadow-xl overflow-hidden">
-                          {["Dansk", "Engelsk", "Dansk og engelsk"].map(l => (
-                            <div key={l} onClick={() => { setForm(f => ({ ...f, language: l })); setLangOpen(false); }}
-                              className={`px-4 py-2.5 cursor-pointer text-sm font-semibold transition-colors ${form.language === l ? "bg-orange-light text-charcoal" : "text-charcoal hover:bg-[#f8f6f3]"}`}>
-                              {l}
+                          {[t("lang0"), t("lang1"), t("lang2")].map(lang => (
+                            <div key={lang} onClick={() => { setForm(f => ({ ...f, language: lang })); setLangOpen(false); }}
+                              className={`px-4 py-2.5 cursor-pointer text-sm font-semibold transition-colors ${form.language === lang ? "bg-orange-light text-charcoal" : "text-charcoal hover:bg-[#f8f6f3]"}`}>
+                              {lang}
                             </div>
                           ))}
                         </div>
@@ -238,11 +245,11 @@ export default function Partners() {
 
                   <button type="submit" disabled={submitting}
                     className="w-full bg-orange hover:bg-orange-dark text-white font-bold rounded-full py-3.5 text-sm transition-colors mt-2 disabled:opacity-50">
-                    {submitting ? "Sender…" : "Tilmeld dig og få opgaver →"}
+                    {submitting ? t("submitting") : t("submit")}
                   </button>
 
                   <p className="text-white/25 text-xs text-center">
-                    FindITconsultants.com deler aldrig kunders eller samarbejdspartners navn offentligt uden tilladelse.
+                    {t("disclaimer")}
                   </p>
                 </form>
               )}

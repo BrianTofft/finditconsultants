@@ -3,8 +3,11 @@ import { useState } from "react";
 import { COMPETENCIES } from "@/app/data";
 import Button from "@/components/ui/Button";
 import { supabase } from "@/lib/supabase";
+import { useTranslations } from "next-intl";
 
 export default function LeadForm() {
+  const t = useTranslations("leadForm");
+
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [dropOpen, setDropOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -17,10 +20,10 @@ export default function LeadForm() {
     description: "",
     startDate: "",
     duration: "",
-    workMode: "Onsite",
-    scope: "Fuldtid",
-    language: "Dansk",
-    nearshore: "Ja",
+    workMode: t("workMode0"),
+    scope: t("scope0"),
+    language: t("language0"),
+    nearshore: t("nearshore0"),
     maxRate: "",
     email: "",
   });
@@ -76,8 +79,8 @@ export default function LeadForm() {
   if (done) return (
     <div className="bg-white rounded-3xl shadow-xl p-10 text-center border border-[#ede9e3]">
       <div className="text-5xl mb-4">✅</div>
-      <h3 className="font-bold text-xl text-charcoal mb-2">Tak for din forespørgsel!</h3>
-      <p className="text-charcoal/55 text-sm">Vi vender tilbage inden for 3 arbejdsdage med relevante profiler og priser.</p>
+      <h3 className="font-bold text-xl text-charcoal mb-2">{t("successTitle")}</h3>
+      <p className="text-charcoal/55 text-sm">{t("successDesc")}</p>
     </div>
   );
 
@@ -88,39 +91,43 @@ export default function LeadForm() {
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-xl border border-[#ede9e3] overflow-hidden" id="hero-form">
       <div className="bg-gradient-to-br from-[#2d2c2c] to-[#1a1919] px-6 pt-5 pb-4 border-b-4 border-orange">
-        <h2 className="font-bold text-xl text-white mb-0.5">Find din næste <span className="text-orange">IT-konsulent</span></h2>
-        <p className="text-white/50 text-xs">Vi vender tilbage med profiler inden for 3 arbejdsdage.</p>
+        <h2 className="font-bold text-xl text-white mb-0.5">{t("title")} <span className="text-orange">{t("titleHighlight")}</span></h2>
+        <p className="text-white/50 text-xs">{t("subtitle")}</p>
       </div>
       <div className="px-6 py-4 space-y-3">
 
-        <div className={sec}>Opgave information</div>
+        <div className={sec}>{t("sectionTask")}</div>
         <div>
-          <label className={lbl}>Beskriv kort opgaven / projektet</label>
-          <textarea className={`${inp} resize-none`} rows={3} placeholder="F.eks. Vi søger en senior Azure-arkitekt til cloudmigration…" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+          <label className={lbl}>{t("labelDesc")}</label>
+          <textarea className={`${inp} resize-none`} rows={3} placeholder={t("placeholderDesc")} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
         </div>
         <div>
-          <label className={lbl}>Upload evt. opgavebeskrivelse <span className="normal-case font-normal">(valgfrit)</span></label>
+          <label className={lbl}>{t("labelFile")} <span className="normal-case font-normal">{t("fileOptional")}</span></label>
           <label className="flex items-center gap-3 w-full rounded-xl border border-dashed border-[#d4cfc8] bg-[#f8f6f3] px-4 py-2.5 cursor-pointer hover:border-orange hover:bg-orange-light transition-all group">
             <input type="file" accept=".pdf,.doc,.docx,.txt" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) { setFile(f); setFileName(f.name); } }} />
             <span className="text-base">📎</span>
             <div className="flex-1 min-w-0">
-              <div className="text-xs font-bold text-charcoal">Klik for at uploade</div>
+              <div className="text-xs font-bold text-charcoal">{t("fileUpload")}</div>
               {fileName
                 ? <div className="text-xs text-orange font-bold mt-0.5 truncate">✓ {fileName}</div>
-                : <div className="text-xs text-charcoal/40 mt-0.5">PDF, Word, tekst – maks. 10 MB</div>
+                : <div className="text-xs text-charcoal/40 mt-0.5">{t("fileTypes")}</div>
               }
             </div>
           </label>
         </div>
 
-        <div className={sec}>Konsulent kompetencer</div>
+        <div className={sec}>{t("sectionCompetencies")}</div>
         <div>
-          <label className={lbl}>Vælg kompetenceområde(r)</label>
+          <label className={lbl}>{t("labelCompetencies")}</label>
           <div className="relative">
             <button type="button" onClick={() => setDropOpen(!dropOpen)}
               className={`w-full flex items-center justify-between rounded-xl border px-4 py-2.5 text-sm transition-all ${dropOpen ? "border-orange bg-white rounded-b-none shadow-[0_0_0_3px_rgba(226,129,0,0.12)]" : "border-[#e8e5e0] bg-[#f8f6f3] hover:border-orange/50"}`}>
               <span className={selected.size ? "text-charcoal font-semibold" : "text-charcoal/30"}>
-                {selected.size ? `${selected.size} kompetence${selected.size > 1 ? "r" : ""} valgt` : "Vælg et eller flere områder…"}
+                {selected.size
+                  ? (selected.size === 1
+                    ? t("competencySelected", { count: selected.size })
+                    : t("competenciesSelected", { count: selected.size }))
+                  : t("placeholderCompetencies")}
               </span>
               <svg className={`w-3 h-3 text-charcoal/40 transition-transform ${dropOpen ? "rotate-180" : ""}`} viewBox="0 0 12 8" fill="none">
                 <path d="M1 1l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -152,52 +159,58 @@ export default function LeadForm() {
           )}
         </div>
 
-        <div className={sec}>Opgave detaljer</div>
+        <div className={sec}>{t("sectionDetails")}</div>
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className={lbl}>Forventet opstart</label>
+            <label className={lbl}>{t("labelStartDate")}</label>
             <input type="date" className={inp} value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} />
           </div>
           <div>
-            <label className={lbl}>Varighed</label>
+            <label className={lbl}>{t("labelDuration")}</label>
             <select className={inp} value={form.duration} onChange={e => setForm(f => ({ ...f, duration: e.target.value }))}>
-              <option value="">Vælg…</option>
-              <option>1–3 mdr.</option>
-              <option>4–6 mdr.</option>
-              <option>7–12 mdr.</option>
-              <option>+12 mdr.</option>
+              <option value="">{t("placeholderDuration")}</option>
+              <option>{t("duration1")}</option>
+              <option>{t("duration2")}</option>
+              <option>{t("duration3")}</option>
+              <option>{t("duration4")}</option>
             </select>
           </div>
           <div>
-            <label className={lbl}>Arbejdsform</label>
+            <label className={lbl}>{t("labelWorkMode")}</label>
             <select className={inp} value={form.workMode} onChange={e => setForm(f => ({ ...f, workMode: e.target.value }))}>
-              <option>Onsite</option><option>Hybrid</option><option>Remote</option>
+              <option>{t("workMode0")}</option>
+              <option>{t("workMode1")}</option>
+              <option>{t("workMode2")}</option>
             </select>
           </div>
           <div>
-            <label className={lbl}>Omfang</label>
+            <label className={lbl}>{t("labelScope")}</label>
             <select className={inp} value={form.scope} onChange={e => setForm(f => ({ ...f, scope: e.target.value }))}>
-              <option>Fuldtid</option><option>Deltid</option>
+              <option>{t("scope0")}</option>
+              <option>{t("scope1")}</option>
             </select>
           </div>
           <div>
-            <label className={lbl}>Sprog</label>
+            <label className={lbl}>{t("labelLanguage")}</label>
             <select className={inp} value={form.language} onChange={e => setForm(f => ({ ...f, language: e.target.value }))}>
-              <option>Dansk</option><option>Engelsk</option><option>Begge</option>
+              <option>{t("language0")}</option>
+              <option>{t("language1")}</option>
+              <option>{t("language2")}</option>
             </select>
           </div>
           <div>
-            <label className={lbl}>Near-/Offshore <span className="normal-case font-normal">(lav timepris)</span></label>
+            <label className={lbl}>{t("labelNearshore")} <span className="normal-case font-normal">{t("nearshoreNote")}</span></label>
             <select className={inp} value={form.nearshore} onChange={e => setForm(f => ({ ...f, nearshore: e.target.value }))}>
-              <option>Ja</option><option>Nej</option>
+              <option>{t("nearshore0")}</option>
+              <option>{t("nearshore1")}</option>
             </select>
           </div>
           <div>
-            <label className={lbl}>Maksimal timepris</label>
+            <label className={lbl}>{t("labelRate")}</label>
             <input
               type="number"
               className={inp}
-              placeholder="f.eks. 950/time"
+              placeholder={t("placeholderRate")}
               min="0"
               value={form.maxRate}
               onChange={e => setForm(f => ({ ...f, maxRate: e.target.value }))}
@@ -205,20 +218,20 @@ export default function LeadForm() {
           </div>
         </div>
 
-        <div className={sec}>Din kontaktinfo</div>
+        <div className={sec}>{t("sectionContact")}</div>
         <div>
-          <label className={lbl}>E-mail</label>
-          <input type="email" required placeholder="din@virksomhed.dk" className={inp} value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+          <label className={lbl}>{t("labelEmail")}</label>
+          <input type="email" required placeholder={t("placeholderEmail")} className={inp} value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
         </div>
 
-        {error && <p className="text-red-500 text-xs text-center">Noget gik galt. Prøv igen eller skriv til hej@finditconsultants.com</p>}
+        {error && <p className="text-red-500 text-xs text-center">{t("errorGeneral")}</p>}
 
         <Button type="submit" full size="lg" className="mt-1" disabled={loading}>
-          {loading ? "Sender…" : "Få matchende IT-konsulenter →"}
+          {loading ? t("submitting") : t("submit")}
         </Button>
         <p className="flex items-center justify-center gap-1.5 text-[10px] text-charcoal/35 font-semibold pt-1">
           <svg width="10" height="12" viewBox="0 0 12 14" fill="none"><path d="M6 1L1 3.5V7c0 2.76 2.13 5.35 5 6 2.87-.65 5-3.24 5-6V3.5L6 1Z" stroke="currentColor" strokeWidth="1.3"/></svg>
-          Dine oplysninger deles aldrig offentligt
+          {t("privacy")}
         </p>
       </div>
     </form>
