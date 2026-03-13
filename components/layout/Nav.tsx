@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 import { useTranslations } from "next-intl";
+import LocaleSwitcher from "@/components/layout/LocaleSwitcher";
 
 export default function Nav() {
   const t = useTranslations("nav");
@@ -40,6 +41,8 @@ export default function Nav() {
             ))}
           </div>
           <div className="hidden md:flex items-center gap-4">
+            <LocaleSwitcher />
+            <div className="w-px h-5 bg-white/15" />
             <div className="relative group">
               <button className="text-white/60 hover:text-white text-sm font-semibold transition-colors flex items-center gap-1">
                 {t("login")}
@@ -78,6 +81,9 @@ export default function Nav() {
             <div className="border-t border-white/10 pt-3 space-y-2">
               <Link href="/portal/login" onClick={() => setOpen(false)} className="flex items-center gap-2 text-white/70 hover:text-white text-sm font-semibold py-2">🏢 {t("customerPortal")}</Link>
               <Link href="/supplier/login" onClick={() => setOpen(false)} className="flex items-center gap-2 text-white/70 hover:text-white text-sm font-semibold py-2">🤝 {t("supplierPortal")}</Link>
+            </div>
+            <div className="border-t border-white/10 pt-3">
+              <LocaleSwitcher />
             </div>
             <Button href="#hero-form" full onClick={() => setOpen(false)}>{t("findITConsultants")}</Button>
           </div>
