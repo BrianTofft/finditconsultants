@@ -37,6 +37,7 @@ export async function POST(req: Request) {
   // Send email til hver leverandør
   for (const supplier of suppliers) {
     const rows = [
+      { label: "Land",        value: request.land       ?? "—" },
       { label: "Varighed",    value: request.duration   ?? "—" },
       { label: "Arbejdsform", value: request.work_mode  ?? "—" },
       { label: "Opstart",     value: request.start_date ?? "—" },

@@ -3,7 +3,7 @@ export type Request = {
   competencies: string[]; status: string; duration: string; work_mode: string;
   start_date: string; admin_note?: string; admin_status?: string;
   file_url?: string | null; max_rate?: number | null; reference_number?: string | null;
-  scope?: string | null; language?: string | null; nearshore?: string | null;
+  scope?: string | null; language?: string | null; nearshore?: string | null; land?: string | null;
 };
 
 export type Submission = {

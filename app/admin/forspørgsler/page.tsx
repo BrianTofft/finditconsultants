@@ -244,6 +244,7 @@ export default function ForspørgslerPage() {
                       {r.duration && <span>⏱ {r.duration}</span>}
                       {r.work_mode && <span>📍 {r.work_mode}</span>}
                       {r.scope && <span>🕐 {r.scope}</span>}
+                      {r.land && <span>🗺️ {r.land}</span>}
                       {r.language && <span>🌐 {r.language}</span>}
                       {r.nearshore && <span>🌍 Nearshore: {r.nearshore}</span>}
                       {r.max_rate && <span>💰 Maks. {r.max_rate} DKK/time</span>}

@@ -952,6 +952,7 @@ export default function PortalPage() {
                             {r.duration && <span>⏱ {r.duration}</span>}
                             {r.work_mode && <span>📍 {r.work_mode}</span>}
                             {r.scope && <span>🕐 {r.scope}</span>}
+                            {r.land && <span>🗺️ {r.land}</span>}
                             {r.language && <span>🌐 {r.language}</span>}
                             {r.nearshore && <span>🌍 Nearshore: {r.nearshore}</span>}
                             {r.max_rate && <span>💰 Maks. {r.max_rate} DKK/t</span>}
@@ -996,6 +997,7 @@ export default function PortalPage() {
                           {r.duration && <span>⏱ {r.duration}</span>}
                           {r.work_mode && <span>📍 {r.work_mode}</span>}
                           {r.scope && <span>🕐 {r.scope}</span>}
+                          {r.land && <span>🗺️ {r.land}</span>}
                           {r.language && <span>🌐 {r.language}</span>}
                         </div>
                         <p className="text-charcoal/35 text-xs">👤 {owner?.contact_name || owner?.email || "Kollega"} · {new Date(r.created_at).toLocaleDateString("da-DK")}</p>
