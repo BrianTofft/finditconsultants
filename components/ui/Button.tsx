@@ -29,6 +29,9 @@ const SIZES: Record<Size, string> = {
 
 export default function Button({ variant = "orange", size = "md", href, onClick, children, className = "", type = "button", full, disabled }: Props) {
   const cls = `inline-flex items-center justify-center gap-2 font-bold rounded-full transition-all duration-200 no-underline ${VARIANTS[variant]} ${SIZES[size]} ${full ? "w-full" : ""} ${disabled ? "opacity-50 cursor-not-allowed" : ""} ${className}`;
-  if (href) return <Link href={href} className={cls}>{children}</Link>;
+  if (href) {
+    if (href.startsWith("#")) return <a href={href} className={cls}>{children}</a>;
+    return <Link href={href} className={cls}>{children}</Link>;
+  }
   return <button type={type} onClick={onClick} disabled={disabled} className={cls}>{children}</button>;
 }
