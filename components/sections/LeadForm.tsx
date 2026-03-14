@@ -16,6 +16,14 @@ export default function LeadForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 
+  const [countryCode, setCountryCode] = useState<"dk" | "no" | "sv" | "other" | "">("");
+
+  const langOptions = countryCode === "dk" ? [t("langDanish"), t("langEnglish"), t("langBoth")]
+    : countryCode === "no" ? [t("langNorwegian"), t("langEnglish"), t("langBoth")]
+    : countryCode === "sv" ? [t("langSwedish"), t("langEnglish"), t("langBoth")]
+    : countryCode === "other" ? [t("langEnglish"), t("langBoth")]
+    : [t("language0"), t("language1"), t("language2")];
+
   const [form, setForm] = useState({
     description: "",
     startDate: "",
@@ -60,6 +68,7 @@ export default function LeadForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
+          land: countryCode || null,
           competencies: Array.from(selected),
           fileUrl,
           maxRate: form.maxRate ? parseInt(form.maxRate) : null,
@@ -191,11 +200,32 @@ export default function LeadForm() {
             </select>
           </div>
           <div>
+            <label className={lbl}>{t("labelLand")}</label>
+            <select
+              className={inp}
+              value={countryCode}
+              onChange={e => {
+                const code = e.target.value as "dk" | "no" | "sv" | "other" | "";
+                setCountryCode(code);
+                const firstLang = code === "dk" ? t("langDanish")
+                  : code === "no" ? t("langNorwegian")
+                  : code === "sv" ? t("langSwedish")
+                  : code === "other" ? t("langEnglish")
+                  : t("language0");
+                setForm(f => ({ ...f, language: firstLang }));
+              }}
+            >
+              <option value="">{t("placeholderLand")}</option>
+              <option value="dk">{t("landDK")}</option>
+              <option value="no">{t("landNO")}</option>
+              <option value="sv">{t("landSV")}</option>
+              <option value="other">{t("landOther")}</option>
+            </select>
+          </div>
+          <div>
             <label className={lbl}>{t("labelLanguage")}</label>
             <select className={inp} value={form.language} onChange={e => setForm(f => ({ ...f, language: e.target.value }))}>
-              <option>{t("language0")}</option>
-              <option>{t("language1")}</option>
-              <option>{t("language2")}</option>
+              {langOptions.map(opt => <option key={opt}>{opt}</option>)}
             </select>
           </div>
           <div>

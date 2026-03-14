@@ -20,6 +20,7 @@ export async function POST(req: Request) {
     email,
     fileUrl,
     maxRate,
+    land,
   } = body;
 
   // Gem i database
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
     scope,
     language,
     nearshore,
+    land: land || null,
     status: "Ny",
     file_url: fileUrl || null,
     max_rate: maxRate || null,
@@ -41,6 +43,7 @@ export async function POST(req: Request) {
   // Byg info-rækker
   const rows = [
     { label: "Email",               value: email },
+    { label: "Land",                value: land           ?? "—" },
     { label: "Opstart",             value: startDate      ?? "—" },
     { label: "Varighed",            value: duration       ?? "—" },
     { label: "Arbejdsform",         value: workMode       ?? "—" },
