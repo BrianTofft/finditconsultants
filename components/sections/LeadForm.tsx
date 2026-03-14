@@ -75,7 +75,7 @@ export default function LeadForm() {
   const langOptions = countryCode === "dk" ? [t("langDanish"), t("langEnglish"), t("langBoth")]
     : countryCode === "no" ? [t("langNorwegian"), t("langEnglish"), t("langBoth")]
     : countryCode === "sv" ? [t("langSwedish"), t("langEnglish"), t("langBoth")]
-    : countryCode === "other" ? (customLand ? [getLocalLang(customLand), t("langEnglish"), t("langBoth")] : [t("langEnglish"), t("langBoth")])
+    : countryCode === "other" ? (customLand ? [getLocalLang(customLand), t("langEnglish"), t("langBoth")] : [t("langEnglish")])
     : [t("language0"), t("language1"), t("language2")];
 
   const [form, setForm] = useState({
