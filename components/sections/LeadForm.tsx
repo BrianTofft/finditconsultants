@@ -22,7 +22,7 @@ export default function LeadForm() {
   const langOptions = countryCode === "dk" ? [t("langDanish"), t("langEnglish"), t("langBoth")]
     : countryCode === "no" ? [t("langNorwegian"), t("langEnglish"), t("langBoth")]
     : countryCode === "sv" ? [t("langSwedish"), t("langEnglish"), t("langBoth")]
-    : countryCode === "other" ? [t("langEnglish"), t("langBoth")]
+    : countryCode === "other" ? (customLand ? [customLand, t("langEnglish"), t("langBoth")] : [t("langEnglish"), t("langBoth")])
     : [t("language0"), t("language1"), t("language2")];
 
   const [form, setForm] = useState({
@@ -228,7 +228,10 @@ export default function LeadForm() {
                 className={`${inp} mt-1.5`}
                 placeholder={t("landOtherPlaceholder")}
                 value={customLand}
-                onChange={e => setCustomLand(e.target.value)}
+                onChange={e => {
+                  setCustomLand(e.target.value);
+                  setForm(f => ({ ...f, language: e.target.value || t("langEnglish") }));
+                }}
               />
             )}
           </div>
