@@ -3,10 +3,58 @@ import { useState } from "react";
 import { COMPETENCIES } from "@/app/data";
 import Button from "@/components/ui/Button";
 import { supabase } from "@/lib/supabase";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+
+// country name (any locale, lowercase) → language name per UI locale
+const COUNTRY_TO_LANG: Record<string, { da: string; en: string; no: string; sv: string }> = {
+  "finland":       { da: "Finsk",        en: "Finnish",      no: "Finsk",        sv: "Finska" },
+  "tyskland":      { da: "Tysk",         en: "German",       no: "Tysk",         sv: "Tyska" },
+  "germany":       { da: "Tysk",         en: "German",       no: "Tysk",         sv: "Tyska" },
+  "frankrig":      { da: "Fransk",       en: "French",       no: "Fransk",       sv: "Franska" },
+  "frankrike":     { da: "Fransk",       en: "French",       no: "Fransk",       sv: "Franska" },
+  "france":        { da: "Fransk",       en: "French",       no: "Fransk",       sv: "Franska" },
+  "spanien":       { da: "Spansk",       en: "Spanish",      no: "Spansk",       sv: "Spanska" },
+  "spania":        { da: "Spansk",       en: "Spanish",      no: "Spansk",       sv: "Spanska" },
+  "spain":         { da: "Spansk",       en: "Spanish",      no: "Spansk",       sv: "Spanska" },
+  "italien":       { da: "Italiensk",    en: "Italian",      no: "Italiensk",    sv: "Italienska" },
+  "italy":         { da: "Italiensk",    en: "Italian",      no: "Italiensk",    sv: "Italienska" },
+  "portugal":      { da: "Portugisisk",  en: "Portuguese",   no: "Portugisisk",  sv: "Portugisiska" },
+  "holland":       { da: "Hollandsk",    en: "Dutch",        no: "Nederlandsk",  sv: "Holländska" },
+  "nederlandene":  { da: "Hollandsk",    en: "Dutch",        no: "Nederlandsk",  sv: "Holländska" },
+  "nederland":     { da: "Hollandsk",    en: "Dutch",        no: "Nederlandsk",  sv: "Holländska" },
+  "netherlands":   { da: "Hollandsk",    en: "Dutch",        no: "Nederlandsk",  sv: "Holländska" },
+  "nederlanderna": { da: "Hollandsk",    en: "Dutch",        no: "Nederlandsk",  sv: "Holländska" },
+  "polen":         { da: "Polsk",        en: "Polish",       no: "Polsk",        sv: "Polska" },
+  "poland":        { da: "Polsk",        en: "Polish",       no: "Polsk",        sv: "Polska" },
+  "østrig":        { da: "Tysk",         en: "German",       no: "Tysk",         sv: "Tyska" },
+  "austria":       { da: "Tysk",         en: "German",       no: "Tysk",         sv: "Tyska" },
+  "österreich":    { da: "Tysk",         en: "German",       no: "Tysk",         sv: "Tyska" },
+  "uk":            { da: "Engelsk",      en: "English",      no: "Engelsk",      sv: "Engelska" },
+  "england":       { da: "Engelsk",      en: "English",      no: "Engelsk",      sv: "Engelska" },
+  "usa":           { da: "Engelsk",      en: "English",      no: "Engelsk",      sv: "Engelska" },
+  "irland":        { da: "Engelsk",      en: "English",      no: "Engelsk",      sv: "Engelska" },
+  "ireland":       { da: "Engelsk",      en: "English",      no: "Engelsk",      sv: "Engelska" },
+  "australien":    { da: "Engelsk",      en: "English",      no: "Engelsk",      sv: "Engelska" },
+  "australia":     { da: "Engelsk",      en: "English",      no: "Engelsk",      sv: "Engelska" },
+  "rusland":       { da: "Russisk",      en: "Russian",      no: "Russisk",      sv: "Ryska" },
+  "russia":        { da: "Russisk",      en: "Russian",      no: "Russisk",      sv: "Ryska" },
+  "indien":        { da: "Hindi/Engelsk", en: "Hindi/English", no: "Hindi/Engelsk", sv: "Hindi/Engelska" },
+  "india":         { da: "Hindi/Engelsk", en: "Hindi/English", no: "Hindi/Engelsk", sv: "Hindi/Engelska" },
+  "kina":          { da: "Kinesisk",     en: "Chinese",      no: "Kinesisk",     sv: "Kinesiska" },
+  "china":         { da: "Kinesisk",     en: "Chinese",      no: "Kinesisk",     sv: "Kinesiska" },
+  "japan":         { da: "Japansk",      en: "Japanese",     no: "Japansk",      sv: "Japanska" },
+  "ukraine":       { da: "Ukrainsk",     en: "Ukrainian",    no: "Ukrainsk",     sv: "Ukrainska" },
+  "tjekkiet":      { da: "Tjekkisk",     en: "Czech",        no: "Tsjekkisk",    sv: "Tjeckiska" },
+  "czech republic":{ da: "Tjekkisk",     en: "Czech",        no: "Tsjekkisk",    sv: "Tjeckiska" },
+  "ungarn":        { da: "Ungarsk",      en: "Hungarian",    no: "Ungarsk",      sv: "Ungerska" },
+  "hungary":       { da: "Ungarsk",      en: "Hungarian",    no: "Ungarsk",      sv: "Ungerska" },
+  "rumænien":      { da: "Rumænsk",      en: "Romanian",     no: "Rumensk",      sv: "Rumänska" },
+  "romania":       { da: "Rumænsk",      en: "Romanian",     no: "Rumensk",      sv: "Rumänska" },
+};
 
 export default function LeadForm() {
   const t = useTranslations("leadForm");
+  const locale = useLocale() as "da" | "en" | "no" | "sv";
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [dropOpen, setDropOpen] = useState(false);
@@ -19,10 +67,15 @@ export default function LeadForm() {
   const [countryCode, setCountryCode] = useState<"dk" | "no" | "sv" | "other" | "">("");
   const [customLand, setCustomLand] = useState("");
 
+  const getLocalLang = (country: string): string => {
+    const entry = COUNTRY_TO_LANG[country.toLowerCase().trim()];
+    return entry ? entry[locale] : country;
+  };
+
   const langOptions = countryCode === "dk" ? [t("langDanish"), t("langEnglish"), t("langBoth")]
     : countryCode === "no" ? [t("langNorwegian"), t("langEnglish"), t("langBoth")]
     : countryCode === "sv" ? [t("langSwedish"), t("langEnglish"), t("langBoth")]
-    : countryCode === "other" ? (customLand ? [customLand, t("langEnglish"), t("langBoth")] : [t("langEnglish"), t("langBoth")])
+    : countryCode === "other" ? (customLand ? [getLocalLang(customLand), t("langEnglish"), t("langBoth")] : [t("langEnglish"), t("langBoth")])
     : [t("language0"), t("language1"), t("language2")];
 
   const [form, setForm] = useState({
@@ -230,7 +283,7 @@ export default function LeadForm() {
                 value={customLand}
                 onChange={e => {
                   setCustomLand(e.target.value);
-                  setForm(f => ({ ...f, language: e.target.value || t("langEnglish") }));
+                  setForm(f => ({ ...f, language: getLocalLang(e.target.value) || t("langEnglish") }));
                 }}
               />
             )}
