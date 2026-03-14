@@ -41,6 +41,7 @@ type Request = {
   scope?: string | null;
   language?: string | null;
   nearshore?: string | null;
+  land?: string | null;
   max_rate?: number | null;
   file_url?: string | null;
   submissions?: Submission[];
