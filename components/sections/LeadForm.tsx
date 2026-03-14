@@ -17,6 +17,7 @@ export default function LeadForm() {
   const [error, setError] = useState(false);
 
   const [countryCode, setCountryCode] = useState<"dk" | "no" | "sv" | "other" | "">("");
+  const [customLand, setCustomLand] = useState("");
 
   const langOptions = countryCode === "dk" ? [t("langDanish"), t("langEnglish"), t("langBoth")]
     : countryCode === "no" ? [t("langNorwegian"), t("langEnglish"), t("langBoth")]
@@ -68,7 +69,7 @@ export default function LeadForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          land: countryCode || null,
+          land: countryCode === "other" ? (customLand || "other") : (countryCode || null),
           competencies: Array.from(selected),
           fileUrl,
           maxRate: form.maxRate ? parseInt(form.maxRate) : null,
@@ -221,6 +222,15 @@ export default function LeadForm() {
               <option value="sv">{t("landSV")}</option>
               <option value="other">{t("landOther")}</option>
             </select>
+            {countryCode === "other" && (
+              <input
+                type="text"
+                className={`${inp} mt-1.5`}
+                placeholder={t("landOtherPlaceholder")}
+                value={customLand}
+                onChange={e => setCustomLand(e.target.value)}
+              />
+            )}
           </div>
           <div>
             <label className={lbl}>{t("labelLanguage")}</label>

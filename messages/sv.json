@@ -287,6 +287,7 @@
     "landNO": "Norge",
     "landSV": "Sverige",
     "landOther": "Annat land",
+    "landOtherPlaceholder": "Ange land…",
     "labelLanguage": "Språk",
     "language0": "Svenska",
     "language1": "Engelska",
